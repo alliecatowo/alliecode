@@ -1,0 +1,1 @@
+{"name":"auth_anthropic","kind":"http_error_mapping","provider":"anthropic","status_code":401,"body":"bad auth token","want_class":"auth","want_retryable":false,"want_error_contains":"bad auth token"}

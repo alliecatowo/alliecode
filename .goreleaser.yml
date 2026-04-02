@@ -1,0 +1,67 @@
+version: 2
+
+project_name: alliecode
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ac
+    main: ./cmd/ac
+    binary: ac
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+brews:
+  - repository:
+      owner: alliecatowo
+      name: homebrew-tap
+    name: alliecode
+    homepage: "https://github.com/alliecatowo/alliecode"
+    description: "Open-source, model-agnostic AI coding agent"
+    install: |
+      bin.install "ac"
+
+nfpms:
+  - id: default
+    package_name: alliecode
+    vendor: AllieCode
+    homepage: "https://github.com/alliecatowo/alliecode"
+    description: "Open-source, model-agnostic AI coding agent"
+    license: Apache-2.0
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin

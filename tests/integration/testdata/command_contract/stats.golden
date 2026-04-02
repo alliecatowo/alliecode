@@ -1,0 +1,9 @@
+STATS_REPORT
+compact_count=5
+resume_count=6
+copy_count=7
+clear_count=8
+branch_creates=9
+diff_updates=10
+memory_writes=11
+tasks_completed=12

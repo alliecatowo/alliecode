@@ -1,0 +1,4 @@
+CONFIG_GET
+key=a
+found=true
+value=first

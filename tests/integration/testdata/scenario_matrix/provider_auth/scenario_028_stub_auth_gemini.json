@@ -1,0 +1,1 @@
+{"name":"stub_auth_gemini","kind":"chat_sync_stub_error","provider":"gemini","status_code":401,"body":"{\"error\":{\"message\":\"invalid key\"}}","want_class":"auth","want_retryable":false,"want_error_contains":"invalid key"}

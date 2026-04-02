@@ -1,0 +1,1 @@
+{"name":"rate_limit_anthropic_json_body","kind":"http_error_mapping","provider":"anthropic","status_code":429,"body":"{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"too many requests\"}}","want_class":"rate_limit","want_retryable":true,"want_error_contains":"too many requests"}

@@ -1,0 +1,1 @@
+{"name":"runtime_ollama_reapply","kind":"runtime_model_set","provider_choice":"ollama","initial_provider_name":"ollama","model_arg":"llama3","want_model":"llama3","want_provider_name":"ollama"}

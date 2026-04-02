@@ -1,0 +1,541 @@
+# Mega Parity Tasklist - Multi-Lane Port Wave
+
+This backlog is optimized for a high-velocity parity wave with strict lane ownership and independently shippable slices.
+
+## Wave Guardrails
+
+- Prioritize local/CLI/runtime parity and operator workflows first.
+- Explicit de-priority for this wave: **remote/cloud-only parity** (hosted dashboards, SaaS-only control planes, remote orchestration UX, cloud-billing-only surfaces).
+- Every item below is file-targeted and includes short acceptance criteria (`AC`).
+
+## Lane A - `internal/agent`, `internal/types`, `internal/providers`, `internal/hooks`
+
+- [ ] A001 `internal/agent/loop.go`: align turn lifecycle state transitions with upstream sequence order. AC: turn start/end events appear once and in deterministic order.
+- [ ] A002 `internal/agent/loop.go`: normalize cancellation propagation to active tool calls. AC: canceling a turn stops in-flight tools before next model step.
+- [ ] A003 `internal/agent/loop.go`: enforce max-iteration guard parity for runaway loops. AC: loop exits with bounded-iterations error and checkpoint retained.
+- [ ] A004 `internal/agent/loop.go`: align tool-result merge behavior for partial outputs. AC: partial tool chunks merge without duplicate content blocks.
+- [ ] A005 `internal/agent/loop.go`: mirror assistant retry-on-transient-provider policy. AC: transient provider errors retry with backoff and stop at configured cap.
+- [ ] A006 `internal/agent/loop.go`: align agent-stop reasons taxonomy. AC: stop reason values match expected enum and render cleanly downstream.
+- [ ] A007 `internal/agent/loop.go`: preserve system prompt layering order parity. AC: base, policy, and session overlays compose in stable precedence.
+- [ ] A008 `internal/agent/loop.go`: align model-response chunk flush thresholds. AC: streaming flush cadence matches UI expectations without lag spikes.
+- [ ] A009 `internal/agent/loop.go`: enforce final answer synthesis only after pending tool drains. AC: no final response emitted while tools remain active.
+- [ ] A010 `internal/agent/loop.go`: add deterministic id seeding path for tests. AC: identical seed produces identical event ids in loop tests.
+- [ ] A011 `internal/agent/context.go`: align context window truncation heuristic to token-safe boundaries. AC: truncation never splits structured block delimiters.
+- [ ] A012 `internal/agent/context.go`: preserve reference-block ordering across rebuilds. AC: repeated rebuilds produce byte-stable reference sections.
+- [ ] A013 `internal/agent/context.go`: match history inclusion filter for hidden/system events. AC: hidden events excluded from model payload but retained in store.
+- [ ] A014 `internal/agent/context.go`: align file mention dedupe strategy. AC: repeated file mentions collapse to one canonical entry per turn.
+- [ ] A015 `internal/agent/context.go`: mirror max-reference clipping diagnostics. AC: clipping emits a user-visible warning event once per turn.
+- [ ] A016 `internal/agent/context.go`: normalize newline policy in composed prompts. AC: prompt framing uses consistent single blank-line separators.
+- [ ] A017 `internal/agent/context.go`: align context hash generation for cache hits. AC: identical semantic context yields identical hash values.
+- [ ] A018 `internal/agent/context.go`: keep tool schema snippets sorted by tool name. AC: generated schema order is deterministic across runs.
+- [ ] A019 `internal/agent/context.go`: parity for injected command help snippets. AC: slash-command help appears only when command mode is active.
+- [ ] A020 `internal/agent/context.go`: align assistant persona override precedence. AC: explicit session persona beats default profile persona.
+- [ ] A021 `internal/agent/tool_mailbox.go`: align mailbox ack semantics for streamed tool updates. AC: each chunk acknowledged once; no replay after ack.
+- [ ] A022 `internal/agent/tool_mailbox.go`: enforce per-tool timeout handling parity. AC: timeout marks tool failed and emits terminal mailbox state.
+- [ ] A023 `internal/agent/tool_mailbox.go`: align out-of-order chunk buffering behavior. AC: chunks reorder by sequence id before downstream dispatch.
+- [ ] A024 `internal/agent/tool_mailbox.go`: ensure mailbox close drains buffered events. AC: close returns only after all buffered events are flushed.
+- [ ] A025 `internal/agent/tool_mailbox.go`: normalize tool-id collision behavior. AC: duplicate tool id in same turn returns conflict error.
+- [ ] A026 `internal/agent/tool_mailbox.go`: mirror channel backpressure metrics hooks. AC: mailbox exports queue depth and drop counters.
+- [ ] A027 `internal/agent/tool_mailbox.go`: align terminal state mapping for canceled tools. AC: canceled tools emit `canceled` not generic `failed`.
+- [ ] A028 `internal/agent/tool_mailbox.go`: preserve reason text when tool exits abnormally. AC: user-facing failure reason contains original cause.
+- [ ] A029 `internal/agent/tool_mailbox.go`: add jitter-safe retry for mailbox send contention. AC: transient send contention resolves without deadlock.
+- [ ] A030 `internal/agent/tool_mailbox.go`: parity for mailbox reset between turns. AC: new turn starts with empty mailbox and zero stale handlers.
+- [ ] A031 `internal/agent/checkpoint.go`: align checkpoint snapshot granularity at turn boundaries. AC: checkpoint includes messages, tool states, and refs.
+- [ ] A032 `internal/agent/checkpoint.go`: preserve backward-compatible checkpoint schema tags. AC: old checkpoint files load without migration errors.
+- [ ] A033 `internal/agent/checkpoint.go`: add checksum verification parity on restore. AC: tampered snapshot returns integrity error before apply.
+- [ ] A034 `internal/agent/checkpoint.go`: mirror lazy checkpoint write policy for hot loops. AC: writes skip when no mutating state since last snapshot.
+- [ ] A035 `internal/agent/checkpoint.go`: align restore conflict resolution with live state. AC: restore refuses when active turn owns mutable session state.
+- [ ] A036 `internal/agent/checkpoint.go`: maintain deterministic field ordering in serialized snapshots. AC: two identical snapshots serialize byte-identically.
+- [ ] A037 `internal/types/agent_events.go`: complete parity event enum coverage for loop/tool lifecycle. AC: no missing mapped upstream event type.
+- [ ] A038 `internal/types/agent_events.go`: align json tags and omitempty behavior. AC: marshaled payload keys match expected contract exactly.
+- [ ] A039 `internal/types/agent_events.go`: normalize error payload shape for tool failures. AC: code/message/details keys present consistently.
+- [ ] A040 `internal/types/agent_events.go`: mirror timestamp precision policy. AC: event timestamps use consistent millisecond precision.
+- [ ] A041 `internal/types/agent_events.go`: add explicit deprecated aliases for legacy readers. AC: legacy readers parse aliases without semantic drift.
+- [ ] A042 `internal/types/messages.go`: align role and segment typing for mixed content messages. AC: text/tool/ref segments validate against role matrix.
+- [ ] A043 `internal/types/messages.go`: preserve chunked assistant message reconstruction parity. AC: chunk stream rebuilds same final message id and body.
+- [ ] A044 `internal/types/messages.go`: align attachment metadata schema. AC: filename, mime, and size fields serialize consistently.
+- [ ] A045 `internal/types/messages.go`: enforce deterministic message sort comparator. AC: ties resolve via stable id ordering.
+- [ ] A046 `internal/types/messages.go`: map structured-block boundaries identically. AC: block-open/block-close pairs stay balanced after transforms.
+- [ ] A047 `internal/types/tools.go`: align tool descriptor schema with runtime registry needs. AC: descriptor validates required args and return schema.
+- [ ] A048 `internal/types/tools.go`: preserve optional capability flags semantics. AC: absent flags default to false without breaking legacy tools.
+- [ ] A049 `internal/types/tools.go`: normalize tool timeout fields and units. AC: durations parse and emit in documented unit consistently.
+- [ ] A050 `internal/types/tools.go`: add parity aliases for legacy tool names. AC: legacy name resolves to canonical tool id transparently.
+- [ ] A051 `internal/types/provider.go`: align provider capability interface for streaming and tools. AC: providers advertise capabilities consumed by routing policy.
+- [ ] A052 `internal/types/provider.go`: preserve auth error typing contract. AC: auth failures classify separately from transport failures.
+- [ ] A053 `internal/types/provider.go`: normalize token usage accounting fields. AC: prompt/completion/total tokens all populated when available.
+- [ ] A054 `internal/types/provider.go`: align model id normalization helper. AC: equivalent vendor aliases resolve to canonical model id.
+- [ ] A055 `internal/providers/providers.go`: parity for provider selection fallback chain. AC: explicit provider > configured default > safe builtin default.
+- [ ] A056 `internal/providers/providers.go`: align unknown-provider error wording and code. AC: unknown provider returns deterministic user-actionable error.
+- [ ] A057 `internal/providers/providers.go`: preserve provider init order to avoid side effects. AC: registry boot order deterministic across runs.
+- [ ] A058 `internal/providers/metadata_query.go`: align metadata query timeout and retries. AC: metadata fetch retries transient failures and respects timeout.
+- [ ] A059 `internal/providers/model_registry.go`: complete model alias map parity. AC: known aliases resolve to same canonical model ids.
+- [ ] A060 `internal/providers/model_registry.go`: align default model resolution by capability. AC: text/tool/vision defaults selected per capability request.
+- [ ] A061 `internal/providers/capability_matrix.go`: fill missing capability combinations. AC: matrix returns correct support bool for all known models.
+- [ ] A062 `internal/providers/routing_policy.go`: mirror routing preference and failover logic. AC: primary route falls back only on retriable conditions.
+- [ ] A063 `internal/providers/common/retry.go`: align retry classes and exponential backoff parameters. AC: jittered retry intervals match policy bounds.
+- [ ] A064 `internal/providers/common/errors.go`: normalize wrapped provider error chain. AC: root cause preserved and classifiable after wrapping.
+- [ ] A065 `internal/providers/common/auth.go`: parity for env and config credential lookup precedence. AC: explicit config beats env when both present.
+- [ ] A066 `internal/providers/anthropic/anthropic.go`: align streaming delta parsing boundaries. AC: no dropped or duplicated text/tool deltas.
+- [ ] A067 `internal/providers/anthropic/anthropic.go`: match anthropic tool-use response mapping. AC: tool invocations include id, name, and validated args.
+- [ ] A068 `internal/providers/openai/openai.go`: align function/tool-call normalization behavior. AC: tool calls map to canonical internal schema.
+- [ ] A069 `internal/providers/openai/openai.go`: parity for usage extraction on streamed responses. AC: usage metrics emitted once at stream completion.
+- [ ] A070 `internal/providers/openaicompat/openaicompat.go`: align tolerant parsing for variant payloads. AC: compat provider accepts minor schema variations safely.
+- [ ] A071 `internal/providers/gemini/gemini.go`: mirror candidate selection and safety block handling. AC: blocked candidates emit explicit safety reason event.
+- [ ] A072 `internal/providers/ollama/ollama.go`: align local endpoint discovery and model availability checks. AC: missing model returns actionable pull/install guidance.
+- [ ] A073 `internal/providers/providers_test.go`: add parity matrix test across provider registration and lookup. AC: test validates all expected providers and aliases.
+- [ ] A074 `internal/providers/model_registry_test.go`: extend canonical alias coverage. AC: tests cover every alias in model registry table.
+- [ ] A075 `internal/providers/routing_policy_test.go`: add failover-path regression cases. AC: tests assert no failover on non-retriable errors.
+- [ ] A076 `internal/providers/gemini/gemini_stream_test.go`: add chunk ordering and close-signal assertions. AC: stream closes cleanly with ordered chunks.
+- [ ] A077 `internal/providers/openai/openai_stream_test.go`: add interrupted-stream recovery tests. AC: recovery path emits partial content and terminal reason.
+- [ ] A078 `internal/providers/openaicompat/openaicompat_stream_test.go`: add schema-variance stream tests. AC: compat parser handles optional field omissions.
+- [ ] A079 `internal/providers/anthropic/anthropic_stream_test.go`: add tool-use and text interleave tests. AC: interleaved deltas reconstruct exact final transcript.
+- [ ] A080 `internal/providers/common/errors_test.go`: harden classification table tests. AC: every known provider error maps to expected internal class.
+- [ ] A081 `internal/providers/common/retry_test.go`: add deterministic backoff window tests. AC: retry delays stay within configured min/max bounds.
+- [ ] A082 `internal/providers/common/auth_test.go`: add precedence tests for config/env/empty creds. AC: auth source chosen per documented order.
+- [ ] A083 `internal/hooks/hooks.go`: align hook registration order and duplicate suppression. AC: duplicate hook ids are rejected with stable error.
+- [ ] A084 `internal/hooks/hooks.go`: enforce hook execution isolation and timeout semantics. AC: failed/slow hook does not block unrelated hook execution.
+
+## Lane B - `cmd/ac`, `internal/commands`
+
+- [ ] B001 `cmd/ac/main.go`: create parity CLI entrypoint wiring for command bootstrap. AC: binary starts and routes to root command handler.
+- [ ] B002 `cmd/ac/root.go`: add root command with global flags parity. AC: `--help` shows expected global flags and descriptions.
+- [ ] B003 `cmd/ac/root.go`: align default execution path when no args are provided. AC: no-arg run enters interactive/default mode consistently.
+- [ ] B004 `cmd/ac/version.go`: add version command parity with short/long modes. AC: prints semantic version and build metadata fields.
+- [ ] B005 `cmd/ac/usage.go`: align usage rendering format and exit codes. AC: usage errors return non-zero and include actionable hint.
+- [ ] B006 `cmd/ac/completion.go`: add shell completion command parity. AC: completion output generated for bash/zsh/fish.
+- [ ] B007 `cmd/ac/flags.go`: normalize shared flag parsing helpers. AC: same flag value resolves identically across command groups.
+- [ ] B008 `cmd/ac/errors.go`: mirror CLI error formatting and classification. AC: user errors omit stack; internal errors include trace id.
+- [ ] B009 `cmd/ac/config_cmd.go`: add config command surface parity. AC: subcommands expose show/get/set semantics with documented output.
+- [ ] B010 `cmd/ac/context_cmd.go`: add context show parity command. AC: context output matches expected sections and order.
+- [ ] B011 `cmd/ac/history_cmd.go`: add history command parity skeleton. AC: list/show subcommands parse and return stable output schema.
+- [ ] B012 `cmd/ac/permissions_cmd.go`: add permissions command parity skeleton. AC: rules/status views available with deterministic ordering.
+- [ ] B013 `cmd/ac/hooks_cmd.go`: add hooks status/list parity command. AC: reports configured hooks and hook source path.
+- [ ] B014 `cmd/ac/mcp_cmd.go`: add mcp status/list parity command shell. AC: disconnected state messaging is explicit and stable.
+- [ ] B015 `cmd/ac/workflow_cmd.go`: add workflow plan/skills/rewind parity shell. AC: commands parse args and print contract-compliant output.
+- [ ] B016 `cmd/ac/doctor_cmd.go`: add doctor command with human/json modes. AC: both modes emit same facts with different presentation.
+- [ ] B017 `cmd/ac/keybindings_cmd.go`: add keybindings status/path parity command. AC: outputs default and custom path data.
+- [ ] B018 `cmd/ac/session_cmd.go`: add workflow session command parity entrypoint. AC: command renders current session metadata and state.
+- [ ] B019 `cmd/ac/tasks_cmd.go`: add tasks command parity entrypoint. AC: command lists active tasks and summary counts.
+- [ ] B020 `cmd/ac/agents_cmd.go`: add agents list parity entrypoint. AC: command prints local agent roster with deterministic ordering.
+- [ ] B021 `internal/commands/registry.go`: align command registry initialization ordering. AC: registry loads all builtins with stable order.
+- [ ] B022 `internal/commands/registry.go`: enforce duplicate command key detection parity. AC: duplicate registration fails fast with command id.
+- [ ] B023 `internal/commands/registry.go`: align alias registration and canonical lookup. AC: alias resolves to same handler and metadata.
+- [ ] B024 `internal/commands/registry.go`: normalize hidden/internal command exposure rules. AC: hidden commands excluded from standard help output.
+- [ ] B025 `internal/commands/registry.go`: preserve command category grouping parity. AC: help groups commands by expected category headings.
+- [ ] B026 `internal/commands/registry.go`: mirror command-level capability gating. AC: unavailable commands show gating reason instead of panic.
+- [ ] B027 `internal/commands/parser.go`: align slash command tokenization for quoted args. AC: quoted segments preserve spaces and escapes.
+- [ ] B028 `internal/commands/parser.go`: parity for key=value argument parsing edge cases. AC: empty value and escaped equals parsed correctly.
+- [ ] B029 `internal/commands/parser.go`: preserve trailing whitespace handling semantics. AC: trailing spaces do not create phantom args.
+- [ ] B030 `internal/commands/parser.go`: align comment/hash handling in command text. AC: hash treated as literal unless comment mode enabled.
+- [ ] B031 `internal/commands/parser.go`: normalize unknown-command fallback behavior. AC: parser returns structured unknown command error.
+- [ ] B032 `internal/commands/parser.go`: match positional vs option precedence rules. AC: options always parse before positional remainder mapping.
+- [ ] B033 `internal/commands/parser.go`: align short-flag bundling behavior. AC: bundled short flags expand predictably with attached value support.
+- [ ] B034 `internal/commands/parser.go`: add multiline command payload handling parity. AC: parser preserves newline content where allowed.
+- [ ] B035 `internal/commands/parser.go`: align parser diagnostics with pointer spans. AC: errors include token index and near-text snippet.
+- [ ] B036 `internal/commands/parser.go`: preserve unicode-safe cursor movement in parser scans. AC: multibyte runes do not corrupt token boundaries.
+- [ ] B037 `internal/commands/handlers.go`: align status command output sections and ordering. AC: status output matches documented contract order.
+- [ ] B038 `internal/commands/handlers.go`: mirror permissions status formatting parity. AC: allow/ask/deny totals and rules are rendered consistently.
+- [ ] B039 `internal/commands/handlers.go`: align config show/get output stability. AC: key ordering deterministic in both human and json views.
+- [ ] B040 `internal/commands/handlers.go`: parity for history list default range behavior. AC: default range size and sort order match expectations.
+- [ ] B041 `internal/commands/handlers.go`: align history show message rendering. AC: selected entry renders role/content metadata correctly.
+- [ ] B042 `internal/commands/handlers.go`: mirror hooks command output for empty config. AC: empty state prints setup guidance not blank output.
+- [ ] B043 `internal/commands/handlers.go`: align mcp list formatting and disconnected cases. AC: disconnected list returns zero endpoints with reason.
+- [ ] B044 `internal/commands/handlers.go`: parity for workflow plan command output shape. AC: plan sections include steps, risks, and validation notes.
+- [ ] B045 `internal/commands/handlers.go`: align workflow skills command output shape. AC: loaded skills list includes name and source path.
+- [ ] B046 `internal/commands/handlers.go`: align workflow rewind safety checks. AC: rewind refuses when target state is incompatible.
+- [ ] B047 `internal/commands/handlers.go`: mirror keybindings status details. AC: output includes mode, source, and override count.
+- [ ] B048 `internal/commands/handlers.go`: parity for vim status command reporting. AC: vim mode, parser state, and keymap reported.
+- [ ] B049 `internal/commands/handlers.go`: parity for voice status command reporting. AC: local voice availability and backend state rendered.
+- [ ] B050 `internal/commands/handlers.go`: align cost/usage command numeric formatting. AC: values use stable precision and unit labels.
+- [ ] B051 `internal/commands/handlers.go`: preserve clear command behavior semantics. AC: clear resets transient UI state without deleting history.
+- [ ] B052 `internal/commands/handlers.go`: mirror context show elision rules. AC: oversized blocks elide with deterministic placeholder text.
+- [ ] B053 `internal/commands/handlers.go`: align doctor json payload keys. AC: json keys and nesting match integration golden contract.
+- [ ] B054 `internal/commands/handlers.go`: align doctor human output ordering. AC: human report sections appear in deterministic order.
+- [ ] B055 `internal/commands/handlers.go`: normalize command handler timeout handling. AC: long-running handlers fail with typed timeout error.
+- [ ] B056 `internal/commands/handlers.go`: preserve command telemetry emission parity. AC: each command emits start, success/fail, and duration metrics.
+- [ ] B057 `internal/commands/handlers.go`: align localization-ready string keys for output templates. AC: output templates centralized with stable ids.
+- [ ] B058 `internal/commands/handlers.go`: mirror suggestion hints for unknown subcommands. AC: nearest command suggestions appear with edit distance cap.
+- [ ] B059 `internal/commands/handlers.go`: align command auth-gate behavior for provider-dependent commands. AC: missing auth yields actionable remediation text.
+- [ ] B060 `internal/commands/handlers.go`: parity for privacy settings command rendering. AC: privacy toggles render current value and source.
+- [ ] B061 `internal/commands/handlers.go`: align plugin reload command behavior. AC: reload reports changed plugins and skipped invalid entries.
+- [ ] B062 `internal/commands/handlers.go`: mirror release-notes command output fallback behavior. AC: missing notes file returns clear not-found guidance.
+- [ ] B063 `internal/commands/handlers.go`: align upgrade status command output and exit semantics. AC: up-to-date returns zero; available update returns advisory.
+- [ ] B064 `internal/commands/handlers.go`: preserve terminal setup command detect/apply/status parity. AC: all three subcommands share same structured report fields.
+- [ ] B065 `internal/commands/handlers.go`: parity for sandbox check command messaging. AC: clearly states sandbox mode and write/network constraints.
+- [ ] B066 `internal/commands/handlers.go`: align advisor command status surface. AC: advisor enabled/disabled state and source displayed.
+- [ ] B067 `internal/commands/handlers.go`: align desktop/mobile/chrome/color status command outputs. AC: each command emits contract-compliant single status line.
+- [ ] B068 `internal/commands/handlers.go`: parity for login/logout status display. AC: auth principal and last-login metadata render consistently.
+- [ ] B069 `internal/commands/handlers.go`: align export command output and destination handling. AC: export writes expected artifact and prints absolute path.
+- [ ] B070 `internal/commands/handlers.go`: preserve fast/effort/rate-limit options status command parity. AC: each reports current mode plus source of value.
+- [ ] B071 `internal/commands/handlers.go`: align install app status commands for GitHub/Slack. AC: outputs connection/install state with remediation hints.
+- [ ] B072 `internal/commands/handlers.go`: parity for pr comments status command output. AC: command reports integration readiness and token scope state.
+- [ ] B073 `internal/commands/parser_test.go`: add quoting and escape regression table. AC: parser test table covers nested quotes and escaped spaces.
+- [ ] B074 `internal/commands/parser_test.go`: add unknown-command diagnostic coverage. AC: diagnostics include position and suggestion assertions.
+- [ ] B075 `internal/commands/registry_test.go`: expand alias and duplicate registration coverage. AC: tests assert duplicate rejection and alias lookup parity.
+- [ ] B076 `internal/commands/handlers_test.go`: add status/config/history golden-backed assertions. AC: outputs stay stable across deterministic fixtures.
+- [ ] B077 `internal/commands/handlers_test.go`: add doctor human/json equivalence checks. AC: both modes represent same fact set.
+- [ ] B078 `internal/commands/handlers_test.go`: add terminal setup detect/apply/status flow test. AC: flow transitions and messages match expected state machine.
+- [ ] B079 `internal/commands/handlers_test.go`: add sandbox and permissions command edge cases. AC: deny-by-default and empty-rules cases validated.
+- [ ] B080 `internal/commands/handlers_test.go`: add workflow plan/skills/rewind contract tests. AC: outputs and failure modes match golden contract.
+- [ ] B081 `internal/commands/handlers_test.go`: add keybindings/vim/voice status regression tests. AC: commands return stable fields and no panics.
+- [ ] B082 `internal/commands/handlers_test.go`: add plugin reload and release-notes status tests. AC: missing and present resources both covered.
+- [ ] B083 `internal/commands/.alliecode/plugins/policy.yaml`: define command plugin policy parity fixtures. AC: policy fixture loads and enforces expected command allowlist.
+- [ ] B084 `internal/commands/handlers.go`: final pass to align all command exit codes with contract. AC: success=0, usage=2, runtime failures=1 consistently.
+
+## Lane C - `internal/tools`, `internal/tasks`, `internal/permissions`
+
+- [ ] C001 `internal/tools/registry.go`: align tool registration order determinism. AC: tool list order is byte-stable across runs.
+- [ ] C002 `internal/tools/registry.go`: enforce duplicate tool id rejection parity. AC: duplicate registration returns typed conflict error.
+- [ ] C003 `internal/tools/registry.go`: align tool alias lookup behavior. AC: alias and canonical ids resolve identical metadata.
+- [ ] C004 `internal/tools/registry.go`: preserve hidden/internal tool filtering rules. AC: hidden tools excluded from default discovery.
+- [ ] C005 `internal/tools/registry.go`: normalize missing-tool fallback response. AC: fallback message includes closest matching tool ids.
+- [ ] C006 `internal/tools/bash.go`: align shell command safety preflight checks. AC: dangerous patterns classified and routed to permissions gate.
+- [ ] C007 `internal/tools/bash.go`: parity for timeout handling and termination signals. AC: timed out process returns timeout status and captured stderr.
+- [ ] C008 `internal/tools/bash.go`: align working-directory validation behavior. AC: invalid workdir returns clear error before execution.
+- [ ] C009 `internal/tools/bash.go`: preserve output truncation contract and artifact pathing. AC: oversized output stores artifact and reports path.
+- [ ] C010 `internal/tools/bash_output.go`: align structured stdout/stderr framing. AC: response includes separated streams and exit code.
+- [ ] C011 `internal/tools/shell_provider.go`: parity for provider selection by platform. AC: linux/mac/windows select expected shell provider.
+- [ ] C012 `internal/tools/powershell.go`: align PowerShell command invocation and quoting semantics. AC: quoted paths with spaces execute correctly.
+- [ ] C013 `internal/tools/fileread.go`: align line-number prefix format and offset behavior. AC: lines prefixed consistently and offset is 1-based.
+- [ ] C014 `internal/tools/read_guardrails.go`: preserve max-line/max-bytes guardrail parity. AC: guardrails trigger with deterministic truncation notice.
+- [ ] C015 `internal/tools/glob.go`: align glob pattern handling for brace and deep wildcard cases. AC: pattern semantics match documented examples.
+- [ ] C016 `internal/tools/grep.go`: align regex engine options and include filter behavior. AC: include patterns restrict search set correctly.
+- [ ] C017 `internal/tools/fileedit.go`: parity for patch-style edit validation. AC: invalid edits fail atomically without partial file writes.
+- [ ] C018 `internal/tools/filewrite.go`: align write-tool overwrite and create semantics. AC: create/write modes honor explicit intent safely.
+- [ ] C019 `internal/tools/webfetch.go`: align fetch timeout and format conversion behavior. AC: markdown/text/html outputs match requested format.
+- [ ] C020 `internal/tools/websearch.go`: preserve result ranking and dedupe parity. AC: duplicate URLs collapse and ranking remains deterministic.
+- [ ] C021 `internal/tools/notebook.go`: align notebook cell append/update semantics. AC: writes are append-safe and revision tracked.
+- [ ] C022 `internal/tools/memory.go`: parity for memory key scoping and retrieval ordering. AC: scoped keys resolve by namespace precedence.
+- [ ] C023 `internal/tools/ls.go`: align directory listing formatting and trailing slash rules. AC: directories always emit trailing `/` marker.
+- [ ] C024 `internal/tools/tool_search.go`: align tool search ranking signals and caps. AC: top results prioritize exact id and description matches.
+- [ ] C025 `internal/tools/task_create.go`: parity for task creation schema validation. AC: invalid owner/title rejected with typed validation errors.
+- [ ] C026 `internal/tools/task_update.go`: align partial update merge semantics. AC: omitted fields remain unchanged after update.
+- [ ] C027 `internal/tools/task_get.go`: preserve task retrieval visibility constraints. AC: hidden/internal tasks filtered unless explicitly requested.
+- [ ] C028 `internal/tools/task_output.go`: align incremental output append contract. AC: appended output preserves ordering and timestamps.
+- [ ] C029 `internal/tools/task_stop.go`: parity for graceful stop and forced stop fallback. AC: graceful timeout escalates to force stop when needed.
+- [ ] C030 `internal/tools/tasklist.go`: align list filtering by status/owner. AC: filters combine predictably and return deterministic order.
+- [ ] C031 `internal/tools/task_adapter.go`: align adapter translation between tool and task manager models. AC: ids/status map losslessly both directions.
+- [ ] C032 `internal/tools/task_contract.go`: preserve task tool contract field names and requireds. AC: metadata contract matches integration golden.
+- [ ] C033 `internal/tools/structured_blocks.go`: align block extraction rules for tool responses. AC: parser returns balanced blocks without over-capture.
+- [ ] C034 `internal/tools/synthetic_output.go`: parity for synthetic output generation in dry/test modes. AC: synthetic mode is deterministic by seed.
+- [ ] C035 `internal/tools/repl.go`: align repl tool behavior for multi-step sessions. AC: session state persists between sequential repl invocations.
+- [ ] C036 `internal/tools/lsp.go`: align LSP tool request/response normalization. AC: diagnostics and symbols map to canonical schema.
+- [ ] C037 `internal/tools/brief.go`: parity for brief generation section ordering. AC: summary sections appear in documented stable order.
+- [ ] C038 `internal/tools/plan_mode_tools.go`: align plan-mode tool availability gates. AC: restricted tools hidden/blocked in plan-only mode.
+- [ ] C039 `internal/tools/orchestration_state.go`: preserve orchestration state transition semantics. AC: transitions enforce valid from->to graph only.
+- [ ] C040 `internal/tools/orchestration_tools_test.go`: expand orchestration race-condition tests. AC: concurrent transitions do not corrupt shared state.
+- [ ] C041 `internal/tools/team_tools.go`: align team create/update/delete authorization gates. AC: unauthorized operations denied with typed permissions error.
+- [ ] C042 `internal/tools/send_message.go`: parity for message targeting and validation. AC: invalid recipient/session id rejected before enqueue.
+- [ ] C043 `internal/tools/remote_trigger.go`: local fallback behavior when remote unavailable. AC: remote unavailability returns deferred/local-only notice.
+- [ ] C044 `internal/tools/cron_tools.go`: align cron schedule parse and validation behavior. AC: invalid cron expr surfaces precise parse diagnostic.
+- [ ] C045 `internal/tools/worktree_tools.go`: parity for enter/exit workflow state handoff. AC: enter/exit preserves cwd and session references.
+- [ ] C046 `internal/tools/config.go`: align config tool path resolution and source annotations. AC: output indicates value and source file/env/default.
+- [ ] C047 `internal/tools/agent.go`: parity for agent tool proxy error mapping. AC: provider/tool errors map to stable user-facing classes.
+- [ ] C048 `internal/tools/skill.go`: align skill loading messages and missing-skill diagnostics. AC: missing skill returns available skill suggestions.
+- [ ] C049 `internal/tools/mcp_proxy.go`: align mcp request timeout and reconnect behavior. AC: transient disconnect retries before failing request.
+- [ ] C050 `internal/tools/mcp_resource_tools.go`: parity for resource fetch/list schema handling. AC: resource metadata maps to canonical fields.
+- [ ] C051 `internal/tools/sleep.go`: align sleep precision and cancellation behavior. AC: canceled sleep exits early with canceled status.
+- [ ] C052 `internal/tools/ask_user_question.go`: parity for prompt formatting and response timeout. AC: prompt includes choices; timeout returns explicit no-response.
+- [ ] C053 `internal/tasks/manager.go`: align task lifecycle transitions and invariants. AC: illegal transitions rejected with typed errors.
+- [ ] C054 `internal/tasks/manager.go`: preserve owner isolation in task queries. AC: owner filter never leaks other-owner tasks.
+- [ ] C055 `internal/tasks/manager.go`: align id generation and collision handling. AC: generated task ids remain unique under parallel creation.
+- [ ] C056 `internal/tasks/team_store.go`: parity for team task persistence layout. AC: persisted tasks reload with unchanged statuses and owners.
+- [ ] C057 `internal/tasks/team_store.go`: align stale lock recovery behavior. AC: stale lock detected and recovered without data loss.
+- [ ] C058 `internal/tasks/team_store.go`: preserve atomic write guarantees for task store updates. AC: crash during write leaves previous valid snapshot.
+- [ ] C059 `internal/permissions/permissions.go`: align top-level permission decision flow. AC: allow/ask/deny follows documented precedence.
+- [ ] C060 `internal/permissions/rules.go`: parity for rule ordering and first-match semantics. AC: first matching rule determines decision deterministically.
+- [ ] C061 `internal/permissions/classifier.go`: align command/tool risk classifier categories. AC: classifier labels high-risk patterns consistently.
+- [ ] C062 `internal/permissions/matcher.go`: preserve wildcard and regex matching parity. AC: matcher handles exact/wildcard/regex as documented.
+- [ ] C063 `internal/permissions/store.go`: align permissions persistence and reload behavior. AC: saved rules survive restart with no ordering drift.
+- [ ] C064 `internal/permissions/store.go`: add corruption-safe load fallback. AC: corrupt store file yields warning and safe empty rule set.
+- [ ] C065 `internal/tools/bash_test.go`: add timeout, cwd, and truncation regression tests. AC: expected status fields asserted for each case.
+- [ ] C066 `internal/tools/bash_output_test.go`: expand stdout/stderr framing contract tests. AC: framing parser preserves stream boundaries.
+- [ ] C067 `internal/tools/fileread_test.go`: add offset/window edge-case tests. AC: boundary offsets and empty ranges handled cleanly.
+- [ ] C068 `internal/tools/read_guardrails_test.go`: harden guardrail truncation tests. AC: line and byte caps trigger exact contract messages.
+- [ ] C069 `internal/tools/glob_test.go`: add brace and recursive glob parity tests. AC: matches and sort order align expected fixtures.
+- [ ] C070 `internal/tools/grep_test.go`: add regex flags/include filter coverage. AC: include filters and regex flags verified.
+- [ ] C071 `internal/tools/fileedit_test.go`: add invalid patch and atomicity tests. AC: failed edits do not mutate target file.
+- [ ] C072 `internal/tools/filewrite_test.go`: add overwrite/create mode contract tests. AC: unsafe overwrite blocked unless explicitly allowed.
+- [ ] C073 `internal/tools/webfetch_test.go`: add timeout and format conversion tests. AC: each format returns valid transformed payload.
+- [ ] C074 `internal/tools/tool_search_test.go`: add ranking stability tests. AC: same query returns same ordering under deterministic corpus.
+- [ ] C075 `internal/tools/task_tools_test.go`: add create/update/stop end-to-end tests. AC: status transitions and output propagation validated.
+- [ ] C076 `internal/tools/tasklist_test.go`: add filtered listing parity tests. AC: status+owner filters intersect correctly.
+- [ ] C077 `internal/tools/missing_tools_test.go`: harden missing-tool diagnostics tests. AC: error includes requested id and suggestions.
+- [ ] C078 `internal/tools/mcp_proxy_test.go`: add reconnect and timeout tests. AC: transient disconnect recovers within retry budget.
+- [ ] C079 `internal/tools/mcp_resource_tools_test.go`: add resource schema contract tests. AC: list/get outputs match expected contract.
+- [ ] C080 `internal/tasks/manager_test.go`: add transition and concurrency regression tests. AC: concurrent operations keep consistent final state.
+- [ ] C081 `internal/tasks/team_store_test.go`: add corruption/recovery regression tests. AC: recovery path preserves intact records.
+- [ ] C082 `internal/permissions/classifier_test.go`: expand high-risk command classification fixtures. AC: fixtures classify into expected risk buckets.
+- [ ] C083 `internal/permissions/rules_test.go`: add first-match precedence and deny-overrides tests. AC: decisions follow documented precedence exactly.
+- [ ] C084 `internal/permissions/store_test.go`: add persistence ordering and reload fidelity tests. AC: serialized rules reload byte-equivalent ordering.
+
+## Lane D - `internal/tui`, `internal/references`, `internal/keybindings`, `internal/vim`, `internal/voice`
+
+- [ ] D001 `internal/tui/app.go`: align app init sequence and pane bootstrap ordering. AC: startup paints all panes without flicker race.
+- [ ] D002 `internal/tui/app.go`: parity for event loop tick and redraw cadence. AC: redraw cadence avoids dropped frames under streaming updates.
+- [ ] D003 `internal/tui/app.go`: align global key dispatch precedence. AC: modal bindings override global bindings only when active.
+- [ ] D004 `internal/tui/app.go`: preserve status bar state composition parity. AC: mode/provider/session indicators render deterministic order.
+- [ ] D005 `internal/tui/app.go`: align error banner lifecycle behavior. AC: transient errors auto-expire; sticky errors require dismissal.
+- [ ] D006 `internal/tui/app.go`: parity for resize handling and layout recompute. AC: terminal resize reflows panes without corrupting scroll state.
+- [ ] D007 `internal/tui/input.go`: align multiline input editing and cursor movement semantics. AC: cursor motions are unicode-safe across wrapped lines.
+- [ ] D008 `internal/tui/input.go`: preserve submit-on-enter vs newline rules. AC: mode flag governs enter behavior consistently.
+- [ ] D009 `internal/tui/input.go`: align paste handling and bracketed-paste behavior. AC: pasted content inserted atomically without keybind side effects.
+- [ ] D010 `internal/tui/input.go`: parity for undo/redo stack behavior. AC: sequential edits collapse and undo restores previous snapshots.
+- [ ] D011 `internal/tui/diff.go`: align unified diff rendering and hunk headers. AC: hunk headers and +/- lines match expected formatting.
+- [ ] D012 `internal/tui/diff.go`: preserve long-line truncation with horizontal scroll hints. AC: truncated lines show continuation indicator consistently.
+- [ ] D013 `internal/tui/permissions.go`: align permission prompt copy and action ordering. AC: allow/ask/deny actions appear in expected order.
+- [ ] D014 `internal/tui/permissions.go`: parity for permission dialog keyboard shortcuts. AC: shortcut keys trigger intended action in every focus state.
+- [ ] D015 `internal/tui/permission_dialog_state.go`: align dialog state machine transitions. AC: open/resolve/cancel transitions are exhaustive and valid.
+- [ ] D016 `internal/tui/permission_dialog_state.go`: preserve queued prompt handling behavior. AC: multiple prompts queue and resolve FIFO.
+- [ ] D017 `internal/tui/reference_autocomplete.go`: align trigger detection for `@` references. AC: trigger opens only for valid reference contexts.
+- [ ] D018 `internal/tui/reference_autocomplete.go`: parity for ranked reference suggestions. AC: exact path prefix ranks above fuzzy matches.
+- [ ] D019 `internal/tui/reference_autocomplete_state.go`: align selection index bounds and wrap behavior. AC: navigation never exits list bounds incorrectly.
+- [ ] D020 `internal/tui/slash_autocomplete.go`: align slash command suggestion grouping. AC: suggestions grouped by command category consistently.
+- [ ] D021 `internal/tui/slash_autocomplete.go`: parity for autocomplete insert formatting. AC: inserted command text preserves spacing/arg placeholders.
+- [ ] D022 `internal/tui/search_models_helpers.go`: align model search normalization and tokenization. AC: search matches aliases and canonical model ids.
+- [ ] D023 `internal/tui/search_models_helpers.go`: preserve highlighted-match rendering parity. AC: highlight spans align with matched substrings.
+- [ ] D024 `internal/tui/timeline_helpers.go`: align timeline event grouping rules. AC: contiguous same-role chunks group into one visual block.
+- [ ] D025 `internal/tui/timeline_helpers.go`: parity for timestamp rendering precision. AC: timestamps render in local format with stable precision.
+- [ ] D026 `internal/tui/scroll_helpers.go`: align scroll anchor behavior during streaming updates. AC: pinned-bottom mode follows new content automatically.
+- [ ] D027 `internal/tui/scroll_helpers.go`: preserve manual scroll lock behavior. AC: user scroll up disables auto-follow until explicit return.
+- [ ] D028 `internal/tui/text_helpers.go`: align wrapped text measurement and rune width handling. AC: double-width chars do not misalign wrapped lines.
+- [ ] D029 `internal/tui/text_helpers.go`: parity for markdown-ish emphasis rendering. AC: emphasis markers render without breaking plain-text fallback.
+- [ ] D030 `internal/tui/keyboard_helpers.go`: align key normalization across terminals. AC: ctrl/alt/meta combos normalize to canonical key ids.
+- [ ] D031 `internal/tui/keyboard_helpers.go`: preserve unsupported-key fallback behavior. AC: unknown keys ignored without panics or mode corruption.
+- [ ] D032 `internal/tui/spinner.go`: align spinner frame cadence and reset semantics. AC: spinner resets on task completion and no stale frame persists.
+- [ ] D033 `internal/tui/buddy_helpers.go`: parity for buddy panel empty/loading/error states. AC: all states render distinct copy and visuals.
+- [ ] D034 `internal/tui/capabilities_helpers.go`: align capability badge rendering and ordering. AC: badges sorted deterministically by capability priority.
+- [ ] D035 `internal/references/resolver.go`: align reference path resolution precedence. AC: exact path > cwd-relative > workspace search.
+- [ ] D036 `internal/references/resolver.go`: parity for ambiguous reference disambiguation messaging. AC: ambiguous refs return ranked suggestions.
+- [ ] D037 `internal/references/resolver.go`: preserve symlink and case-sensitivity handling semantics. AC: resolution honors platform-specific case behavior.
+- [ ] D038 `internal/references/resolver.go`: align max-results clipping diagnostics. AC: clipping returns deterministic warning with result count.
+- [ ] D039 `internal/keybindings/keybindings.go`: align default keymap generation parity. AC: defaults include expected bindings per mode.
+- [ ] D040 `internal/keybindings/keybindings.go`: preserve user override merge precedence. AC: user file overrides defaults without deleting unmentioned keys.
+- [ ] D041 `internal/keybindings/keybindings.go`: align invalid keybinding diagnostics with path context. AC: parse errors include file path and line.
+- [ ] D042 `internal/keybindings/keybindings.go`: parity for mode-scoped key lookup fallback. AC: mode key fallback resolves to global binding when absent.
+- [ ] D043 `internal/vim/engine.go`: align normal/insert/visual mode transitions. AC: mode changes follow expected vim-like command semantics.
+- [ ] D044 `internal/vim/engine.go`: parity for repeat (`.`) command behavior. AC: repeat replays last change with same motion scope.
+- [ ] D045 `internal/vim/engine.go`: align operator-pending command handling. AC: delete/change operators await valid motion before applying.
+- [ ] D046 `internal/vim/engine.go`: preserve count prefix handling for motions/operators. AC: numeric counts scale operations deterministically.
+- [ ] D047 `internal/vim/parser.go`: align key sequence parser for multi-key chords. AC: partial chords wait for completion within timeout window.
+- [ ] D048 `internal/vim/parser.go`: parity for escape timeout behavior. AC: escape exits insert mode reliably without phantom character insertion.
+- [ ] D049 `internal/vim/buffer.go`: align linewise and charwise delete/yank semantics. AC: registers receive correct text ranges by operation type.
+- [ ] D050 `internal/vim/buffer.go`: preserve cursor clamping after edits. AC: cursor never points past line end after mutation.
+- [ ] D051 `internal/vim/types.go`: align command and motion enums with engine/parser usage. AC: all parsed operations map to concrete typed enums.
+- [ ] D052 `internal/voice/local.go`: align local voice availability detection flow. AC: status reports unavailable reason when deps/devices missing.
+- [ ] D053 `internal/voice/local.go`: parity for start/stop capture lifecycle. AC: stop always releases device handles and goroutines.
+- [ ] D054 `internal/voice/local.go`: align transcript chunk buffering and flush behavior. AC: buffered transcript flushes on pause/end signals.
+- [ ] D055 `internal/voice/local.go`: preserve voice permission prompt interaction hooks. AC: denied microphone permission surfaces actionable remediation.
+- [ ] D056 `internal/tui/app_buddy_test.go`: expand buddy panel render-state parity tests. AC: tests cover loading, data, and failure states.
+- [ ] D057 `internal/tui/permissions_test.go`: add permission prompt keyboard flow tests. AC: key paths resolve allow/ask/deny deterministically.
+- [ ] D058 `internal/tui/app_permission_search_wiring_test.go`: align permission search wiring regressions. AC: search field filters and selection state stay synced.
+- [ ] D059 `internal/tui/reference_autocomplete_test.go`: add fuzzy and exact ranking coverage. AC: exact-match refs rank above fuzzy alternatives.
+- [ ] D060 `internal/tui/slash_autocomplete_test.go`: add slash command insertion edge-case tests. AC: insertion handles cursor-midline and empty input.
+- [ ] D061 `internal/tui/search_models_helpers_test.go`: add alias normalization tests. AC: alias queries return canonical model hits.
+- [ ] D062 `internal/tui/timeline_helpers_test.go`: add grouping and timestamp rendering tests. AC: grouped block count and timestamp format asserted.
+- [ ] D063 `internal/tui/permission_dialog_state_test.go`: add queue and cancellation state tests. AC: queued prompts resolve FIFO with cancel path covered.
+- [ ] D064 `internal/tui/scroll_helpers_test.go`: add pinned-bottom and manual-lock tests. AC: auto-follow toggles correctly by user scroll actions.
+- [ ] D065 `internal/tui/text_helpers_test.go`: add double-width rune wrapping tests. AC: width calculations keep column alignment stable.
+- [ ] D066 `internal/tui/keyboard_helpers_test.go`: add terminal-specific key normalization fixtures. AC: equivalent keys normalize to same canonical id.
+- [ ] D067 `internal/tui/spinner_test.go`: add spinner reset/stop lifecycle tests. AC: spinner stops cleanly and resets frame index.
+- [ ] D068 `internal/tui/buddy_helpers_test.go`: add buddy summary formatting parity tests. AC: summary layout and truncation match contract.
+- [ ] D069 `internal/tui/capabilities_helpers_test.go`: add badge ordering and color-key tests. AC: ordering stable and unsupported badges omitted.
+- [ ] D070 `internal/references/resolver_test.go`: add ambiguous and clipped result tests. AC: warnings and ranking match expected behavior.
+- [ ] D071 `internal/keybindings/keybindings_test.go`: add override precedence and parse error tests. AC: override merge and diagnostics validated.
+- [ ] D072 `internal/vim/engine_test.go`: add operator-motion and repeat command regressions. AC: expected buffer mutations and cursor positions asserted.
+- [ ] D073 `internal/voice/local_test.go`: add unavailable-device and cancel flow tests. AC: lifecycle exits cleanly and emits expected status.
+- [ ] D074 `internal/tui/app.go`: implement parity for command palette open/close behavior. AC: palette focus, escape close, and selection work consistently.
+- [ ] D075 `internal/tui/input.go`: align mention-token highlighting while typing. AC: mentions and slash commands highlight without cursor jumps.
+- [ ] D076 `internal/tui/app.go`: parity for reconnect banner when provider stream drops. AC: reconnect status appears and clears automatically on recovery.
+- [ ] D077 `internal/tui/timeline_helpers.go`: align tool event row rendering for start/progress/end. AC: each tool state has distinct icon and consistent copy.
+- [ ] D078 `internal/tui/permissions.go`: preserve remembered-decision indicator in dialogs. AC: dialog clearly marks persisted vs one-time decisions.
+- [ ] D079 `internal/keybindings/keybindings.go`: align exportable keymap path and status reporting. AC: path command reports active keymap source file.
+- [ ] D080 `internal/references/resolver.go`: parity for references in unsaved buffer contexts. AC: unresolved refs include hint to save or adjust path.
+- [ ] D081 `internal/vim/engine.go`: align visual-line mode semantics and yank/delete behavior. AC: visual-line operations act on full lines and preserve cursor policy.
+- [ ] D082 `internal/voice/local.go`: parity for push-to-talk keybinding integration. AC: hold/release toggles capture state with no stuck-mic condition.
+- [ ] D083 `internal/tui/app.go`: finalize parity pass for startup banner, help hints, and status footer. AC: first-frame UX matches expected text and ordering.
+- [ ] D084 `internal/tui/app.go`: align shutdown cleanup for render loop and subscriptions. AC: exit leaves no goroutine leaks in race-enabled tests.
+
+## Lane E - `internal/state`, `internal/config`, `internal/history`, `internal/session`, `internal/settings`, `internal/migrations`
+
+- [ ] E001 `internal/state/paths.go`: align OS-specific state path resolution parity. AC: linux/mac/windows paths resolve to documented defaults.
+- [ ] E002 `internal/state/paths.go`: preserve override precedence for env and explicit path flags. AC: explicit arg > env > platform default.
+- [ ] E003 `internal/state/store.go`: align atomic write and fsync semantics. AC: writes survive crash without partial/corrupt state.
+- [ ] E004 `internal/state/store.go`: parity for lock file acquisition and stale-lock recovery. AC: stale locks recovered safely with warning.
+- [ ] E005 `internal/state/store.go`: align json encoding options and field ordering stability. AC: deterministic serialization for unchanged payloads.
+- [ ] E006 `internal/state/projects.go`: align project identity key derivation. AC: same workspace resolves to same project key across runs.
+- [ ] E007 `internal/state/projects.go`: preserve project metadata merge behavior on reopen. AC: reopen updates mutable fields without id churn.
+- [ ] E008 `internal/state/projects.go`: align project pruning policy for stale entries. AC: stale entries pruned according to configured retention.
+- [ ] E009 `internal/state/auth.go`: parity for auth session read/write lifecycle. AC: login writes session; logout removes session cleanly.
+- [ ] E010 `internal/state/auth.go`: align token-expiry handling and refresh triggers. AC: expired token detection triggers refresh or clear path.
+- [ ] E011 `internal/state/auth.go`: preserve auth principal metadata schema. AC: account id/email/provider fields persist across reload.
+- [ ] E012 `internal/state/onboarding.go`: align onboarding step progression and completion markers. AC: completed steps not re-shown unless reset.
+- [ ] E013 `internal/state/onboarding.go`: parity for skipped step handling. AC: skipped steps track explicit skip reason and timestamp.
+- [ ] E014 `internal/state/session_metadata.go`: align session metadata schema and defaults. AC: absent fields initialize with safe defaults.
+- [ ] E015 `internal/state/session_metadata.go`: preserve metadata update conflict resolution. AC: concurrent updates resolve last-write with version check.
+- [ ] E016 `internal/state/settings_cache.go`: align cache invalidation on settings file changes. AC: cache refreshes when source mtime changes.
+- [ ] E017 `internal/state/settings_cache.go`: parity for cache warm and cold start behavior. AC: cold start loads once; warm reads hit cache.
+- [ ] E018 `internal/config/config.go`: align config discovery order and profile selection. AC: profile-specific config overlays base config correctly.
+- [ ] E019 `internal/config/config.go`: preserve environment variable expansion semantics. AC: `${VAR}` substitutions resolve with clear missing-var errors.
+- [ ] E020 `internal/config/config.go`: align unknown-key handling and diagnostics. AC: unknown keys warn with file path and line context.
+- [ ] E021 `internal/config/config.go`: parity for nested key merge behavior. AC: nested maps merge deeply without clobbering siblings.
+- [ ] E022 `internal/config/config.go`: align default value application timing. AC: defaults applied after parse, before validation.
+- [ ] E023 `internal/config/diagnostics.go`: align diagnostics severity and code taxonomy. AC: warnings/errors include stable codes for tooling.
+- [ ] E024 `internal/config/diagnostics.go`: preserve human-readable diagnostics format. AC: output includes path, line, severity, and remediation.
+- [ ] E025 `internal/history/store.go`: align history append semantics and ordering. AC: entries append atomically and list newest-first.
+- [ ] E026 `internal/history/store.go`: parity for history trimming/retention policy. AC: retention cap enforced without breaking index references.
+- [ ] E027 `internal/history/store.go`: align history search tokenization and matching. AC: search finds terms across role/content/metadata fields.
+- [ ] E028 `internal/history/store.go`: preserve history export schema compatibility. AC: exported history includes stable version tag.
+- [ ] E029 `internal/session/store.go`: align session create/open/close lifecycle. AC: active session pointer updates consistently on transitions.
+- [ ] E030 `internal/session/store.go`: parity for session rewind checkpoint references. AC: rewind target validates against known checkpoints.
+- [ ] E031 `internal/session/store.go`: align multi-session list ordering and metadata projection. AC: session list sorts by last-active descending.
+- [ ] E032 `internal/session/store.go`: preserve orphaned-session cleanup policy. AC: corrupted/orphaned entries quarantined and reported.
+- [ ] E033 `internal/settings/manager.go`: align settings source layering (defaults/config/runtime). AC: effective setting reflects documented precedence.
+- [ ] E034 `internal/settings/manager.go`: parity for runtime override persistence boundaries. AC: temporary overrides do not persist unless requested.
+- [ ] E035 `internal/settings/manager.go`: align change notification events for subscribers. AC: subscribers receive deduped updates with changed keys.
+- [ ] E036 `internal/settings/validation.go`: preserve validation rules for enum/range/path values. AC: invalid settings rejected with precise diagnostics.
+- [ ] E037 `internal/settings/paths.go`: align settings file location and migration-aware lookup. AC: lookup checks current then legacy paths.
+- [ ] E038 `internal/migrations/migrations.go`: align migration registry ordering by version. AC: migrations run strictly ascending once per version.
+- [ ] E039 `internal/migrations/migrations.go`: parity for idempotent migration execution. AC: rerun after success results in no-op.
+- [ ] E040 `internal/migrations/migrations.go`: align failed migration rollback/partial-state handling. AC: failed migration leaves recoverable prior state.
+- [ ] E041 `internal/migrations/migrations.go`: preserve migration audit log entries. AC: each run records version, status, and duration.
+- [ ] E042 `internal/state/paths_test.go`: add platform path and override precedence tests. AC: all precedence permutations validated.
+- [ ] E043 `internal/state/projects_test.go`: add project key stability and prune policy tests. AC: keys stable and stale project pruning deterministic.
+- [ ] E044 `internal/state/auth_test.go`: add login/logout/expiry regression tests. AC: auth state transitions and persisted fields verified.
+- [ ] E045 `internal/state/onboarding_test.go`: add step progression and reset tests. AC: completed/skipped/reset flows match expected state machine.
+- [ ] E046 `internal/state/session_metadata_test.go`: add concurrent metadata update tests. AC: version checks prevent silent lost updates.
+- [ ] E047 `internal/state/settings_cache_test.go`: add invalidation and warm-cache tests. AC: mtime change triggers reload; warm path avoids disk read.
+- [ ] E048 `internal/config/config_test.go`: add merge/default/unknown-key diagnostics cases. AC: parse and diagnostics match expected fixtures.
+- [ ] E049 `internal/config/diagnostics_test.go`: add severity code and formatting tests. AC: diagnostics contain code/path/line/remediation fields.
+- [ ] E050 `internal/history/store_test.go`: add append, trim, and export compatibility tests. AC: retention and export version tags asserted.
+- [ ] E051 `internal/session/store_test.go`: add session lifecycle and rewind tests. AC: create/open/rewind/close behavior deterministic.
+- [ ] E052 `internal/settings/manager_test.go`: add layering and notification parity tests. AC: precedence and subscriber update counts validated.
+- [ ] E053 `internal/migrations/migrations_test.go`: add ordering, idempotency, and failure tests. AC: migrations run once in order with recoverable failures.
+- [ ] E054 `internal/state/store.go`: align file permission modes for state artifacts. AC: state files created with least-privilege mode bits.
+- [ ] E055 `internal/history/store.go`: align corruption detection and repair fallback. AC: corruption triggers backup+repair or safe reset with warning.
+- [ ] E056 `internal/session/store.go`: preserve stable session id format. AC: ids validate against fixed pattern and uniqueness constraints.
+- [ ] E057 `internal/config/config.go`: align profile inheritance across named environments. AC: child profile inherits and overrides base keys predictably.
+- [ ] E058 `internal/settings/validation.go`: parity for cross-field validation rules. AC: invalid key combinations emit single actionable diagnostic.
+- [ ] E059 `internal/migrations/migrations.go`: align dry-run migration preview mode. AC: preview reports planned steps with no filesystem mutation.
+- [ ] E060 `internal/state/projects.go`: preserve canonical workspace root normalization. AC: path normalization prevents duplicate project entries.
+- [ ] E061 `internal/state/session_metadata.go`: align session title auto-generation fallback. AC: untitled sessions derive deterministic readable fallback titles.
+- [ ] E062 `internal/config/config.go`: parity for secret redaction in config debug output. AC: secret-like keys render redacted values.
+- [ ] E063 `internal/history/store.go`: align message chunk compaction in persisted history. AC: compacted records reconstruct same visible transcript.
+- [ ] E064 `internal/session/store.go`: parity for active-session pointer recovery after crash. AC: startup restores most recent valid active session.
+- [ ] E065 `internal/settings/manager.go`: align effective-settings snapshot export formatting. AC: snapshot export has deterministic ordering and source tags.
+- [ ] E066 `internal/settings/paths.go`: parity for XDG/AppData fallback behavior. AC: falls back to platform default when env paths invalid.
+- [ ] E067 `internal/migrations/migrations.go`: align migration lock handling under concurrent startups. AC: only one process applies migrations; others wait/exit cleanly.
+- [ ] E068 `internal/state/store.go`: preserve backward compatibility for legacy state versions. AC: legacy versions load via migration path without data loss.
+- [ ] E069 `internal/config/diagnostics.go`: align machine-readable diagnostics serialization. AC: diagnostics serialize to stable JSON schema.
+- [ ] E070 `internal/history/store.go`: parity for history pagination cursors. AC: cursor-based pagination returns non-overlapping deterministic pages.
+- [ ] E071 `internal/session/store.go`: align session filter query semantics (project/date/status). AC: combined filters intersect correctly.
+- [ ] E072 `internal/settings/manager.go`: preserve immutable setting enforcement. AC: immutable keys reject runtime mutation with typed error.
+- [ ] E073 `internal/settings/validation.go`: align path existence validation modes. AC: strict mode enforces existence; relaxed mode allows deferred creation.
+- [ ] E074 `internal/state/auth.go`: parity for multiple-account token cache isolation. AC: account switch does not leak previous account tokens.
+- [ ] E075 `internal/state/projects.go`: align project-level feature flag persistence. AC: feature flags persist per project with default fallback.
+- [ ] E076 `internal/config/config.go`: preserve comments/format on non-destructive config rewrites (if supported). AC: rewrite retains unrelated keys and ordering.
+- [ ] E077 `internal/history/store.go`: align redaction pass before persistence for sensitive content. AC: configured sensitive tokens are redacted in stored history.
+- [ ] E078 `internal/session/store.go`: parity for session archival and unarchive flow. AC: archived sessions hidden by default and restorable.
+- [ ] E079 `internal/migrations/migrations.go`: align migration metrics emission. AC: success/failure counters and duration metrics emitted per migration.
+- [ ] E080 `internal/state/paths.go`: final parity pass for all path-derivation callsites. AC: no callsite bypasses canonical path resolver.
+- [ ] E081 `internal/config/config.go`: final parity pass for config compatibility shims. AC: deprecated keys map to canonical keys with warning.
+- [ ] E082 `internal/history/store_test.go`: add high-volume append/read stress parity test. AC: stress run passes without ordering/corruption issues.
+- [ ] E083 `internal/session/store_test.go`: add parallel session create/open race tests. AC: race-enabled test passes with consistent active session.
+- [ ] E084 `internal/migrations/migrations_test.go`: final end-to-end migration-from-legacy fixture test. AC: legacy fixture migrates to latest schema losslessly.
+
+## Lane F - `internal/plugins`, `internal/skills`, `tests`
+
+- [ ] F001 `internal/plugins/runtime.go`: align plugin discovery path precedence. AC: explicit plugin dir overrides defaults and env fallback.
+- [ ] F002 `internal/plugins/runtime.go`: parity for plugin manifest parse and validation. AC: invalid manifests rejected with precise diagnostics.
+- [ ] F003 `internal/plugins/runtime.go`: align plugin load order and deterministic activation. AC: activation order stable by plugin id.
+- [ ] F004 `internal/plugins/runtime.go`: preserve plugin sandbox boundary enforcement. AC: disallowed plugin actions blocked with clear error.
+- [ ] F005 `internal/plugins/runtime.go`: align plugin reload behavior for changed/removed plugins. AC: reload applies add/update/remove delta correctly.
+- [ ] F006 `internal/plugins/runtime.go`: parity for plugin dependency resolution semantics. AC: missing dependency blocks dependent plugin activation.
+- [ ] F007 `internal/plugins/runtime.go`: align plugin capability registration into tool/command registries. AC: capabilities available immediately after successful load.
+- [ ] F008 `internal/plugins/runtime.go`: preserve plugin init timeout and cancellation handling. AC: hung plugin init cancels and reports timeout reason.
+- [ ] F009 `internal/plugins/runtime.go`: align plugin crash isolation and recovery policy. AC: one plugin crash does not unload other active plugins.
+- [ ] F010 `internal/plugins/runtime.go`: parity for plugin state persistence boundaries. AC: plugin state persists only in approved scoped storage.
+- [ ] F011 `internal/plugins/policy_store.go`: align policy file discovery and merge precedence. AC: local policy overrides global defaults deterministically.
+- [ ] F012 `internal/plugins/policy_store.go`: preserve allow/deny resolution and first-match semantics. AC: first matching policy rule determines decision.
+- [ ] F013 `internal/plugins/policy_store.go`: align policy diagnostics and remediation hints. AC: malformed rule errors include line and suggested fix.
+- [ ] F014 `internal/plugins/marketplace.go`: parity for local/offline marketplace listing behavior. AC: offline mode lists cached entries with stale marker.
+- [ ] F015 `internal/plugins/marketplace.go`: align plugin metadata normalization fields. AC: name/version/author/license fields map consistently.
+- [ ] F016 `internal/plugins/marketplace.go`: preserve plugin install plan validation. AC: install plan verifies checksum and compatibility before apply.
+- [ ] F017 `internal/skills/skills.go`: align skill discovery from configured skill roots. AC: all valid skills discovered with deterministic ordering.
+- [ ] F018 `internal/skills/skills.go`: parity for skill metadata extraction and validation. AC: missing required metadata fails with typed diagnostics.
+- [ ] F019 `internal/skills/skills.go`: align skill loading context injection behavior. AC: loaded skill injects expected instructions/resources once.
+- [ ] F020 `internal/skills/skills.go`: preserve missing-skill suggestion behavior. AC: nearest skills suggested when requested name not found.
+- [ ] F021 `internal/skills/skills.go`: align duplicate skill name resolution policy. AC: duplicate names resolve by precedence with warning.
+- [ ] F022 `internal/skills/skills.go`: parity for skill markdown parsing edge cases. AC: fenced blocks and headings preserved in parsed content.
+- [ ] F023 `internal/skills/skills.go`: align skill cache invalidation on file changes. AC: updated skill files reload without restart.
+- [ ] F024 `internal/skills/skills.go`: preserve skill loading safety limits. AC: oversized skill content clipped with explicit warning.
+- [ ] F025 `tests/integration/harness_test.go`: align harness deterministic seed and clock controls. AC: integration runs reproducible across environments.
+- [ ] F026 `tests/integration/fixtures/cli.go`: parity for CLI fixture bootstrap flags and env. AC: fixture launches binary with contract flags/env defaults.
+- [ ] F027 `tests/integration/fixtures/provider.go`: align provider fixture capability matrices. AC: fixture exposes expected capability permutations.
+- [ ] F028 `tests/integration/fixtures/session.go`: preserve session fixture state layout parity. AC: fixture loads sample session states consistently.
+- [ ] F029 `tests/integration/fixtures/gate.go`: align feature-gate fixture toggles. AC: gate toggles isolate tests without global leakage.
+- [ ] F030 `tests/integration/command_contract_golden_test.go`: expand command contract coverage for all supported commands. AC: all commands mapped to golden fixtures.
+- [ ] F031 `tests/integration/command_workflow_golden_test.go`: align workflow plan/skills/rewind golden scenarios. AC: outputs stable for baseline workflows.
+- [ ] F032 `tests/integration/tool_metadata_contract_golden_test.go`: align tool metadata schema golden checks. AC: every registered tool has matching golden metadata.
+- [ ] F033 `tests/integration/tool_contract_edge_test.go`: expand edge-case contract tests for invalid/missing args. AC: typed validation errors asserted.
+- [ ] F034 `tests/integration/onboarding_provider_flow_test.go`: align onboarding-provider flow parity. AC: flow succeeds and persists expected provider state.
+- [ ] F035 `tests/integration/buddy_command_flow_test.go`: preserve buddy-assisted command flow parity. AC: flow output ordering and prompts remain stable.
+- [ ] F036 `tests/integration/ollama_gated_test.go`: align local-provider gating behavior. AC: test skips cleanly when ollama unavailable.
+- [ ] F037 `tests/e2e/cli_smoke_test.go`: align smoke path to cover startup/help/basic command execution. AC: smoke suite passes on clean workspace.
+- [ ] F038 `tests/snapshots/tui_render_snapshot_test.go`: update snapshot stability for deterministic rendering. AC: snapshot diff noise removed via stable seeds.
+- [ ] F039 `tests/snapshots/buddy_render_snapshot_test.go`: align buddy snapshot fixtures with latest parity UX. AC: snapshots assert expected sections and hints.
+- [ ] F040 `tests/snapshots/tui_permission_search_snapshot_test.go`: preserve permission search snapshot parity. AC: filtered results and highlight states match snapshot.
+- [ ] F041 `tests/integration/testdata/command_contract/status.golden`: align baseline status output contract. AC: golden reflects canonical section order.
+- [ ] F042 `tests/integration/testdata/command_contract/version.golden`: align version output format contract. AC: includes version and build metadata fields.
+- [ ] F043 `tests/integration/testdata/command_contract/usage.golden`: preserve usage output and examples contract. AC: usage text and examples stable.
+- [ ] F044 `tests/integration/testdata/command_contract/config_show.golden`: align config show output contract. AC: keys sorted and source tags present.
+- [ ] F045 `tests/integration/testdata/command_contract/config_get.golden`: align config get output contract. AC: missing key behavior and value format stable.
+- [ ] F046 `tests/integration/testdata/command_contract/context_show.golden`: preserve context show rendering contract. AC: context sections and elisions stable.
+- [ ] F047 `tests/integration/testdata/command_contract/history_list.golden`: align history list ordering and columns. AC: latest-first ordering and fields stable.
+- [ ] F048 `tests/integration/testdata/command_contract/history_show.golden`: align history show detail contract. AC: role/content/meta blocks render consistently.
+- [ ] F049 `tests/integration/testdata/command_contract/permissions_status.golden`: preserve permissions status contract. AC: totals/rules formatting stable.
+- [ ] F050 `tests/integration/testdata/command_contract/permissions_rules.golden`: align permissions rules listing contract. AC: rule order follows first-match precedence.
+- [ ] F051 `tests/integration/testdata/command_contract/hooks.golden`: align hooks status/list contract. AC: source path and hook ids rendered.
+- [ ] F052 `tests/integration/testdata/command_contract/tasks.golden`: preserve tasks summary/list contract. AC: task counts and statuses stable.
+- [ ] F053 `tests/integration/testdata/command_contract/agents_list.golden`: align agents list contract. AC: deterministic ordering and state columns.
+- [ ] F054 `tests/integration/testdata/command_contract/workflow_plan.golden`: align workflow plan output contract. AC: sections include steps, risks, validation.
+- [ ] F055 `tests/integration/testdata/command_contract/workflow_skills.golden`: preserve workflow skills output contract. AC: skill names and sources stable.
+- [ ] F056 `tests/integration/testdata/command_contract/workflow_rewind.golden`: align workflow rewind contract. AC: success/failure messages and status codes stable.
+- [ ] F057 `tests/integration/testdata/command_contract/doctor_human.golden`: align doctor human report contract. AC: section ordering and labels fixed.
+- [ ] F058 `tests/integration/testdata/command_contract/doctor_json.golden`: align doctor json schema contract. AC: key names/types stable and complete.
+- [ ] F059 `tests/integration/testdata/command_contract/keybindings_status.golden`: preserve keybindings status contract. AC: mode/source/override count included.
+- [ ] F060 `tests/integration/testdata/command_contract/keybindings_path.golden`: align keybindings path contract. AC: path output absolute and deterministic.
+- [ ] F061 `tests/integration/testdata/command_contract/vim_status.golden`: align vim status contract. AC: mode/parser/keymap fields present.
+- [ ] F062 `tests/integration/testdata/command_contract/voice_status.golden`: align voice status contract. AC: availability/backend/reason fields present.
+- [ ] F063 `tests/integration/testdata/command_contract/mcp_status.golden`: preserve connected mcp status contract. AC: endpoint list and health fields stable.
+- [ ] F064 `tests/integration/testdata/command_contract/mcp_status_disconnected.golden`: align disconnected mcp status contract. AC: explicit disconnected reason emitted.
+- [ ] F065 `tests/integration/testdata/command_contract/mcp_list.golden`: align mcp list contract. AC: empty and populated states format consistently.
+- [ ] F066 `tests/integration/testdata/command_contract/sandbox.golden`: preserve sandbox status contract. AC: mode and restrictions presented clearly.
+- [ ] F067 `tests/integration/testdata/command_contract/sandbox_check.golden`: align sandbox check contract. AC: check result includes pass/fail and detail.
+- [ ] F068 `tests/integration/testdata/command_contract/terminal_setup_detect.golden`: align terminal detect contract. AC: detection fields and recommendations stable.
+- [ ] F069 `tests/integration/testdata/command_contract/terminal_setup_apply.golden`: preserve terminal apply contract. AC: apply result and changed items listed.
+- [ ] F070 `tests/integration/testdata/command_contract/terminal_setup_status.golden`: align terminal setup status contract. AC: configured/unconfigured state explicit.
+- [ ] F071 `tests/integration/testdata/command_contract/reload_plugins.golden`: align plugin reload command contract. AC: added/updated/removed plugin counts stable.
+- [ ] F072 `tests/integration/testdata/command_contract/release_notes_status.golden`: preserve release notes status contract. AC: missing/present states and messaging stable.
+- [ ] F073 `tests/integration/testdata/command_contract/upgrade_status.golden`: align upgrade status contract. AC: current/latest/version delta fields stable.
+- [ ] F074 `tests/integration/testdata/command_contract/login_status.golden`: align login status contract. AC: signed-in principal and auth source shown.
+- [ ] F075 `tests/integration/testdata/command_contract/logout_status.golden`: align logout status contract. AC: signed-out confirmation and cleanup message stable.
+- [ ] F076 `tests/integration/testdata/command_contract/privacy_settings.golden`: preserve privacy settings contract. AC: toggle list and effective values stable.
+- [ ] F077 `tests/integration/testdata/tool_metadata_contract/all_tools.golden.json`: align aggregate tool metadata contract. AC: includes all registered local tools.
+- [ ] F078 `tests/integration/testdata/tool_metadata_contract/bash.golden.json`: align bash tool schema contract. AC: params/description/limits match tool registry.
+- [ ] F079 `tests/integration/testdata/tool_metadata_contract/glob.golden.json`: align glob tool schema contract. AC: path/pattern fields and docs stable.
+- [ ] F080 `tests/integration/testdata/tool_metadata_contract/grep.golden.json`: align grep tool schema contract. AC: regex/include/path fields stable.
+- [ ] F081 `tests/integration/testdata/tool_metadata_contract/skill.golden.json`: align skill tool schema contract. AC: skill name parameter and docs stable.
+- [ ] F082 `tests/integration/testdata/tool_metadata_contract/config.golden.json`: align config tool schema contract. AC: config query/update metadata matches registry.
+- [ ] F083 `internal/plugins/runtime_test.go`, `internal/plugins/marketplace_test.go`, `internal/skills/skills_test.go`: finalize parity regression matrix. AC: all plugin+skill unit tests pass with race enabled.
+- [ ] F084 `tests/integration/*`, `tests/snapshots/*`, `tests/e2e/*`: execute and lock final parity baseline fixtures. AC: full local parity suite passes and fixture diffs are intentional.
+
+## Measurable Targets (Wave Exit Criteria)
+
+- Parity lift target: increase local parity coverage from current baseline to **>= 90% of prioritized local/CLI/runtime contract surface** across lanes A-F.
+- Throughput target: close **>= 350 checklist items** in first wave sprint and **>= 500 total** before wave freeze.
+- Quality gate 1 (unit): `mise exec -- go test ./...` passes for all touched packages.
+- Quality gate 2 (race): `mise exec -- go test ./... -race` passes for lane-owned concurrency-sensitive packages.
+- Quality gate 3 (integration): `mise exec -- go test ./tests/integration/...` passes with stable goldens.
+- Quality gate 4 (smoke/e2e): `mise exec -- go test ./tests/e2e/...` passes on clean workspace.
+- Build gate: `mise exec -- go build ./...` succeeds with no new warnings promoted to errors.

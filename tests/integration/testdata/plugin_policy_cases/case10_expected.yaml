@@ -1,0 +1,8 @@
+installed:
+  - alpha
+summaries:
+  alpha:
+    plugin_id: alpha
+    version: 1.0.0
+    pinned_version: 1.0.0
+    policy_status: enabled

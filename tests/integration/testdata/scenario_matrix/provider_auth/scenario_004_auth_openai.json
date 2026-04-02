@@ -1,0 +1,1 @@
+{"name":"auth_openai","kind":"http_error_mapping","provider":"openai","status_code":401,"body":"invalid api key","want_class":"auth","want_retryable":false,"want_error_contains":"invalid api key"}

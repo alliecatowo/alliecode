@@ -1,0 +1,25 @@
+{
+  "name": "cron_create",
+  "description": "Schedules a local cron-like reminder with deterministic validation.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "cron": {
+        "type": "string",
+        "description": "Five-field cron expression (M H DoM Mon DoW)."
+      },
+      "prompt": {
+        "type": "string",
+        "description": "Prompt payload to run when matched."
+      },
+      "recurring": {
+        "type": "boolean",
+        "description": "Whether the job should recur. Defaults to true."
+      }
+    },
+    "required": [
+      "cron",
+      "prompt"
+    ]
+  }
+}

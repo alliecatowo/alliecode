@@ -1,0 +1,5 @@
+LOGOUT_STATUS
+logged_in=false
+provider=ollama
+account=-
+logout_count=0

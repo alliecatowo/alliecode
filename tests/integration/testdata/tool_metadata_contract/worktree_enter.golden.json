@@ -1,0 +1,13 @@
+{
+  "name": "worktree_enter",
+  "description": "Creates a local isolated worktree directory and marks it as active.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Optional worktree name (letters, digits, dot, underscore, dash)."
+      }
+    }
+  }
+}

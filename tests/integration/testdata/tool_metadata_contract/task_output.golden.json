@@ -1,0 +1,28 @@
+{
+  "name": "task_output",
+  "description": "Returns task status/result; can wait for completion.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "block": {
+        "type": "boolean",
+        "description": "Wait until task reaches terminal state."
+      },
+      "poll_ms": {
+        "type": "integer",
+        "description": "Polling interval in milliseconds."
+      },
+      "task_id": {
+        "type": "string",
+        "description": "Task identifier."
+      },
+      "timeout_ms": {
+        "type": "integer",
+        "description": "Maximum wait in milliseconds when block=true."
+      }
+    },
+    "required": [
+      "task_id"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+{"name":"stub_permission_ollama_403","kind":"chat_sync_stub_error","provider":"ollama","status_code":403,"body":"{\"error\":\"forbidden\"}","want_class":"permission","want_retryable":false,"want_error_contains":"forbidden"}

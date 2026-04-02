@@ -1,0 +1,11 @@
+PERMISSIONS_SUMMARY
+mode=default
+mode.aliases=-
+rules.count=2
+rules.precedence=policy>user>project>session
+rules.policy=0
+rules.user=0
+rules.project=0
+rules.session=2
+denials.count=0
+denials.groups=0

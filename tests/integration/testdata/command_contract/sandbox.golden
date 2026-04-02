@@ -1,0 +1,13 @@
+SANDBOX_STATUS
+mode=read-only
+workspace_locked=false
+excluded_count=0
+availability.shell=available
+availability.shell.path=/usr/bin/sh
+dependency.status=healthy
+dependency.available=5
+dependency.missing=0
+policy.effective.mode=read-only
+policy.effective.alias=restrictive
+policy.effective.workspace_locked=false
+policy.effective.excluded_count=0

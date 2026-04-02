@@ -1,0 +1,5 @@
+KEYBINDINGS_STATUS
+enabled=false
+path=~/.claude/keybindings.json
+exists=false
+opens=0

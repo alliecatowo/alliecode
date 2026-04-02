@@ -1,0 +1,8 @@
+TERMINAL_SETUP_DETECT
+profile=ghostty
+source=term_program
+supported=true
+recommended=true
+hint_count=2
+hint.1=Ghostty: map Shift+Enter (or Alt+Enter) to send newline in terminal input
+hint.2=Use /terminal-setup apply ghostty after updating keybinds

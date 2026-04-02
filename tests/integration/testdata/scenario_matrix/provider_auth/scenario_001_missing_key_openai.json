@@ -1,0 +1,1 @@
+{"name":"missing_key_openai","kind":"missing_key","provider":"openai","want_error_contains":"OPENAI_API_KEY"}

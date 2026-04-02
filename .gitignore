@@ -1,0 +1,6 @@
+bin/
+ac
+.env
+.alliecode/
+.tools/
+src/

@@ -1,0 +1,4 @@
+Current model: unknown
+Capabilities: -
+Quick fix: /model ollama/<model>
+Next: use /model [provider/model|model] to switch, or /provider status to verify provider.

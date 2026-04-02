@@ -1,0 +1,20 @@
+{
+  "name": "Glob",
+  "description": "Finds files matching a glob pattern. Supports ** for recursive matching. Returns paths sorted by modification time (most recent first).",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "The directory to search in. Defaults to the working directory."
+      },
+      "pattern": {
+        "type": "string",
+        "description": "The glob pattern to match (e.g. \"**/*.go\", \"src/**/*.ts\")."
+      }
+    },
+    "required": [
+      "pattern"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+{"name":"stub_permission_openai_403","kind":"chat_sync_stub_error","provider":"openai","status_code":403,"body":"{\"error\":{\"message\":\"forbidden\"}}","want_class":"permission","want_retryable":false,"want_error_contains":"forbidden"}

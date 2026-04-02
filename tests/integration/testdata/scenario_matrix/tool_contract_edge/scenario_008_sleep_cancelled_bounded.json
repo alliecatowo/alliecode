@@ -1,0 +1,1 @@
+{"name":"sleep_cancelled_bounded","kind":"sleep_cancelled","input":"{\"duration_ms\":600001}","want_is_error":true,"want_exact":"{\"status\":\"cancelled\",\"requested_ms\":600001,\"slept_ms\":600000,\"bounded\":true}"}

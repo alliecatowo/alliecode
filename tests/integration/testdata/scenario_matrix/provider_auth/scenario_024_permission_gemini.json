@@ -1,0 +1,1 @@
+{"name":"permission_gemini","kind":"http_error_mapping","provider":"gemini","status_code":403,"body":"forbidden","want_class":"permission","want_retryable":false,"want_error_contains":"forbidden"}

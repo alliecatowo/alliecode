@@ -1,0 +1,7 @@
+RATE_LIMIT_OPTIONS
+count=3
+prompts=1
+last_action=-
+option.1=cancel
+option.2=extra-usage
+option.3=upgrade

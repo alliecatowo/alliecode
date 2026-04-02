@@ -1,0 +1,7 @@
+{
+  "name": "cron_list",
+  "description": "Lists scheduled local cron jobs.",
+  "input_schema": {
+    "type": "object"
+  }
+}

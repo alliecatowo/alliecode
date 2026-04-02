@@ -1,0 +1,1 @@
+{"name":"commit_push_pr_status","input":"/commit-push-pr status","state_profile":"contract","golden_path":"commit_push_pr_status.golden"}

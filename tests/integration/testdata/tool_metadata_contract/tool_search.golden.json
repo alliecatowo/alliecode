@@ -1,0 +1,20 @@
+{
+  "name": "tool_search",
+  "description": "Searches registered tool names and descriptions.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "max_results": {
+        "type": "integer",
+        "description": "Maximum number of matches to return."
+      },
+      "query": {
+        "type": "string",
+        "description": "Keyword query or select:<tool-name>"
+      }
+    },
+    "required": [
+      "query"
+    ]
+  }
+}

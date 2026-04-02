@@ -1,0 +1,9 @@
+installed:
+  - alpha
+  - beta
+enabled:
+  - beta
+disabled:
+  - alpha
+pins:
+  beta: 2.1.0

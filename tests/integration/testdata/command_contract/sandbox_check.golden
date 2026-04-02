@@ -1,0 +1,18 @@
+SANDBOX_CHECK
+status=ok
+check_count=5
+check.1.id=shell_available
+check.1.status=ok
+check.1.detail=sh available at /usr/bin/sh
+check.2.id=dependency_git
+check.2.status=ok
+check.2.detail=git available at /usr/bin/git
+check.3.id=policy_mode
+check.3.status=ok
+check.3.detail=mode=read-only alias=restrictive
+check.4.id=policy_workspace_lock
+check.4.status=ok
+check.4.detail=workspace lock disabled
+check.5.id=policy_excludes
+check.5.status=ok
+check.5.detail=excluded command patterns=0

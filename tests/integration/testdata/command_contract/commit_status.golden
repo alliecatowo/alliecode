@@ -1,0 +1,9 @@
+COMMIT_STATUS
+count=14
+last_message=test: runtime parity coverage
+source=git
+branch=feat/allie-code-port
+files=6
+staged=0
+unstaged=6
+untracked=0

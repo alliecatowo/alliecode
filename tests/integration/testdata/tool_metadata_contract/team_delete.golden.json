@@ -1,0 +1,21 @@
+{
+  "name": "team_delete",
+  "description": "Cancels a local team lifecycle and deactivates it if active.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "archive": {
+        "type": "boolean",
+        "description": "Archive instead of cancel/deleting lifecycle metadata."
+      },
+      "reason": {
+        "type": "string",
+        "description": "Optional cancellation/archive reason."
+      },
+      "team_name": {
+        "type": "string",
+        "description": "Optional explicit team name. Defaults to active team."
+      }
+    }
+  }
+}

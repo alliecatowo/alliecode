@@ -1,0 +1,108 @@
+# AllieCode build configuration using mise (https://mise.jdx.dev)
+
+[tools]
+go = "1.24"
+
+[env]
+BINARY_NAME = "ac"
+MODULE = "github.com/alliecatowo/alliecode"
+VERSION = "0.1.0-dev"
+
+[tasks.build]
+description = "Build the ac binary"
+run = "go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/{{env.BINARY_NAME}} ./cmd/ac"
+
+[tasks.build-all]
+description = "Cross-compile for all platforms"
+run = """
+GOOS=linux GOARCH=amd64 go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/ac-linux-amd64 ./cmd/ac
+GOOS=linux GOARCH=arm64 go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/ac-linux-arm64 ./cmd/ac
+GOOS=windows GOARCH=amd64 go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/ac-windows-amd64.exe ./cmd/ac
+"""
+
+[tasks.build-darwin]
+description = "Build macOS binaries for both architectures"
+run = """
+GOOS=darwin GOARCH=amd64 go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/ac-darwin-amd64 ./cmd/ac
+GOOS=darwin GOARCH=arm64 go build -ldflags '-s -w -X main.version={{env.VERSION}}' -o ./bin/ac-darwin-arm64 ./cmd/ac
+"""
+
+[tasks.run]
+description = "Build and run ac"
+run = "go run ./cmd/ac"
+
+[tasks.test]
+description = "Run all tests"
+run = "go test ./... -v"
+
+[tasks.test-unit]
+description = "Run unit tests (exclude integration/e2e/snapshots)"
+run = "go test $(go list ./... | grep -v '/tests/') -v"
+
+[tasks.test-integration]
+description = "Run deterministic integration tests"
+run = "go test ./tests/integration -v"
+
+[tasks.test-integration-ollama]
+description = "Run Ollama-gated integration tests"
+run = "AC_IT_OLLAMA=1 go test ./tests/integration -run Ollama -v"
+
+[tasks.test-live-providers]
+description = "Run live provider integration lane (env-gated)"
+run = "AC_IT_LIVE_PROVIDERS=1 go test ./tests/integration -run LiveProvider -v"
+
+[tasks.test-live-providers-basic]
+description = "Run live provider simple prompt + stream checks"
+run = "AC_IT_LIVE_PROVIDERS=1 go test ./tests/integration -run 'LiveProvider_.*ChatSyncAndStream' -v"
+
+[tasks.test-live-providers-tools]
+description = "Run live provider tool-capable fallback checks"
+run = "AC_IT_LIVE_PROVIDERS=1 go test ./tests/integration -run 'LiveProvider_.*ToolPromptFallback' -v"
+
+[tasks.test-live-providers-classification]
+description = "Run live provider auth/rate-limit classification checks"
+run = "AC_IT_LIVE_PROVIDERS=1 go test ./tests/integration -run 'LiveProvider_Classification' -v"
+
+[tasks.test-live-lane]
+description = "Run e2e + integration with live provider tests enabled"
+run = "AC_IT_LIVE_PROVIDERS=1 go test ./tests/e2e ./tests/integration -v"
+
+[tasks.test-e2e]
+description = "Run deterministic e2e smoke tests"
+run = "go test ./tests/e2e -v"
+
+[tasks.test-snapshots]
+description = "Run TUI render snapshot regression tests"
+run = "go test ./tests/snapshots -v"
+
+[tasks.test-coverage]
+description = "Run tests with coverage"
+run = "go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html"
+
+[tasks.lint]
+description = "Run linters"
+run = "golangci-lint run ./..."
+
+[tasks.fmt]
+description = "Format code"
+run = "gofmt -s -w ."
+
+[tasks.tidy]
+description = "Tidy go modules"
+run = "go mod tidy"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "rm -rf ./bin coverage.out coverage.html"
+
+[tasks.install]
+description = "Install ac to GOPATH/bin"
+run = "go install -ldflags '-s -w -X main.version={{env.VERSION}}' ./cmd/ac"
+
+[tasks.dev]
+description = "Build and run in debug mode"
+run = "go run ./cmd/ac --debug"
+
+[tasks.check]
+description = "Run all checks (fmt, lint, test)"
+depends = ["fmt", "lint", "test"]

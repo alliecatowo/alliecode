@@ -1,0 +1,1049 @@
+[
+  {
+    "name": "Agent",
+    "description": "Spawns a subagent to handle complex, multi-step tasks. The subagent runs independently with its own conversation context.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "A brief description of what the subagent will do."
+        },
+        "model": {
+          "type": "string",
+          "description": "Optional model override for the subagent."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional teammate name for lifecycle tracking."
+        },
+        "poll_ms": {
+          "type": "integer",
+          "description": "Polling interval in milliseconds for wait/resume."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "The task description for the subagent."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Optional existing task id to poll/resume."
+        },
+        "team_name": {
+          "type": "string",
+          "description": "Optional team lifecycle context name."
+        },
+        "wait": {
+          "type": "boolean",
+          "description": "If true, waits for completion before returning."
+        }
+      }
+    }
+  },
+  {
+    "name": "AskUserQuestion",
+    "description": "Asks structured multiple-choice questions and returns a machine-readable answer payload.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "answers": {
+          "type": "array",
+          "description": "Optional user answers keyed by question id.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional metadata map for callers."
+        },
+        "questions": {
+          "type": "array",
+          "description": "Questions to present to the user.",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "questions"
+      ]
+    }
+  },
+  {
+    "name": "Bash",
+    "description": "Executes a shell command and returns its output. Use this for running programs, scripts, git commands, and system operations.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The shell command to execute."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what the command does."
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout in milliseconds. Defaults to 120000 (2 minutes)."
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "Edit",
+    "description": "Performs exact string replacements in files. The old_string must be unique in the file unless replace_all is true.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "The absolute path to the file to edit."
+        },
+        "new_string": {
+          "type": "string",
+          "description": "The replacement string."
+        },
+        "old_string": {
+          "type": "string",
+          "description": "The exact string to find and replace."
+        },
+        "replace_all": {
+          "type": "boolean",
+          "description": "If true, replace all occurrences. Default is false."
+        }
+      },
+      "required": [
+        "file_path",
+        "old_string",
+        "new_string"
+      ]
+    }
+  },
+  {
+    "name": "Glob",
+    "description": "Finds files matching a glob pattern. Supports ** for recursive matching. Returns paths sorted by modification time (most recent first).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The directory to search in. Defaults to the working directory."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "The glob pattern to match (e.g. \"**/*.go\", \"src/**/*.ts\")."
+        }
+      },
+      "required": [
+        "pattern"
+      ]
+    }
+  },
+  {
+    "name": "Grep",
+    "description": "Searches file contents using regular expressions. Uses ripgrep (rg) if available, otherwise falls back to Go's regexp.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "integer",
+          "description": "Number of context lines to show before and after each match. Only used with output_mode \"content\"."
+        },
+        "glob": {
+          "type": "string",
+          "description": "Glob pattern to filter files (e.g. \"*.go\", \"*.{ts,tsx}\")."
+        },
+        "include": {
+          "type": "string",
+          "description": "File pattern to include in the search (e.g. \"*.js\", \"*.{ts,tsx}\"). Alias of glob."
+        },
+        "output_mode": {
+          "type": "string",
+          "description": "Output mode: \"content\" shows matching lines, \"files_with_matches\" shows file paths, \"count\" shows match counts.",
+          "enum": [
+            "content",
+            "files_with_matches",
+            "count"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "description": "File or directory to search in. Defaults to the working directory."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "The regular expression pattern to search for."
+        }
+      },
+      "required": [
+        "pattern"
+      ]
+    }
+  },
+  {
+    "name": "NotebookEdit",
+    "description": "Edits a cell in a Jupyter notebook (.ipynb file). Modifies the source of the specified cell.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Cell operation: update (default), add, or delete.",
+          "enum": [
+            "update",
+            "add",
+            "delete"
+          ]
+        },
+        "cell_index": {
+          "type": "integer",
+          "description": "The 0-based index of the target cell.",
+          "minimum": 0
+        },
+        "cell_type": {
+          "type": "string",
+          "description": "Cell type for add action: code (default) or markdown.",
+          "enum": [
+            "code",
+            "markdown"
+          ]
+        },
+        "new_source": {
+          "type": "string",
+          "description": "The new source content for update/add actions."
+        },
+        "notebook_path": {
+          "type": "string",
+          "description": "Path to the .ipynb notebook file."
+        }
+      },
+      "required": [
+        "notebook_path",
+        "cell_index"
+      ]
+    }
+  },
+  {
+    "name": "Read",
+    "description": "Reads a file from the local filesystem, returning contents with line numbers.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "The absolute path to the file to read."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of lines to read. Defaults to 2000."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Line number to start reading from (1-based). Defaults to 1."
+        }
+      },
+      "required": [
+        "file_path"
+      ]
+    }
+  },
+  {
+    "name": "Sleep",
+    "description": "Sleeps for a requested duration in milliseconds.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "duration_ms": {
+          "type": "integer",
+          "description": "Requested sleep duration in milliseconds; bounded to 1..600000."
+        }
+      },
+      "required": [
+        "duration_ms"
+      ]
+    }
+  },
+  {
+    "name": "TodoWrite",
+    "description": "Manages a task checklist. Create, update, and track todos for the current session.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "todos": {
+          "type": "array",
+          "description": "Array of todo items with content, status, and optional activeForm fields.",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "todos"
+      ]
+    }
+  },
+  {
+    "name": "WebFetch",
+    "description": "Fetches content from a URL via HTTP GET. HTML tags are stripped for cleaner output.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Output format: markdown (default), text, or html.",
+          "enum": [
+            "markdown",
+            "text",
+            "html"
+          ]
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout in seconds. Defaults to 30, max 120."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL to fetch."
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  },
+  {
+    "name": "WebSearch",
+    "description": "Performs a web search and returns ranked results from a configured provider.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "num_results": {
+          "type": "integer",
+          "description": "Number of results to return. Default is 10."
+        },
+        "query": {
+          "type": "string",
+          "description": "The search query."
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "Write",
+    "description": "Writes content to a file, creating it and any parent directories if they do not exist. Overwrites existing files.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "The content to write to the file."
+        },
+        "file_path": {
+          "type": "string",
+          "description": "The absolute path to the file to write."
+        }
+      },
+      "required": [
+        "file_path",
+        "content"
+      ]
+    }
+  },
+  {
+    "name": "brief",
+    "description": "Delivers user-facing messages with optional attachment metadata.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "description": "Optional attachment paths.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string",
+          "description": "Message to deliver to the user."
+        },
+        "status": {
+          "type": "string",
+          "description": "normal or proactive",
+          "enum": [
+            "normal",
+            "proactive"
+          ]
+        }
+      },
+      "required": [
+        "message",
+        "status"
+      ]
+    }
+  },
+  {
+    "name": "config",
+    "description": "Gets and sets deterministic local configuration values for this workspace.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "description": "get, set, unset, or list",
+          "enum": [
+            "get",
+            "set",
+            "unset",
+            "list"
+          ]
+        },
+        "setting": {
+          "type": "string",
+          "description": "Setting key."
+        },
+        "value": {
+          "type": "string",
+          "description": "JSON value for set operation."
+        }
+      }
+    }
+  },
+  {
+    "name": "cron_create",
+    "description": "Schedules a local cron-like reminder with deterministic validation.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "cron": {
+          "type": "string",
+          "description": "Five-field cron expression (M H DoM Mon DoW)."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt payload to run when matched."
+        },
+        "recurring": {
+          "type": "boolean",
+          "description": "Whether the job should recur. Defaults to true."
+        }
+      },
+      "required": [
+        "cron",
+        "prompt"
+      ]
+    }
+  },
+  {
+    "name": "cron_delete",
+    "description": "Deletes a scheduled local cron job by id.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Cron job id."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "cron_list",
+    "description": "Lists scheduled local cron jobs.",
+    "input_schema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter_plan_mode",
+    "description": "Enters plan mode so the model can explore and design before implementation.",
+    "input_schema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "exit_plan_mode",
+    "description": "Exits plan mode and confirms implementation can begin.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "allowedPrompts": {
+          "type": "array",
+          "description": "Optional prompt-based permissions requested by the plan.",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ls",
+    "description": "Lists files and directories in a path. Returns one entry per line, with trailing / for directories.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Directory to list. Defaults to the working directory."
+        }
+      }
+    }
+  },
+  {
+    "name": "lsp",
+    "description": "Provider-agnostic code intelligence fallback (definitions, references, symbols, hover).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "character": {
+          "type": "integer",
+          "description": "1-based character position."
+        },
+        "file_path": {
+          "type": "string",
+          "description": "File path for context."
+        },
+        "line": {
+          "type": "integer",
+          "description": "1-based line number."
+        },
+        "operation": {
+          "type": "string",
+          "description": "goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, goToImplementation, prepareCallHierarchy, incomingCalls, outgoingCalls",
+          "enum": [
+            "goToDefinition",
+            "findReferences",
+            "hover",
+            "documentSymbol",
+            "workspaceSymbol",
+            "goToImplementation",
+            "prepareCallHierarchy",
+            "incomingCalls",
+            "outgoingCalls"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "description": "Optional symbol query for workspaceSymbol."
+        }
+      },
+      "required": [
+        "operation",
+        "file_path",
+        "line",
+        "character"
+      ]
+    }
+  },
+  {
+    "name": "memory",
+    "description": "Persists simple key-value notes scoped to the current workspace.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Operation to perform: set, get, delete, or list.",
+          "enum": [
+            "set",
+            "get",
+            "delete",
+            "list"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "description": "Key for set/get/delete actions."
+        },
+        "value": {
+          "type": "string",
+          "description": "Value to store for set action."
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "powershell",
+    "description": "Executes a local shell command with PowerShell-compatible naming and Bash safety guardrails.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The command to execute."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what the command does."
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout in milliseconds. Defaults to 120000 (2 minutes)."
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "remote_trigger",
+    "description": "Manages provider-agnostic remote triggers using deterministic local state.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "list, get, create, update, or run",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "run"
+          ]
+        },
+        "body": {
+          "type": "string",
+          "description": "JSON payload for create/update."
+        },
+        "trigger_id": {
+          "type": "string",
+          "description": "Trigger identifier for get/update/run."
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "repl",
+    "description": "Relays tool input to a local primitive tool and returns the wrapped result.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "object",
+          "description": "JSON input forwarded to the target tool."
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Target primitive tool name."
+        }
+      },
+      "required": [
+        "tool_name",
+        "input"
+      ]
+    }
+  },
+  {
+    "name": "send_message",
+    "description": "Sends team messages to one teammate or broadcasts to all teammates.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Optional sender name. Defaults to team_lead."
+        },
+        "message": {
+          "type": "string",
+          "description": "Message body."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Optional short preview."
+        },
+        "to": {
+          "type": "string",
+          "description": "Recipient teammate name or * for broadcast."
+        }
+      },
+      "required": [
+        "to",
+        "message"
+      ]
+    }
+  },
+  {
+    "name": "skill",
+    "description": "Runs local skills and exposes a deterministic skill catalog.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "list, invoke, or history",
+          "enum": [
+            "list",
+            "invoke",
+            "history"
+          ]
+        },
+        "args": {
+          "type": "string",
+          "description": "Optional arguments passed to the skill."
+        },
+        "skill": {
+          "type": "string",
+          "description": "Skill name for invoke action."
+        }
+      }
+    }
+  },
+  {
+    "name": "synthetic_output",
+    "description": "Returns structured JSON output in a deterministic passthrough envelope.",
+    "input_schema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "task_create",
+    "description": "Creates a task in the local task list.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "activeForm": {
+          "type": "string",
+          "description": "Optional present-continuous verb phrase for in-progress display."
+        },
+        "description": {
+          "type": "string",
+          "description": "What needs to be done."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional metadata to attach to the task."
+        },
+        "subject": {
+          "type": "string",
+          "description": "A brief title for the task."
+        }
+      },
+      "required": [
+        "subject",
+        "description"
+      ]
+    }
+  },
+  {
+    "name": "task_get",
+    "description": "Gets the current status for a task by id.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task identifier."
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "task_list",
+    "description": "Returns background tasks with status and metadata.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "include_terminal": {
+          "type": "boolean",
+          "description": "Include completed/failed/canceled tasks. Defaults to true."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Optional max number of tasks to return."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Optional owner filter (case-insensitive)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Optional status filter (running, completed, failed, canceled).",
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "canceled"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "task_output",
+    "description": "Returns task status/result; can wait for completion.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "type": "boolean",
+          "description": "Wait until task reaches terminal state."
+        },
+        "poll_ms": {
+          "type": "integer",
+          "description": "Polling interval in milliseconds."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Task identifier."
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "description": "Maximum wait in milliseconds when block=true."
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "task_stop",
+    "description": "Stops a task and records a cancellation reason.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Optional stop reason."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Task identifier."
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "task_update",
+    "description": "Updates task status/result/error metadata.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "activeForm": {
+          "type": "string",
+          "description": "Optional present-continuous active form."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional new description."
+        },
+        "error": {
+          "type": "string",
+          "description": "Optional task error text."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional metadata map."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Optional owner identifier."
+        },
+        "result": {
+          "type": "string",
+          "description": "Optional task result text."
+        },
+        "status": {
+          "type": "string",
+          "description": "Task status (pending, in_progress, completed, failed, canceled, deleted)."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Optional new subject."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Task identifier."
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "team_create",
+    "description": "Creates a local team context used by send_message and orchestration tools.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Optional team purpose."
+        },
+        "members": {
+          "type": "array",
+          "description": "Optional teammate names.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "team_name": {
+          "type": "string",
+          "description": "Team name."
+        }
+      },
+      "required": [
+        "team_name"
+      ]
+    }
+  },
+  {
+    "name": "team_delete",
+    "description": "Cancels a local team lifecycle and deactivates it if active.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "archive": {
+          "type": "boolean",
+          "description": "Archive instead of cancel/deleting lifecycle metadata."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Optional cancellation/archive reason."
+        },
+        "team_name": {
+          "type": "string",
+          "description": "Optional explicit team name. Defaults to active team."
+        }
+      }
+    }
+  },
+  {
+    "name": "team_list",
+    "description": "Lists teams and lifecycle status for the current process.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "description": "Optional max number of teams to return."
+        },
+        "member": {
+          "type": "string",
+          "description": "Optional team member name filter."
+        },
+        "status": {
+          "type": "string",
+          "description": "Optional team status filter (active, archived, canceled)."
+        }
+      }
+    }
+  },
+  {
+    "name": "team_status",
+    "description": "Gets a team record including members and message history.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "team_name": {
+          "type": "string",
+          "description": "Optional explicit team name. Defaults to active team."
+        }
+      }
+    }
+  },
+  {
+    "name": "team_update",
+    "description": "Updates team metadata such as description and members.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Optional new team description."
+        },
+        "members": {
+          "type": "array",
+          "description": "Optional full replacement teammate member list.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "team_name": {
+          "type": "string",
+          "description": "Optional explicit team name. Defaults to active team."
+        }
+      }
+    }
+  },
+  {
+    "name": "tool_search",
+    "description": "Searches registered tool names and descriptions.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of matches to return."
+        },
+        "query": {
+          "type": "string",
+          "description": "Keyword query or select:<tool-name>"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "worktree_enter",
+    "description": "Creates a local isolated worktree directory and marks it as active.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional worktree name (letters, digits, dot, underscore, dash)."
+        }
+      }
+    }
+  },
+  {
+    "name": "worktree_exit",
+    "description": "Exits an active local worktree session, optionally removing worktree files.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "keep or remove",
+          "enum": [
+            "keep",
+            "remove"
+          ]
+        },
+        "discard_changes": {
+          "type": "boolean",
+          "description": "Required true when action=remove to acknowledge deletion."
+        }
+      }
+    }
+  }
+]

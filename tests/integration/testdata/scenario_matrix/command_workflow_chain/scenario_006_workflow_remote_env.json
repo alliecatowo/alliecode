@@ -1,0 +1,1 @@
+{"name":"workflow_remote_env","input":"/remote-env status","state_profile":"workflow","golden_path":"workflow_remote_env.golden"}

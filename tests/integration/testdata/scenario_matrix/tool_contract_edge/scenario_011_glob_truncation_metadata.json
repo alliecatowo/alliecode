@@ -1,0 +1,1 @@
+{"name":"glob_truncation_metadata","kind":"glob_truncation","want_is_error":false,"want_contains":["[truncation_metadata]","line_limit: 500","char_limit: 100000","[glob_result]","count: 520"]}

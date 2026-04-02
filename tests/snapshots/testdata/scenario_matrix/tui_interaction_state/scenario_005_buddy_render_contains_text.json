@@ -1,0 +1,1 @@
+{"name":"buddy_render_contains_text","width":20,"height":20,"action":"submit_command","command":"/buddy hatch","want_contains":["hi hi"]}

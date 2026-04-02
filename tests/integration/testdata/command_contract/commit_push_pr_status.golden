@@ -1,0 +1,8 @@
+COMMIT_PUSH_PR_STATUS
+count=15
+last_url=https://example.test/pr/42
+source=git
+branch=feat/allie-code-port
+tracked=true
+upstream=origin/feat/allie-code-port
+remote_ready=true

@@ -1,0 +1,20 @@
+installed:
+  - alpha
+enabled:
+  - alpha
+disabled: []
+pins:
+  alpha: 4.5.6
+history:
+  - action: pin
+    plugin_id: alpha
+    requested_version: 4.5.6
+    status: ok
+summaries:
+  alpha:
+    plugin_id: alpha
+    version: 4.5.6
+    pinned_version: 4.5.6
+    policy_status: enabled
+    installed: true
+    enabled: true

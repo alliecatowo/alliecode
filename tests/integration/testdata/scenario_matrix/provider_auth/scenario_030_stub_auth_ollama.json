@@ -1,0 +1,1 @@
+{"name":"stub_auth_ollama","kind":"chat_sync_stub_error","provider":"ollama","status_code":401,"body":"{\"error\":\"unauthorized\"}","want_class":"auth","want_retryable":false,"want_error_contains":"unauthorized"}

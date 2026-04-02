@@ -1,0 +1,62 @@
+DOCTOR_REPORT
+format=human
+status=warn
+section_count=5
+check_count=14
+section.1.name=runtime
+section.1.status=ok
+section.1.check_count=2
+section.1.check.1.id=runtime_state
+section.1.check.1.status=ok
+section.1.check.1.detail=runtime state available
+section.1.check.2.id=transport
+section.1.check.2.status=ok
+section.1.check.2.detail=mode=local
+section.2.name=provider
+section.2.status=warn
+section.2.check_count=3
+section.2.check.1.id=provider_configured
+section.2.check.1.status=ok
+section.2.check.1.detail=provider configured
+section.2.check.2.id=provider_ready
+section.2.check.2.status=warn
+section.2.check.2.detail=provider unavailable
+section.2.check.3.id=model
+section.2.check.3.status=warn
+section.2.check.3.detail=model not selected
+section.3.name=config
+section.3.status=warn
+section.3.check_count=2
+section.3.check.1.id=config_path
+section.3.check.1.status=ok
+section.3.check.1.detail=layered config path: /tmp/config.yml
+section.3.check.2.id=workspace_dirs
+section.3.check.2.status=warn
+section.3.check.2.detail=workspace directories unavailable
+section.4.name=session
+section.4.status=warn
+section.4.check_count=3
+section.4.check.1.id=permission_mode
+section.4.check.1.status=ok
+section.4.check.1.detail=mode=default
+section.4.check.2.id=compact_mode
+section.4.check.2.status=ok
+section.4.check.2.detail=mode=auto
+section.4.check.3.id=auth
+section.4.check.3.status=warn
+section.4.check.3.detail=logged_in=false provider=ollama
+section.5.name=integrations
+section.5.status=warn
+section.5.check_count=4
+section.5.check.1.id=terminal_setup
+section.5.check.1.status=warn
+section.5.check.1.detail=configured=false profile=-
+section.5.check.2.id=github_app
+section.5.check.2.status=warn
+section.5.check.2.detail=installs=0 repo=-
+section.5.check.3.id=slack_app
+section.5.check.3.status=warn
+section.5.check.3.detail=installs=0
+section.5.check.4.id=release_notes
+section.5.check.4.status=warn
+section.5.check.4.detail=seen=0 last=-

@@ -1,0 +1,1 @@
+{"name":"missing_key_gemini","kind":"missing_key","provider":"gemini","want_error_contains":"GEMINI_API_KEY"}

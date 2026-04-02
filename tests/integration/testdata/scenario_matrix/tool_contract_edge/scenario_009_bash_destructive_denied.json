@@ -1,0 +1,1 @@
+{"name":"bash_destructive_denied","kind":"bash","input":"rm -rf /tmp/risky","want_is_error":true,"want_contains":["Command denied: potential destructive operation detected"]}

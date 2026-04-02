@@ -1,0 +1,30 @@
+{
+  "name": "AskUserQuestion",
+  "description": "Asks structured multiple-choice questions and returns a machine-readable answer payload.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "answers": {
+        "type": "array",
+        "description": "Optional user answers keyed by question id.",
+        "items": {
+          "type": "object"
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "description": "Optional metadata map for callers."
+      },
+      "questions": {
+        "type": "array",
+        "description": "Questions to present to the user.",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": [
+      "questions"
+    ]
+  }
+}

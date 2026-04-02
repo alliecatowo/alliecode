@@ -1,0 +1,16 @@
+{
+  "name": "Sleep",
+  "description": "Sleeps for a requested duration in milliseconds.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "duration_ms": {
+        "type": "integer",
+        "description": "Requested sleep duration in milliseconds; bounded to 1..600000."
+      }
+    },
+    "required": [
+      "duration_ms"
+    ]
+  }
+}

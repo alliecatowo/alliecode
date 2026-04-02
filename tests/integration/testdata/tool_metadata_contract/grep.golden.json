@@ -1,0 +1,41 @@
+{
+  "name": "Grep",
+  "description": "Searches file contents using regular expressions. Uses ripgrep (rg) if available, otherwise falls back to Go's regexp.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "context": {
+        "type": "integer",
+        "description": "Number of context lines to show before and after each match. Only used with output_mode \"content\"."
+      },
+      "glob": {
+        "type": "string",
+        "description": "Glob pattern to filter files (e.g. \"*.go\", \"*.{ts,tsx}\")."
+      },
+      "include": {
+        "type": "string",
+        "description": "File pattern to include in the search (e.g. \"*.js\", \"*.{ts,tsx}\"). Alias of glob."
+      },
+      "output_mode": {
+        "type": "string",
+        "description": "Output mode: \"content\" shows matching lines, \"files_with_matches\" shows file paths, \"count\" shows match counts.",
+        "enum": [
+          "content",
+          "files_with_matches",
+          "count"
+        ]
+      },
+      "path": {
+        "type": "string",
+        "description": "File or directory to search in. Defaults to the working directory."
+      },
+      "pattern": {
+        "type": "string",
+        "description": "The regular expression pattern to search for."
+      }
+    },
+    "required": [
+      "pattern"
+    ]
+  }
+}

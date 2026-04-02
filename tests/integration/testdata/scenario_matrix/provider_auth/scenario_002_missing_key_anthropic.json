@@ -1,0 +1,1 @@
+{"name":"missing_key_anthropic","kind":"missing_key","provider":"anthropic","want_error_contains":"credentials required"}

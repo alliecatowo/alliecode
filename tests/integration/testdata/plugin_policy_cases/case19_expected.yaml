@@ -1,0 +1,16 @@
+installed:
+  - a
+  - b
+  - c
+enabled:
+  - a
+  - c
+disabled:
+  - b
+history:
+  - action: install
+    plugin_id: a
+  - action: install
+    plugin_id: b
+  - action: install
+    plugin_id: c

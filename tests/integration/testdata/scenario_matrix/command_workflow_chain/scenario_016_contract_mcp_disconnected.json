@@ -1,0 +1,1 @@
+{"name":"mcp_status_disconnected","input":"/mcp status zeta","state_profile":"contract","golden_path":"mcp_status_disconnected.golden"}

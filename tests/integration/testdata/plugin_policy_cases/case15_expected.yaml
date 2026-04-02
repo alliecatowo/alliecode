@@ -1,0 +1,12 @@
+installed:
+  - gamma
+enabled:
+  - gamma
+pins:
+  gamma: 3.0.0
+diagnostics:
+  gamma:
+    - plugin_id: gamma
+      severity: warning
+      code: policy_pin_missing
+      message: missing

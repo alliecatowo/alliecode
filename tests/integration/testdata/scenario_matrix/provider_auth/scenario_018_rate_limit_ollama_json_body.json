@@ -1,0 +1,1 @@
+{"name":"rate_limit_ollama_json_body","kind":"http_error_mapping","provider":"ollama","status_code":429,"body":"{\"error\":\"too many requests\"}","want_class":"rate_limit","want_retryable":true,"want_error_contains":"too many requests"}

@@ -1,0 +1,6 @@
+OUTPUT_STYLE_LIST
+count=4
+style.1=default
+style.2=concise
+style.3=explanatory
+style.4=json

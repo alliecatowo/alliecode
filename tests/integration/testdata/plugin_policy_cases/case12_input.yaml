@@ -1,0 +1,9 @@
+diagnostics:
+  alpha:
+    - severity: error
+      code: runtime_invalid
+      message: boom
+  " alpha ":
+    - severity: error
+      code: runtime_invalid
+      message: boom

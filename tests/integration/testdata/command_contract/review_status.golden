@@ -1,0 +1,21 @@
+REVIEW_STATUS
+count=13
+last_target=org/repo#456
+last_mode=branch
+mode=branch
+target=org/repo#456
+section_count=4
+section.1.title=Intent
+section.1.item_count=2
+section.1.item.1=Summarize intent and changed scope
+section.1.item.2=Call out assumptions and non-goals
+section.2.title=Correctness
+section.2.item_count=2
+section.2.item.1=Validate correctness and edge cases
+section.2.item.2=Verify test coverage and missing cases
+section.3.title=Risk
+section.3.item_count=1
+section.3.item.1=Assess security and data handling
+section.4.title=Mode-specific
+section.4.item_count=1
+section.4.item.1=Review branch diff against intended base

@@ -1,0 +1,1 @@
+{"name":"terminal_setup_apply","input":"/terminal-setup apply zed","state_profile":"contract","golden_path":"terminal_setup_apply.golden"}

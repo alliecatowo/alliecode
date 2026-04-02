@@ -1,0 +1,31 @@
+{
+  "name": "remote_trigger",
+  "description": "Manages provider-agnostic remote triggers using deterministic local state.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "description": "list, get, create, update, or run",
+        "enum": [
+          "list",
+          "get",
+          "create",
+          "update",
+          "run"
+        ]
+      },
+      "body": {
+        "type": "string",
+        "description": "JSON payload for create/update."
+      },
+      "trigger_id": {
+        "type": "string",
+        "description": "Trigger identifier for get/update/run."
+      }
+    },
+    "required": [
+      "action"
+    ]
+  }
+}

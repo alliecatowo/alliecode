@@ -1,0 +1,16 @@
+{
+  "name": "cron_delete",
+  "description": "Deletes a scheduled local cron job by id.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Cron job id."
+      }
+    },
+    "required": [
+      "id"
+    ]
+  }
+}

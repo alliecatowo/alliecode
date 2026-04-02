@@ -1,0 +1,1 @@
+{"name":"task_negative_poll_error","kind":"task_output","input":"{\"task_id\":\"missing\",\"poll_ms\":-1}","want_is_error":true,"want_exact":"poll_ms must be >= 0"}

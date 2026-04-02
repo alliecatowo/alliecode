@@ -1,0 +1,1 @@
+{"name":"runtime_anthropic_network_skip","kind":"runtime_model_set","network_only":true,"provider_choice":"anthropic","initial_provider_name":"anthropic","model_arg":"anthropic/claude-sonnet-4-20250514","want_model":"anthropic/claude-sonnet-4-20250514","want_provider_name":"anthropic"}

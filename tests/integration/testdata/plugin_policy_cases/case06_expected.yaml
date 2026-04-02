@@ -1,0 +1,9 @@
+installed:
+  - alpha
+pins:
+  alpha: 1.0.0
+summaries:
+  alpha:
+    plugin_id: alpha
+    version: 1.0.0
+    last_action: install

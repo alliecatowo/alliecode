@@ -1,0 +1,1 @@
+{"name":"permission_anthropic","kind":"http_error_mapping","provider":"anthropic","status_code":403,"body":"forbidden","want_class":"permission","want_retryable":false,"want_error_contains":"forbidden"}

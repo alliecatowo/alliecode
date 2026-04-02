@@ -1,0 +1,1 @@
+{"name":"stub_permission_anthropic_403","kind":"chat_sync_stub_error","provider":"anthropic","status_code":403,"body":"{\"type\":\"error\",\"error\":{\"type\":\"permission_error\",\"message\":\"forbidden\"}}","want_class":"permission","want_retryable":false,"want_error_contains":"forbidden"}

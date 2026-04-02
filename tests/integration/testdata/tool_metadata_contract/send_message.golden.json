@@ -1,0 +1,29 @@
+{
+  "name": "send_message",
+  "description": "Sends team messages to one teammate or broadcasts to all teammates.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "from": {
+        "type": "string",
+        "description": "Optional sender name. Defaults to team_lead."
+      },
+      "message": {
+        "type": "string",
+        "description": "Message body."
+      },
+      "summary": {
+        "type": "string",
+        "description": "Optional short preview."
+      },
+      "to": {
+        "type": "string",
+        "description": "Recipient teammate name or * for broadcast."
+      }
+    },
+    "required": [
+      "to",
+      "message"
+    ]
+  }
+}

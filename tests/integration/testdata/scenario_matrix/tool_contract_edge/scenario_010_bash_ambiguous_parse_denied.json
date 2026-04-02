@@ -1,0 +1,1 @@
+{"name":"bash_ambiguous_parse_denied","kind":"bash","input":"echo ok # ' \"\nwhoami","want_is_error":true,"want_contains":["[bash_preflight]","rule_id: comment_quote_desync"]}

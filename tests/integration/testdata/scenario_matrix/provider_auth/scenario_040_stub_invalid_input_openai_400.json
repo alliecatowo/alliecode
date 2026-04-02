@@ -1,0 +1,1 @@
+{"name":"stub_invalid_input_openai_400","kind":"chat_sync_stub_error","provider":"openai","status_code":400,"body":"{\"error\":{\"message\":\"invalid request\"}}","want_class":"invalid_input","want_retryable":false,"want_error_contains":"invalid request"}

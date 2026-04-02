@@ -1,0 +1,27 @@
+{
+  "name": "config",
+  "description": "Gets and sets deterministic local configuration values for this workspace.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "description": "get, set, unset, or list",
+        "enum": [
+          "get",
+          "set",
+          "unset",
+          "list"
+        ]
+      },
+      "setting": {
+        "type": "string",
+        "description": "Setting key."
+      },
+      "value": {
+        "type": "string",
+        "description": "JSON value for set operation."
+      }
+    }
+  }
+}

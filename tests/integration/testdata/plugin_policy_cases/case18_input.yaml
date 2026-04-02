@@ -1,0 +1,16 @@
+installed:
+  - alpha
+enabled:
+  - alpha
+summaries:
+  alpha:
+    plugin_id: alpha
+    diagnostics_count: 2
+diagnostics:
+  alpha:
+    - severity: warning
+      code: one
+      message: first
+    - severity: error
+      code: two
+      message: second

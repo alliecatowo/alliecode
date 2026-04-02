@@ -1,0 +1,6 @@
+diagnostics:
+  alpha:
+    - plugin_id: alpha
+      severity: warning
+      code: pin_mismatch
+      message: mismatch

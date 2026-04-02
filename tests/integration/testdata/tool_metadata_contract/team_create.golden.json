@@ -1,0 +1,27 @@
+{
+  "name": "team_create",
+  "description": "Creates a local team context used by send_message and orchestration tools.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "description": {
+        "type": "string",
+        "description": "Optional team purpose."
+      },
+      "members": {
+        "type": "array",
+        "description": "Optional teammate names.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "team_name": {
+        "type": "string",
+        "description": "Team name."
+      }
+    },
+    "required": [
+      "team_name"
+    ]
+  }
+}

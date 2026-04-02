@@ -1,0 +1,4 @@
+AGENTS_LIST
+count=1
+agent.1.name=local
+agent.1.status=available

@@ -1,0 +1,6 @@
+CONFIG_SHOW
+count=2
+entry.1.key=a
+entry.1.value=first
+entry.2.key=z
+entry.2.value=last

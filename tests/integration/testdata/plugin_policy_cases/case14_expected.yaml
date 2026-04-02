@@ -1,0 +1,5 @@
+summaries:
+  beta:
+    plugin_id: beta
+    version: 2.0.0
+    last_action: update

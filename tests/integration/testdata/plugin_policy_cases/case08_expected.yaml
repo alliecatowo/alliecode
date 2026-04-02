@@ -1,0 +1,4 @@
+history:
+  - action: install
+    plugin_id: alpha
+    status: ok

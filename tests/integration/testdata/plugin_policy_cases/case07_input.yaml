@@ -1,0 +1,11 @@
+diagnostics:
+  " alpha ":
+    - severity: " WARNING "
+      code: " pin_mismatch "
+      message: " mismatch "
+    - severity: warning
+      code: pin_mismatch
+      message: mismatch
+    - severity: error
+      code: ""
+      message: dropped

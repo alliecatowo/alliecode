@@ -1,0 +1,6 @@
+diagnostics:
+  alpha:
+    - plugin_id: alpha
+      severity: error
+      code: runtime_invalid
+      message: boom

@@ -1,0 +1,11 @@
+HISTORY_SHOW
+id=a
+section_count=2
+section.1.name=meta
+section.1.path=-
+section.1.created=2026-02-01T00:00:00Z
+section.1.model=openai/gpt-4o-mini
+section.1.turns=1
+section.2.name=content
+section.2.title=first title
+section.2.summary=session summary

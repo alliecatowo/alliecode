@@ -1,0 +1,17 @@
+HISTORY_LIST
+filter.type=none
+filter.value=-
+limit=0
+count=2
+entry.1.id=a
+entry.1.path=-
+entry.1.created=2026-02-01T00:00:00Z
+entry.1.model=openai/gpt-4o-mini
+entry.1.turns=1
+entry.1.title=first title
+entry.2.id=b
+entry.2.path=-
+entry.2.created=2026-03-01T00:00:00Z
+entry.2.model=ollama/llama3
+entry.2.turns=2
+entry.2.title=second

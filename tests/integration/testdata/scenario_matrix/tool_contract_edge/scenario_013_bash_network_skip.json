@@ -1,0 +1,1 @@
+{"name":"bash_network_skip","kind":"bash","network_only":true,"input":"curl https://example.test","want_is_error":false}

@@ -1,0 +1,1 @@
+{"name":"web_setup_status","network_only":true,"input":"/web-setup status","state_profile":"contract","golden_path":"web_setup_status.golden"}

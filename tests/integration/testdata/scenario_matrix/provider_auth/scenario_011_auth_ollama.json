@@ -1,0 +1,1 @@
+{"name":"auth_ollama","kind":"http_error_mapping","provider":"ollama","status_code":401,"body":"unauthorized local gateway","want_class":"auth","want_retryable":false,"want_error_contains":"unauthorized"}

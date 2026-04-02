@@ -1,0 +1,6 @@
+pins:
+  alpha: v1.0.0
+history:
+  - action: pin
+    plugin_id: alpha
+    requested_version: v1.0.0

@@ -1,0 +1,8 @@
+MCP_LIST
+count=2
+server.1.name=alpha
+server.1.status=connected
+server.1.connected=true
+server.2.name=zeta
+server.2.status=disconnected
+server.2.connected=false

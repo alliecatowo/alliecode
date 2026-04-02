@@ -1,0 +1,1 @@
+{"name":"rate_limit_ollama","kind":"http_error_mapping","provider":"ollama","status_code":429,"body":"local throttle","want_class":"rate_limit","want_retryable":true,"want_error_contains":"local throttle"}

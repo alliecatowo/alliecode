@@ -1,0 +1,1 @@
+{"name":"stub_auth_openai","kind":"chat_sync_stub_error","provider":"openai","status_code":401,"body":"{\"error\":{\"message\":\"invalid api key\"}}","want_class":"auth","want_retryable":false,"want_error_contains":"invalid api key"}

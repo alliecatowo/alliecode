@@ -1,0 +1,46 @@
+{
+  "name": "lsp",
+  "description": "Provider-agnostic code intelligence fallback (definitions, references, symbols, hover).",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "character": {
+        "type": "integer",
+        "description": "1-based character position."
+      },
+      "file_path": {
+        "type": "string",
+        "description": "File path for context."
+      },
+      "line": {
+        "type": "integer",
+        "description": "1-based line number."
+      },
+      "operation": {
+        "type": "string",
+        "description": "goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, goToImplementation, prepareCallHierarchy, incomingCalls, outgoingCalls",
+        "enum": [
+          "goToDefinition",
+          "findReferences",
+          "hover",
+          "documentSymbol",
+          "workspaceSymbol",
+          "goToImplementation",
+          "prepareCallHierarchy",
+          "incomingCalls",
+          "outgoingCalls"
+        ]
+      },
+      "query": {
+        "type": "string",
+        "description": "Optional symbol query for workspaceSymbol."
+      }
+    },
+    "required": [
+      "operation",
+      "file_path",
+      "line",
+      "character"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+history:
+  - action: " INSTALL "
+    plugin_id: " alpha "
+    status: " OK "
+  - action: ""
+    plugin_id: ""

@@ -1,0 +1,1 @@
+{"name":"permissions_auto_repeat","width":90,"height":24,"action":"submit_command","command":"/permissions auto","extract":["mode:auto"],"want_joined":" model:unknown turns:0 mode:auto render:0ms tools:0 perm:0   budget:$0.0000 tok:0 sid:n/a"}

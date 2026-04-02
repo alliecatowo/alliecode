@@ -1,0 +1,24 @@
+{
+  "name": "Bash",
+  "description": "Executes a shell command and returns its output. Use this for running programs, scripts, git commands, and system operations.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "The shell command to execute."
+      },
+      "description": {
+        "type": "string",
+        "description": "A brief description of what the command does."
+      },
+      "timeout": {
+        "type": "integer",
+        "description": "Timeout in milliseconds. Defaults to 120000 (2 minutes)."
+      }
+    },
+    "required": [
+      "command"
+    ]
+  }
+}

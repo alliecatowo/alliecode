@@ -1,0 +1,9 @@
+installed:
+  - alpha
+history:
+  - action: "  "
+    plugin_id: alpha
+    status: ""
+  - action: disable
+    plugin_id: alpha
+    status: ok

@@ -1,0 +1,1 @@
+{"name":"ask_unknown_option","kind":"ask_user_question","input":"{\"questions\":[{\"id\":\"q1\",\"question\":\"pick\",\"options\":[{\"id\":\"a\",\"label\":\"A\"},{\"id\":\"b\",\"label\":\"B\"}]}],\"answers\":[{\"question_id\":\"q1\",\"option_ids\":[\"c\"]}]}","want_is_error":true,"want_exact":"answers[0] contains unknown option id \"c\""}

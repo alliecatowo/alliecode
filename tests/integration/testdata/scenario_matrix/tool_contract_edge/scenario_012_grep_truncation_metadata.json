@@ -1,0 +1,1 @@
+{"name":"grep_truncation_metadata","kind":"grep_truncation","want_is_error":false,"want_contains":["[truncation_metadata]","line_limit: 200","char_limit: 100000"]}

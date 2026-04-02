@@ -1,0 +1,1 @@
+{"name":"auth_anthropic_forbidden","kind":"http_error_mapping","provider":"anthropic","status_code":401,"body":"{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}","want_class":"auth","want_retryable":false,"want_error_contains":"invalid x-api-key"}

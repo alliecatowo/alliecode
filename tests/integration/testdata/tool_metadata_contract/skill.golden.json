@@ -1,0 +1,26 @@
+{
+  "name": "skill",
+  "description": "Runs local skills and exposes a deterministic skill catalog.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "description": "list, invoke, or history",
+        "enum": [
+          "list",
+          "invoke",
+          "history"
+        ]
+      },
+      "args": {
+        "type": "string",
+        "description": "Optional arguments passed to the skill."
+      },
+      "skill": {
+        "type": "string",
+        "description": "Skill name for invoke action."
+      }
+    }
+  }
+}

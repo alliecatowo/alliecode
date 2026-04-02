@@ -1,0 +1,32 @@
+{
+  "name": "brief",
+  "description": "Delivers user-facing messages with optional attachment metadata.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "attachments": {
+        "type": "array",
+        "description": "Optional attachment paths.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "message": {
+        "type": "string",
+        "description": "Message to deliver to the user."
+      },
+      "status": {
+        "type": "string",
+        "description": "normal or proactive",
+        "enum": [
+          "normal",
+          "proactive"
+        ]
+      }
+    },
+    "required": [
+      "message",
+      "status"
+    ]
+  }
+}

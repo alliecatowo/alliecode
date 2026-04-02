@@ -1,0 +1,12 @@
+CONTEXT_STATE
+compact_requested=false
+resume_requested=false
+last_resume_target=-
+last_compact_target=-
+compact_mode=auto
+permission_mode=default
+model=-
+provider=ollama
+workspace_dir_count=0
+branch_active=-
+diff_entries=0

@@ -1,0 +1,21 @@
+{
+  "name": "worktree_exit",
+  "description": "Exits an active local worktree session, optionally removing worktree files.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "description": "keep or remove",
+        "enum": [
+          "keep",
+          "remove"
+        ]
+      },
+      "discard_changes": {
+        "type": "boolean",
+        "description": "Required true when action=remove to acknowledge deletion."
+      }
+    }
+  }
+}

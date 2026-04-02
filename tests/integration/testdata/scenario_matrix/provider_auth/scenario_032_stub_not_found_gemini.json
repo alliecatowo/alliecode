@@ -1,0 +1,1 @@
+{"name":"stub_not_found_gemini","kind":"chat_sync_stub_error","provider":"gemini","status_code":404,"body":"{\"error\":{\"message\":\"model not found\"}}","want_class":"not_found","want_retryable":false,"want_error_contains":"model not found"}

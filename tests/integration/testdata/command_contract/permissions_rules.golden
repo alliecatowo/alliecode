@@ -1,0 +1,6 @@
+PERMISSIONS_RULES
+count=2
+rule.1.source=session
+rule.1.value=read
+rule.2.source=session
+rule.2.value=write
