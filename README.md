@@ -26,7 +26,13 @@ ac models                   # list available models
 
 ## Install
 
-### From binary (recommended)
+### Homebrew
+
+```bash
+brew install alliecatowo/tap/alliecode
+```
+
+### From binary
 
 ```bash
 # macOS / Linux
