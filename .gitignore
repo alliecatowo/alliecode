@@ -1,6 +1,11 @@
 bin/
-ac
+/ac
 .env
 .alliecode/
 .tools/
 src/
+.env.*
+!.env.example
+.mcp.json
+*.log
+.DS_Store

@@ -26,24 +26,10 @@ ac models                   # list available models
 
 ## Install
 
-### From binary (recommended)
-
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/alliecatowo/alliecode/main/install.sh | sh
-
-# Or with Go
-go install github.com/alliecatowo/alliecode/cmd/ac@latest
-```
-
-### From source
-
-```bash
-git clone https://github.com/alliecatowo/alliecode.git
-cd alliecode
-mise run build
-# Binary at ./bin/ac
-```
+> **Status:** the `ac` CLI entry point (`cmd/ac`) is not on `main` yet, so there is currently nothing to
+> install or build from this branch: the `install.sh` script and `go install .../cmd/ac@latest` do not exist
+> yet. The sections below describe the intended CLI. Earlier work lives on the `feat/allie-code-port` and
+> `pre-wipe-wip` branches.
 
 ## CI/CD
 
