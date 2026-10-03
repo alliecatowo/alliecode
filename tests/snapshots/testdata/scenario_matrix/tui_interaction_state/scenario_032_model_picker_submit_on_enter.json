@@ -1,0 +1,1 @@
+{"name":"model_picker_submit_on_enter","width":180,"height":30,"actions":["submit:/model "],"want_contains":["Verify runtime: /status"],"want_absent":["model picker: /model"]}

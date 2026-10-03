@@ -1,0 +1,1 @@
+{"name":"submit_doctor_no_legacy_header","width":160,"height":28,"actions":["submit:/doctor"],"want_contains":["Doctor"],"want_absent":["DOCTOR_REPORT"]}

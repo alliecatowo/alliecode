@@ -21,25 +21,26 @@ func correctiveLoopsForState(state *RuntimeState) []correctiveLoop {
 			{Area: "mcp", State: "unknown", Action: "/mcp diagnostics", Next: "/mcp repair auto"},
 		}
 	}
+	selection := RuntimeSelectionTruth(state)
 
 	providerState := "ready"
 	providerAction := "/provider status"
 	providerNext := "/provider doctor"
-	if strings.TrimSpace(state.ProviderName) == "" {
+	if strings.TrimSpace(selection.ProviderName) == "" {
 		providerState = "missing"
 		providerAction = "/provider set ollama"
-	} else if !state.ProviderReady {
+	} else if !selection.ProviderReady {
 		providerState = "degraded"
 		providerAction = "/provider doctor"
-		providerNext = "/login provider " + strings.TrimSpace(state.ProviderName)
+		providerNext = "/login provider " + strings.TrimSpace(selection.ProviderName)
 	}
 
 	modelState := "ready"
 	modelAction := "/model doctor"
 	modelNext := "/status"
-	if strings.TrimSpace(state.Model) == "" {
+	if strings.TrimSpace(selection.ModelName) == "" {
 		modelState = "missing"
-		provider := strings.TrimSpace(state.ProviderName)
+		provider := strings.TrimSpace(selection.ProviderName)
 		if provider == "" {
 			provider = "ollama"
 		}

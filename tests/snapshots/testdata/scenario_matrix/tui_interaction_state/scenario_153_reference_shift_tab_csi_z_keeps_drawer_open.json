@@ -1,0 +1,1 @@
+{"name":"reference_shift_tab_csi_z_keeps_drawer_open","width":180,"height":30,"actions":["type:@READ","tab","shift_tab_csi_z"],"want_contains":["references:","hints: reference palette","input mode: reference"]}

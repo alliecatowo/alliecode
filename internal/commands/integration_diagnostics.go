@@ -60,7 +60,7 @@ func renderMCPDiagnostics(state *RuntimeState, manager *mcp.Manager) Result {
 		fmt.Sprintf("last_quick_fix=%s", normalizeToken(state.MCPLastQuickFix)),
 		fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), mcpDiagnosticsIntents(servers, connected, pending, authFailed, state.MCPDoctorCount, state.MCPRepairCount, quickFix)...)
 }
 
 func repairMCPState(state *RuntimeState, manager *mcp.Manager, mode string) Result {
@@ -98,7 +98,8 @@ func repairMCPState(state *RuntimeState, manager *mcp.Manager, mode string) Resu
 	}
 	state.MCPRepairCount++
 	state.MCPLastQuickFix = quickFix
-	return Result{Handled: true, Message: fmt.Sprintf("MCP_REPAIR\nmode=%s\nchanged=%t\nquick_fix=%s\nrepair_runs=%d", normalizeToken(mode), changed, normalizeToken(quickFix), state.MCPRepairCount)}
+	message := fmt.Sprintf("MCP_REPAIR\nmode=%s\nchanged=%t\nquick_fix=%s\nrepair_runs=%d", normalizeToken(mode), changed, normalizeToken(quickFix), state.MCPRepairCount)
+	return resultWithIntents(message, mcpRepairIntents(mode, changed, quickFix, state.MCPRepairCount)...)
 }
 
 func renderPluginDiagnostics(state *RuntimeState, result pluginspkg.ServiceListResult, conflicts []skillspkg.SkillConflictDiagnostic) Result {
@@ -124,7 +125,7 @@ func renderPluginDiagnostics(state *RuntimeState, result pluginspkg.ServiceListR
 		fmt.Sprintf("conflicts=%d", len(conflicts)),
 		fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), pluginDiagnosticsIntents(state, len(result.Diagnostics), len(conflicts), quickFix)...)
 }
 
 func repairPluginState(state *RuntimeState, mode string) Result {
@@ -163,42 +164,148 @@ func repairPluginState(state *RuntimeState, mode string) Result {
 	if changed {
 		state.PluginMutations++
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_REPAIR\nmode=%s\nchanged=%t\npending_reload=%t\nquick_fix=%s\nmutations=%d", normalizeToken(mode), changed, state.PluginReloadPending, normalizeToken(quickFix), state.PluginMutations)}
+	message := fmt.Sprintf("PLUGIN_REPAIR\nmode=%s\nchanged=%t\npending_reload=%t\nquick_fix=%s\nmutations=%d", normalizeToken(mode), changed, state.PluginReloadPending, normalizeToken(quickFix), state.PluginMutations)
+	return resultWithIntents(message, pluginRepairIntents(mode, changed, state.PluginReloadPending, quickFix, state.PluginMutations)...)
 }
 
-func syncedSkillsFromRuntime(current []string) ([]string, string) {
-	merged := uniqueSortedStrings(append([]string(nil), current...))
+type skillsSnapshot struct {
+	Names         []string
+	Sources       map[string]string
+	Origins       map[string]string
+	Enabled       map[string]bool
+	Conflicts     []skillspkg.SkillConflictDiagnostic
+	ManagerDirs   []string
+	PluginOrigins map[string]string
+	Metadata      map[string]skillspkg.SkillMetadata
+	PluginOverlay map[string][]string
+}
+
+func emptySkillsSnapshot(current []string) skillsSnapshot {
+	names := uniqueSortedStrings(append([]string(nil), current...))
+	sources := make(map[string]string, len(names))
+	origins := make(map[string]string, len(names))
+	enabled := make(map[string]bool, len(names))
+	for _, name := range names {
+		trimmed := strings.TrimSpace(name)
+		if trimmed == "" {
+			continue
+		}
+		sources[trimmed] = "state"
+		origins[trimmed] = "state"
+		enabled[trimmed] = true
+	}
+	return skillsSnapshot{Names: names, Sources: sources, Origins: origins, Enabled: enabled}
+}
+
+func cloneSkillStringMap(input map[string]string) map[string]string {
+	if len(input) == 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(input))
+	for key, value := range input {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		out[k] = strings.TrimSpace(value)
+	}
+	return out
+}
+
+func cloneSkillBoolMap(input map[string]bool) map[string]bool {
+	if len(input) == 0 {
+		return map[string]bool{}
+	}
+	out := make(map[string]bool, len(input))
+	for key, value := range input {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		out[k] = value
+	}
+	return out
+}
+
+func syncedSkillsFromRuntime(current []string) (skillsSnapshot, string) {
+	snapshot := emptySkillsSnapshot(current)
 	workingDir, _ := os.Getwd()
 	manager := skillspkg.NewManager(skillspkg.DefaultSkillDirs(workingDir))
+	snapshot.ManagerDirs = append([]string(nil), manager.SkillDirs()...)
 	if err := manager.Load(); err != nil {
-		return merged, "state"
+		return snapshot, "state"
 	}
 	pluginSvc, _, err := pluginServiceFromWorkingDir()
 	if err != nil {
+		names := append([]string(nil), snapshot.Names...)
 		for _, skill := range manager.List() {
 			if skill == nil {
 				continue
 			}
-			merged = append(merged, strings.TrimSpace(skill.Name))
+			name := strings.TrimSpace(skill.Name)
+			if name == "" {
+				continue
+			}
+			names = append(names, name)
+			snapshot.Sources[name] = strings.TrimSpace(skill.Source)
+			snapshot.Origins[name] = strings.TrimSpace(skill.FilePath)
+			snapshot.Enabled[name] = skill.Enabled
 		}
-		return uniqueSortedStrings(merged), "skills-files"
+		snapshot.Names = uniqueSortedStrings(names)
+		return snapshot, "skills-files"
 	}
 	pluginCommands, err := resolvedPluginCommandsForPluginCommand(pluginSvc)
 	if err != nil {
+		names := append([]string(nil), snapshot.Names...)
 		for _, skill := range manager.List() {
 			if skill == nil {
 				continue
 			}
-			merged = append(merged, strings.TrimSpace(skill.Name))
+			name := strings.TrimSpace(skill.Name)
+			if name == "" {
+				continue
+			}
+			names = append(names, name)
+			snapshot.Sources[name] = strings.TrimSpace(skill.Source)
+			snapshot.Origins[name] = strings.TrimSpace(skill.FilePath)
+			snapshot.Enabled[name] = skill.Enabled
 		}
-		return uniqueSortedStrings(merged), "skills-files"
+		snapshot.Names = uniqueSortedStrings(names)
+		return snapshot, "skills-files"
 	}
 	detailed := skillspkg.MergeSkillsWithPluginCommandsDetailed(manager.List(), pluginCommands, skillspkg.PreferPluginCommands)
+	names := append([]string(nil), snapshot.Names...)
 	for _, skill := range detailed.Skills {
 		if skill == nil {
 			continue
 		}
-		merged = append(merged, strings.TrimSpace(skill.Name))
+		name := strings.TrimSpace(skill.Name)
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+		snapshot.Sources[name] = strings.TrimSpace(skill.Source)
+		snapshot.Origins[name] = strings.TrimSpace(skill.FilePath)
+		snapshot.Enabled[name] = skill.Enabled
 	}
-	return uniqueSortedStrings(merged), "skills+plugins"
+	snapshot.Names = uniqueSortedStrings(names)
+	snapshot.Conflicts = append([]skillspkg.SkillConflictDiagnostic(nil), detailed.Conflicts...)
+	snapshot.PluginOrigins = cloneSkillStringMap(detailed.PluginOrigins)
+	snapshot.Metadata = make(map[string]skillspkg.SkillMetadata, len(detailed.Metadata))
+	for key, meta := range detailed.Metadata {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		snapshot.Metadata[k] = meta
+	}
+	snapshot.PluginOverlay = make(map[string][]string, len(detailed.PluginOverlay))
+	for key, values := range detailed.PluginOverlay {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		snapshot.PluginOverlay[k] = append([]string(nil), values...)
+	}
+	return snapshot, "skills+plugins"
 }

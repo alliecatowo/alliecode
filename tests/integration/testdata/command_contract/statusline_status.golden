@@ -1,6 +1,14 @@
 STATUSLINE_STATUS
 count=0
 last_prompt=-
+provider=ollama
+model=-
+model_ref=-
+logged_in=false
+provider_ready=true
+working_dir=.
+workspace_root=.
+path_scope=workspace
 last_render_ms=0
 tool_calls=0
 permission_events=0

@@ -1,0 +1,1 @@
+{"name":"status_intent_no_legacy_header","width":160,"height":28,"actions":["submit:/status"],"want_contains":["Provider:","Tasks:"],"want_absent":["STATUS_REPORT"]}

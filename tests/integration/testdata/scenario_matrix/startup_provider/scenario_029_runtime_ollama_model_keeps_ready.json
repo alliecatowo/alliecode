@@ -1,0 +1,1 @@
+{"name":"runtime_ollama_model_keeps_ready","kind":"runtime_model_set","provider_choice":"ollama","initial_provider_name":"ollama","logged_in":false,"auth_provider":"","model_arg":"llama3","want_model":"llama3","want_provider_name":"ollama","want_model_ref":"ollama/llama3","want_provider_ready":true,"want_logged_in":false}

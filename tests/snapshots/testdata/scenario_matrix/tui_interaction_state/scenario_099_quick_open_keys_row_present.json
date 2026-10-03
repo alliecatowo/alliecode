@@ -1,0 +1,1 @@
+{"name":"quick_open_keys_row_present","width":120,"height":26,"action":"ctrl_o","want_contains":["keys:","ctrl+o -> search:quick_open"],"want_absent":[]}

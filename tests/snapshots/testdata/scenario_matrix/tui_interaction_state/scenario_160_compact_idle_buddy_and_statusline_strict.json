@@ -1,0 +1,1 @@
+{"name":"compact_idle_buddy_and_statusline_strict","width":120,"height":26,"actions":["type:"],"want_contains":["input mode: chat","-/unknown  |  default  |  input chat","<°~°> buddy"],"want_absent":["runtime: state="]}

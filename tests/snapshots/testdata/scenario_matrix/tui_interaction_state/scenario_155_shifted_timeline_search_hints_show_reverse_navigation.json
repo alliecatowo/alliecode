@@ -1,0 +1,1 @@
+{"name":"shifted_timeline_search_hints_show_reverse_navigation","width":180,"height":30,"actions":["ctrl_f"],"want_contains":["mode:timeline","jump:ctrl+n/ctrl+p","shift+tab/up prev","input mode: search"]}

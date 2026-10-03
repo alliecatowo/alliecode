@@ -1,0 +1,1 @@
+{"name":"permission_queue_quick_open_apply","width":180,"height":28,"actions":["ctrl_o","type:queue","enter"],"want_contains":["permission queue: approvals are shown live while tools run"],"want_absent":["mode:quick-open"]}

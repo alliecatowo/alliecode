@@ -1,0 +1,1 @@
+{"name":"header_idle_visible","width":120,"height":26,"actions":["type:"],"want_contains":["ALLIECODE  IDLE","input mode: chat"],"want_absent":[]}

@@ -69,8 +69,44 @@ func TestToolContractTaskOutputEdgeResponses(t *testing.T) {
 	if missingTask.IsError {
 		t.Fatalf("missing task should not be error, content=%q", missingTask.Content)
 	}
-	if missingTask.Content != `{"retrieval_status":"not_found","output_status":"empty","task":null,"runtime":{"source":"adapter","blocked":false,"duration_ms":0,"found":false,"terminal":false,"requested_task_id":"missing","poll_used_ms":200}}` {
-		t.Fatalf("unexpected missing task payload = %q", missingTask.Content)
+	var missingPayload map[string]any
+	if err := json.Unmarshal([]byte(missingTask.Content), &missingPayload); err != nil {
+		t.Fatalf("invalid missing task payload JSON: %v (content=%q)", err, missingTask.Content)
+	}
+	if got := missingPayload["retrieval_status"]; got != "not_found" {
+		t.Fatalf("unexpected retrieval_status = %v", got)
+	}
+	if got := missingPayload["output_status"]; got != "empty" {
+		t.Fatalf("unexpected output_status = %v", got)
+	}
+	if taskVal, ok := missingPayload["task"]; !ok || taskVal != nil {
+		t.Fatalf("missing payload task must be null, got %v (present=%v)", taskVal, ok)
+	}
+	runtimePayload, ok := missingPayload["runtime"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing payload runtime must be object, got %T", missingPayload["runtime"])
+	}
+	if got := runtimePayload["source"]; got != "adapter" {
+		t.Fatalf("unexpected runtime.source = %v", got)
+	}
+	if got := runtimePayload["blocked"]; got != false {
+		t.Fatalf("unexpected runtime.blocked = %v", got)
+	}
+	if got := runtimePayload["found"]; got != false {
+		t.Fatalf("unexpected runtime.found = %v", got)
+	}
+	if got := runtimePayload["terminal"]; got != false {
+		t.Fatalf("unexpected runtime.terminal = %v", got)
+	}
+	if got := runtimePayload["requested_task_id"]; got != "missing" {
+		t.Fatalf("unexpected runtime.requested_task_id = %v", got)
+	}
+	if got := runtimePayload["poll_used_ms"]; got != float64(200) {
+		t.Fatalf("unexpected runtime.poll_used_ms = %v", got)
+	}
+	durationMs, ok := runtimePayload["duration_ms"].(float64)
+	if !ok || durationMs < 0 {
+		t.Fatalf("runtime.duration_ms must be a non-negative number, got %v", runtimePayload["duration_ms"])
 	}
 
 	negativePoll, err := tool.Execute(context.Background(), []byte(`{"task_id":"missing","poll_ms":-1}`), types.ToolContext{})

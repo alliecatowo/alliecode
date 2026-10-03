@@ -316,3 +316,30 @@ func TestSandboxPolicySummaryAndAliases(t *testing.T) {
 		t.Fatalf("excluded count = %d, want 1", summary.ExcludedCount)
 	}
 }
+
+func TestDenialsLedgerSummary(t *testing.T) {
+	ledger := NewDenialsLedger(filepath.Join(t.TempDir(), "denials.jsonl"))
+	base := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+
+	cases := []DenialEntry{
+		{Tool: "bash", Reason: "destructive command", Timestamp: base.Add(1 * time.Minute)},
+		{Tool: "mcp_tool_invoke", Reason: "auth required", Timestamp: base.Add(2 * time.Minute)},
+		{Tool: "write", Reason: "sensitive path", Timestamp: base.Add(3 * time.Minute)},
+	}
+	for _, entry := range cases {
+		if err := ledger.Append(entry); err != nil {
+			t.Fatalf("append failed: %v", err)
+		}
+	}
+
+	summary, err := ledger.Summary(DenialQuery{})
+	if err != nil {
+		t.Fatalf("summary failed: %v", err)
+	}
+	if summary.Total != 3 || summary.ByTool["bash"] != 1 || summary.ByReasonCode["auth"] != 1 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+	if summary.RecentTool != "write" {
+		t.Fatalf("unexpected recent tool: %+v", summary)
+	}
+}

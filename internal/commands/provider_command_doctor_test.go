@@ -13,4 +13,7 @@ func TestProviderDoctor(t *testing.T) {
 	if err != nil || !strings.Contains(res.Message, "PROVIDER_DOCTOR") {
 		t.Fatalf("provider doctor failed: %v %q", err, res.Message)
 	}
+	if !strings.Contains(res.Message, "quick_fix=") {
+		t.Fatalf("expected quick fix in provider doctor output: %q", res.Message)
+	}
 }

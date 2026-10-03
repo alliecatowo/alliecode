@@ -1,0 +1,1 @@
+{"name":"permissions_panel_escape_preserves_input","width":180,"height":30,"actions":["type:/perm","enter","esc"],"want_contains":["/permissions","input mode: chat"],"want_absent":["permissions panel: /permissions","hints: command panel"]}

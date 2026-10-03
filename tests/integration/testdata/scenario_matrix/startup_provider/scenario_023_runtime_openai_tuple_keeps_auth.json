@@ -1,0 +1,1 @@
+{"name":"runtime_openai_tuple_keeps_auth","kind":"runtime_model_set","provider_choice":"openai","initial_provider_name":"openai","logged_in":true,"auth_provider":"openai","model_arg":"openai/gpt-4o-mini","want_model":"gpt-4o-mini","want_provider_name":"openai","want_model_ref":"openai/gpt-4o-mini","want_provider_ready":true,"want_logged_in":true,"want_auth_provider":"openai"}

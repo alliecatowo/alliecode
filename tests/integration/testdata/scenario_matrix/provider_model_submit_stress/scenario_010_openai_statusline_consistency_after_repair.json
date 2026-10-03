@@ -1,0 +1,26 @@
+{
+  "name": "openai_statusline_consistency_after_repair",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/model repair openai/gpt-4o",
+    "/statusline status"
+  ],
+  "want_status": [
+    "provider=openai",
+    "model=gpt-4o",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=openai",
+    "model=gpt-4o",
+    "model_ref=openai/gpt-4o",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

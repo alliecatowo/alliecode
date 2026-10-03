@@ -32,6 +32,8 @@ type permissionDecisionMsg struct {
 type PermissionModel struct {
 	toolName    string
 	description string
+	toolKind    string
+	toolDetails []string
 	decision    PermissionDecision
 	status      permissionStatus
 	selected    PermissionDecision
@@ -48,11 +50,24 @@ func NewPermission(toolName, description string) PermissionModel {
 	return PermissionModel{
 		toolName:    toolName,
 		description: description,
+		toolKind:    normalizePermissionToolType(toolName),
 		decision:    PermissionUndecided,
 		status:      permissionPending,
 		selected:    PermissionYes,
 		width:       60,
 	}
+}
+
+func (m *PermissionModel) SetToolDetails(kind string, rows []string) {
+	if strings.TrimSpace(kind) == "" {
+		kind = normalizePermissionToolType(m.toolName)
+	}
+	m.toolKind = kind
+	if len(rows) == 0 {
+		m.toolDetails = nil
+		return
+	}
+	m.toolDetails = append([]string(nil), rows...)
 }
 
 func (m *PermissionModel) SetQueueIndex(index, total int) {
@@ -93,7 +108,17 @@ func (m *PermissionModel) SetRecentDecisions(rows []string) {
 	m.recent = append([]string(nil), rows...)
 }
 
+type permissionPromptContext struct {
+	kind    string
+	summary string
+	details []string
+}
+
 func permissionPromptDescription(toolName string, toolInput json.RawMessage) string {
+	return permissionPromptContextFromInput(toolName, toolInput).summary
+}
+
+func permissionPromptContextFromInput(toolName string, toolInput json.RawMessage) permissionPromptContext {
 	toolType := normalizePermissionToolType(toolName)
 	parsed := decodePermissionInput(toolInput)
 
@@ -101,12 +126,26 @@ func permissionPromptDescription(toolName string, toolInput json.RawMessage) str
 	case "bash":
 		command := firstNonEmptyString(parsed, "command")
 		workdir := firstNonEmptyString(parsed, "workdir", "cwd")
-		timeout := firstNonEmptyString(parsed, "timeout", "timeoutMs")
+		timeout := firstNonEmptyValueString(parsed, "timeout", "timeoutMs")
+		detailRows := make([]string, 0, 4)
+		if command != "" {
+			detailRows = append(detailRows, "command: "+truncateDisplayWidth(command, 72, "..."))
+		}
+		if workdir != "" {
+			detailRows = append(detailRows, "workdir: "+truncateDisplayWidth(workdir, 72, "..."))
+		}
+		if timeout != "" {
+			detailRows = append(detailRows, "timeout: "+truncateDisplayWidth(timeout, 24, "..."))
+		}
+		description := firstNonEmptyString(parsed, "description")
+		if description != "" {
+			detailRows = append(detailRows, "description: "+truncateDisplayWidth(description, 72, "..."))
+		}
 		if command == "" {
 			if workdir != "" {
-				return "execute a shell command in: " + truncateDisplayWidth(workdir, 72, "...")
+				return permissionPromptContext{kind: toolType, summary: "execute a shell command in: " + truncateDisplayWidth(workdir, 72, "..."), details: detailRows}
 			}
-			return "execute a shell command"
+			return permissionPromptContext{kind: toolType, summary: "execute a shell command", details: detailRows}
 		}
 		desc := "execute shell command: " + truncateDisplayWidth(command, 72, "...")
 		if workdir != "" {
@@ -115,11 +154,35 @@ func permissionPromptDescription(toolName string, toolInput json.RawMessage) str
 		if timeout != "" {
 			desc += " timeout " + truncateDisplayWidth(timeout, 12, "...")
 		}
-		return desc
+		return permissionPromptContext{kind: toolType, summary: desc, details: detailRows}
 	case "file":
 		path := firstNonEmptyString(parsed, "file_path", "path")
 		lineStart := firstNonEmptyString(parsed, "offset", "start_line")
-		lineCount := firstNonEmptyString(parsed, "limit", "line_count")
+		lineCount := firstNonEmptyValueString(parsed, "limit", "line_count")
+		pattern := firstNonEmptyString(parsed, "pattern")
+		include := firstNonEmptyString(parsed, "include")
+		detailRows := make([]string, 0, 4)
+		if path != "" {
+			detailRows = append(detailRows, "path: "+truncateDisplayWidth(path, 72, "..."))
+		}
+		if pattern != "" {
+			detailRows = append(detailRows, "pattern: "+truncateDisplayWidth(pattern, 72, "..."))
+		}
+		if include != "" {
+			detailRows = append(detailRows, "include: "+truncateDisplayWidth(include, 48, "..."))
+		}
+		if lineStart != "" || lineCount != "" {
+			rangeRow := "range: "
+			if lineStart != "" {
+				rangeRow += "from line " + lineStart
+			} else {
+				rangeRow += "from start"
+			}
+			if lineCount != "" {
+				rangeRow += " (" + lineCount + " lines)"
+			}
+			detailRows = append(detailRows, rangeRow)
+		}
 		if path != "" {
 			desc := "access local files at: " + truncateDisplayWidth(path, 72, "...")
 			if lineStart != "" || lineCount != "" {
@@ -131,24 +194,35 @@ func permissionPromptDescription(toolName string, toolInput json.RawMessage) str
 					desc += " (" + lineCount + " lines)"
 				}
 			}
-			return desc
+			return permissionPromptContext{kind: toolType, summary: desc, details: detailRows}
 		}
-		pattern := firstNonEmptyString(parsed, "pattern")
 		if pattern != "" {
-			return fmt.Sprintf("search local files matching: %s", truncateDisplayWidth(pattern, 72, "..."))
+			return permissionPromptContext{kind: toolType, summary: fmt.Sprintf("search local files matching: %s", truncateDisplayWidth(pattern, 72, "...")), details: detailRows}
 		}
-		return "access local files"
+		return permissionPromptContext{kind: toolType, summary: "access local files", details: detailRows}
 	case "webfetch":
 		url := firstNonEmptyString(parsed, "url")
-		if url == "" {
-			return "fetch content from the web"
+		format := firstNonEmptyString(parsed, "format")
+		timeout := firstNonEmptyValueString(parsed, "timeout")
+		detailRows := make([]string, 0, 3)
+		if url != "" {
+			detailRows = append(detailRows, "url: "+truncateDisplayWidth(url, 72, "..."))
 		}
-		return "fetch content from: " + truncateDisplayWidth(url, 72, "...")
+		if format != "" {
+			detailRows = append(detailRows, "format: "+truncateDisplayWidth(format, 24, "..."))
+		}
+		if timeout != "" {
+			detailRows = append(detailRows, "timeout: "+truncateDisplayWidth(timeout, 24, "..."))
+		}
+		if url == "" {
+			return permissionPromptContext{kind: toolType, summary: "fetch content from the web", details: detailRows}
+		}
+		return permissionPromptContext{kind: toolType, summary: "fetch content from: " + truncateDisplayWidth(url, 72, "..."), details: detailRows}
 	default:
 		if strings.TrimSpace(toolName) == "" {
-			return "run this tool call"
+			return permissionPromptContext{kind: toolType, summary: "run this tool call"}
 		}
-		return "run " + toolName + ""
+		return permissionPromptContext{kind: toolType, summary: "run " + toolName}
 	}
 }
 
@@ -190,6 +264,31 @@ func firstNonEmptyString(obj map[string]any, keys ...string) string {
 		s = strings.TrimSpace(s)
 		if s != "" {
 			return s
+		}
+	}
+	return ""
+}
+
+func firstNonEmptyValueString(obj map[string]any, keys ...string) string {
+	for _, key := range keys {
+		value, ok := obj[key]
+		if !ok || value == nil {
+			continue
+		}
+		switch typed := value.(type) {
+		case string:
+			typed = strings.TrimSpace(typed)
+			if typed != "" {
+				return typed
+			}
+		case json.Number:
+			return typed.String()
+		case float64:
+			return fmt.Sprintf("%.0f", typed)
+		case int:
+			return itoa(typed)
+		case int64:
+			return fmt.Sprintf("%d", typed)
 		}
 	}
 	return ""
@@ -250,7 +349,11 @@ func (m *PermissionModel) cycleSelection(dir int) {
 }
 
 func (m PermissionModel) toolHintLines() []string {
-	switch normalizePermissionToolType(m.toolName) {
+	kind := m.toolKind
+	if strings.TrimSpace(kind) == "" {
+		kind = normalizePermissionToolType(m.toolName)
+	}
+	switch kind {
 	case "bash":
 		return []string{"risk: medium-high", "hint: review command and arguments before allowing", "hint: choose always only for trusted local workflows"}
 	case "file":
@@ -283,43 +386,44 @@ func (m PermissionModel) Init() tea.Cmd {
 func (m PermissionModel) Update(msg tea.Msg) (PermissionModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc", "ctrl+c":
+		s := normalizeCombo(msg.String())
+		switch {
+		case keyMatches(msg, "esc") || keyMatches(msg, "ctrl+c"):
 			m.selected = PermissionNo
 			m.decision = PermissionNo
 			return m, func() tea.Msg {
 				return permissionDecisionMsg{decision: PermissionNo}
 			}
-		case "left", "up", "shift+tab", "ctrl+p", "k":
+		case keyMatches(msg, "left") || keyMatches(msg, "up") || keyMatches(msg, "shift+tab") || keyMatches(msg, "ctrl+p") || s == "k":
 			m.cycleSelection(-1)
 			return m, nil
-		case "right", "down", "tab", "ctrl+n", "j":
+		case keyMatches(msg, "right") || keyMatches(msg, "down") || keyMatches(msg, "tab") || keyMatches(msg, "ctrl+n") || s == "j":
 			m.cycleSelection(1)
 			return m, nil
-		case "home":
+		case keyMatches(msg, "home"):
 			m.setSelectedByIndex(0)
 			return m, nil
-		case "end":
+		case keyMatches(msg, "end"):
 			m.setSelectedByIndex(2)
 			return m, nil
-		case "enter", " ":
+		case keyMatches(msg, "enter") || s == "space":
 			m.decision = m.selected
 			return m, func() tea.Msg {
 				return permissionDecisionMsg{decision: m.selected}
 			}
-		case "y", "Y":
+		case s == "y":
 			m.selected = PermissionYes
 			m.decision = PermissionYes
 			return m, func() tea.Msg {
 				return permissionDecisionMsg{decision: PermissionYes}
 			}
-		case "n", "N":
+		case s == "n":
 			m.selected = PermissionNo
 			m.decision = PermissionNo
 			return m, func() tea.Msg {
 				return permissionDecisionMsg{decision: PermissionNo}
 			}
-		case "a", "A":
+		case s == "a":
 			m.selected = PermissionAlways
 			m.decision = PermissionAlways
 			return m, func() tea.Msg {
@@ -357,6 +461,10 @@ func (m PermissionModel) View() string {
 		Foreground(lipgloss.Color("231")).
 		Background(lipgloss.Color("63"))
 
+	detailHeadingStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("221"))
+
 	statusStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("76"))
@@ -375,12 +483,30 @@ func (m PermissionModel) View() string {
 	title := titleStyle.Render("Permission Required")
 	tool := "Allow " + toolStyle.Render(m.toolName) + " to:"
 	desc := descStyle.Render(m.description)
+	detailBlock := ""
+	if len(m.toolDetails) > 0 {
+		heading := "tool details:"
+		switch m.toolKind {
+		case "bash":
+			heading = "command details:"
+		case "file":
+			heading = "file request details:"
+		case "webfetch":
+			heading = "network request details:"
+		}
+		rows := make([]string, 0, len(m.toolDetails)+1)
+		rows = append(rows, detailHeadingStyle.Render(heading))
+		for _, row := range m.toolDetails {
+			rows = append(rows, optionStyle.Render("  - "+truncateDisplayWidth(row, m.width-10, "...")))
+		}
+		detailBlock = "\n" + strings.Join(rows, "\n")
+	}
 	options := strings.Join([]string{
 		m.renderAction("allow once", "y", PermissionYes, keyStyle, optionStyle, selectedOptionStyle),
 		m.renderAction("deny", "n", PermissionNo, keyStyle, optionStyle, selectedOptionStyle),
 		m.renderAction("always allow", "a", PermissionAlways, keyStyle, optionStyle, selectedOptionStyle),
-	}, "  ")
-	actionsHint := optionStyle.Render("navigate: tab/shift+tab arrows home/end  confirm: enter/space  direct: y n a")
+	}, "\n")
+	actionsHint := optionStyle.Render("navigate: tab/shift+tab arrows j/k ctrl+n/ctrl+p home/end") + "\n" + optionStyle.Render("confirm: enter/space  direct: y n a  cancel: esc")
 	status := optionStyle.Render("status: ") + statusStyle.Render(strings.ToUpper(string(m.status)))
 	if m.queueTotal > 0 {
 		remaining := m.queueTotal - m.queueIndex
@@ -422,7 +548,7 @@ func (m PermissionModel) View() string {
 		hintBlock = "\n" + optionStyle.Render(strings.Join(hints, "\n"))
 	}
 
-	content := title + "\n\n" + tool + "\n" + desc + hintBlock + "\n\n" + status + queuePreview + stackPreview + recentPreview + "\n" + options + "\n" + actionsHint
+	content := title + "\n\n" + tool + "\n" + desc + detailBlock + hintBlock + "\n\n" + status + queuePreview + stackPreview + recentPreview + "\n" + options + "\n" + actionsHint
 
 	return boxStyle.Render(content)
 }

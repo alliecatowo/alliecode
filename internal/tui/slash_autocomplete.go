@@ -42,6 +42,22 @@ func (s *slashAutocompleteState) setItems(query string, items []commands.Suggest
 			prevName = remembered
 		}
 	}
+	if prevName == "" && query != "" {
+		for _, item := range s.items {
+			if strings.EqualFold(strings.TrimSpace(item.Name), strings.TrimSpace(query)) {
+				prevName = item.Name
+				break
+			}
+		}
+	}
+	if prevName == "" && query != "" {
+		for _, item := range s.items {
+			if strings.HasPrefix(strings.ToLower(strings.TrimSpace(item.Name)), strings.ToLower(strings.TrimSpace(query))) {
+				prevName = item.Name
+				break
+			}
+		}
+	}
 	if prevName != "" {
 		for i, item := range s.items {
 			if strings.EqualFold(strings.TrimSpace(item.Name), strings.TrimSpace(prevName)) {
@@ -72,9 +88,19 @@ func (s *slashAutocompleteState) pageSelection(dir int) {
 		s.selected = -1
 		return
 	}
-	for i := 0; i < 5; i++ {
-		s.selected = nextMatchPos(s.selected, len(s.items), dir)
+	step := 5
+	sign := 1
+	if dir < 0 {
+		sign = -1
 	}
+	next := s.selected + sign*step
+	if next < 0 {
+		next = 0
+	}
+	if next >= len(s.items) {
+		next = len(s.items) - 1
+	}
+	s.selected = next
 	s.rememberSelection()
 	s.ensureVisible(6)
 }

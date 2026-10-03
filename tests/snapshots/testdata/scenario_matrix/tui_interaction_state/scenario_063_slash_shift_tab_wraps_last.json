@@ -1,0 +1,1 @@
+{"name":"slash_shift_tab_wraps_last","width":140,"height":28,"actions":["type:/","shift_tab"],"want_contains":["commands: /","preview: /","hints: command palette"]}

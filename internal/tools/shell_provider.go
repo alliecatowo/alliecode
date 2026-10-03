@@ -71,7 +71,9 @@ func executeWithShellProvider(ctx context.Context, toolCtx types.ToolContext, pr
 
 	binary, args := provider.BuildCommand(normalizedCommand)
 	cmd := exec.CommandContext(ctx, binary, args...)
-	cmd.Dir = toolCtx.WorkingDir
+	workingDir := normalizeToolWorkingDir(toolCtx.WorkingDir)
+	cmd.Dir = workingDir
+	toolCtx.WorkingDir = workingDir
 	cmd.Env = provider.NormalizeEnv(cmd.Environ(), toolCtx)
 
 	var buf bytes.Buffer
@@ -112,4 +114,12 @@ func hasEnvKey(env []string, key string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeToolWorkingDir(raw string) string {
+	workingDir := strings.TrimSpace(raw)
+	if workingDir == "" {
+		return "."
+	}
+	return workingDir
 }

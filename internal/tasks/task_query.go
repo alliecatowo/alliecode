@@ -10,15 +10,18 @@ type TaskQuery struct {
 }
 
 type TaskQuerySummary struct {
-	Query       TaskQuery      `json:"query"`
-	Scanned     int            `json:"scanned"`
-	Matched     int            `json:"matched"`
-	Returned    int            `json:"returned"`
-	FilteredOut int            `json:"filtered_out"`
-	Truncated   bool           `json:"truncated"`
-	ByStatus    map[Status]int `json:"by_status,omitempty"`
-	ByOwner     map[string]int `json:"by_owner,omitempty"`
-	OwnerFilter string         `json:"owner_filter,omitempty"`
+	Query           TaskQuery      `json:"query"`
+	Scanned         int            `json:"scanned"`
+	Matched         int            `json:"matched"`
+	Returned        int            `json:"returned"`
+	FilteredOut     int            `json:"filtered_out"`
+	Truncated       bool           `json:"truncated"`
+	ByStatus        map[Status]int `json:"by_status,omitempty"`
+	ByOwner         map[string]int `json:"by_owner,omitempty"`
+	OwnerFilter     string         `json:"owner_filter,omitempty"`
+	HasStatusFilter bool           `json:"has_status_filter"`
+	IncludeTerminal bool           `json:"include_terminal"`
+	RequestedLimit  int            `json:"requested_limit,omitempty"`
 }
 
 func ApplyTaskQuery(items []Task, query TaskQuery) ([]Task, TaskQuerySummary) {
@@ -57,14 +60,17 @@ func ApplyTaskQuery(items []Task, query TaskQuery) ([]Task, TaskQuerySummary) {
 	}
 
 	summary := TaskQuerySummary{
-		Query:       query,
-		Scanned:     len(items),
-		Matched:     len(out),
-		Returned:    len(out),
-		FilteredOut: len(items) - len(out),
-		ByStatus:    map[Status]int{},
-		ByOwner:     map[string]int{},
-		OwnerFilter: ownerFilter,
+		Query:           query,
+		Scanned:         len(items),
+		Matched:         len(out),
+		Returned:        len(out),
+		FilteredOut:     len(items) - len(out),
+		ByStatus:        map[Status]int{},
+		ByOwner:         map[string]int{},
+		OwnerFilter:     ownerFilter,
+		HasStatusFilter: len(statusFilter) > 0,
+		IncludeTerminal: includeTerminal,
+		RequestedLimit:  query.Limit,
 	}
 	for _, item := range out {
 		summary.ByStatus[item.Status]++

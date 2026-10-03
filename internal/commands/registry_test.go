@@ -124,6 +124,23 @@ func TestDefaultRegistryIncludesParityCommands(t *testing.T) {
 		"assistant",
 		"share",
 		"oauth-refresh",
+		"bridge",
+		"ant-trace",
+		"autofix-pr",
+		"backfill-sessions",
+		"break-cache",
+		"bughunter",
+		"ctx-viz",
+		"debug-tool-call",
+		"good-claude",
+		"heapdump",
+		"install",
+		"mock-limits",
+		"onboarding",
+		"perf-issue",
+		"sandbox-toggle",
+		"remote-setup",
+		"ultraplan",
 	}
 	for _, name := range expected {
 		if _, ok := r.Lookup(name); !ok {
@@ -160,7 +177,8 @@ func TestDefaultRegistryAliasParityWaveB(t *testing.T) {
 		{input: "/assist status", want: "ASSISTANT_STATUS\nmode=chat\nsession_id=-\nlast_action=-"},
 		{input: "/publish status", want: "SHARE_STATUS\ncount=0\nactive=0\nrevoked=0\nlast_action=-"},
 		{input: "/oauth status", want: "OAUTH_REFRESH_STATUS\ncount=0\nlast_action=-"},
-		{input: "/provider status", want: "PROVIDER_STATUS\nprovider=-\nprovider_ready=false\nquick_fix_model=/model_<provider/model>\nnext=use_/provider_set_<name>_or_/login_provider_<name>"},
+		{input: "/provider status", want: "PROVIDER_STATUS\nprovider=-\nprovider_ready=false\nquick_fix_model=/model_<provider/model>\nquick_fix_auth=/provider set ollama\nnext=use_/provider_set_<name>_or_/login_provider_<name>"},
+		{input: "/login status", want: "LOGIN_STATUS\nlogged_in=false\nprovider=-\naccount=-\nprovider_ready=false\nlogin_count=0\nlogout_count=0"},
 	}
 
 	for _, tc := range tests {

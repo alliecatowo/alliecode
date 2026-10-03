@@ -1,0 +1,1 @@
+{"name":"quick_open_shift_tab_csi_z_reverse_keeps_mode","width":180,"height":30,"actions":["ctrl_o","tab","shift_tab_csi_z"],"want_contains":["mode:quick-open","input mode: quick-open","selected:"]}

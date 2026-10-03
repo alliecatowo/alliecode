@@ -11,8 +11,9 @@ type historySearchEntry struct {
 }
 
 type historySearchMatch struct {
-	index int
-	score int
+	index       int
+	score       int
+	occurrences int
 }
 
 type historySearchState struct {
@@ -52,15 +53,15 @@ func (s historySearchState) selectedEntry() (historySearchEntry, bool) {
 }
 
 func newHistorySearchState(entries []historySearchEntry) historySearchState {
-	s := historySearchState{entries: append([]historySearchEntry(nil), entries...), selected: -1}
-	s.rebuildMatches()
+	s := historySearchState{entries: append([]historySearchEntry(nil), entries...), selected: -1, memory: make(map[string]string, 8)}
+	s.rebuildMatches("")
 	return s
 }
 
 func (s *historySearchState) setQuery(query string) {
 	s.rememberSelection()
 	s.query = query
-	s.rebuildMatches()
+	s.rebuildMatches("")
 }
 
 func (s *historySearchState) moveSelection(dir int) {
@@ -72,7 +73,7 @@ func (s *historySearchState) moveSelection(dir int) {
 	s.rememberSelection()
 }
 
-func (s *historySearchState) rebuildMatches() {
+func (s *historySearchState) rebuildMatches(_ string) {
 	norm := strings.ToLower(strings.TrimSpace(s.query))
 	tokens := strings.Fields(norm)
 	prevEntryIndex := -1
@@ -82,11 +83,11 @@ func (s *historySearchState) rebuildMatches() {
 	s.matches = s.matches[:0]
 
 	for i, entry := range s.entries {
-		score, ok := rankHistoryEntry(entry.text, norm, tokens, i, len(s.entries))
+		score, occurrences, ok := rankHistoryEntry(entry.text, norm, tokens, i, len(s.entries))
 		if !ok {
 			continue
 		}
-		s.matches = append(s.matches, historySearchMatch{index: i, score: score})
+		s.matches = append(s.matches, historySearchMatch{index: i, score: score, occurrences: occurrences})
 	}
 
 	slices.SortFunc(s.matches, func(a, b historySearchMatch) int {
@@ -148,10 +149,7 @@ func (s *historySearchState) rememberSelection() {
 }
 
 func (s historySearchState) recallSelection(query string) string {
-	if len(s.memory) == 0 {
-		return ""
-	}
-	return strings.TrimSpace(s.memory[strings.TrimSpace(strings.ToLower(query))])
+	return recallClosestSelection(s.memory, query)
 }
 
 func (s historySearchState) selectedDetailLines(width int) []string {
@@ -179,11 +177,19 @@ func (s historySearchState) selectedDetailLines(width int) []string {
 		rows = append(rows, "(blank)")
 	}
 	out := make([]string, 0, 4)
-	out = append(out, truncateDisplayWidth("history details:", width, "..."))
-	maxPreview := min(6, len(rows))
-	for i := 0; i < maxPreview; i++ {
-		out = append(out, truncateDisplayWidth("  "+rows[i], width, "..."))
+	matchInfo := "history details:"
+	if s.selected >= 0 && s.selected < len(s.matches) {
+		matchInfo = fmt.Sprintf("history details: %d/%d  score:%d  hits:%d", s.selected+1, len(s.matches), s.matches[s.selected].score, max(1, s.matches[s.selected].occurrences))
 	}
+	out = append(out, matchInfo)
+	label, detail := historyEntryLabelDetail(entry.text)
+	out = append(out, truncateDisplayWidth("  selected: "+label+" ["+detail+"]", width, "..."))
+	maxPreview := min(6, len(rows))
+	preview := make([]string, 0, maxPreview)
+	for i := 0; i < maxPreview; i++ {
+		preview = append(preview, "  "+rows[i])
+	}
+	out = append(out, wrapAndClampDisplayLines(preview, width, 8, "  ...")...)
 	if len(rows) > maxPreview {
 		out = append(out, truncateDisplayWidth(fmt.Sprintf("  ... +%d more lines", len(rows)-maxPreview), width, "..."))
 	}
@@ -211,7 +217,7 @@ func (s historySearchState) renderLines(width, limit int) []string {
 		match := s.matches[i]
 		entry := s.entries[match.index]
 		label, detail := historyEntryLabelDetail(entry.text)
-		status := fmt.Sprintf("score:%d", match.score)
+		status := fmt.Sprintf("score:%d hits:%d", match.score, max(1, match.occurrences))
 		lines = append(lines, renderSearchListLine(i == s.selected, label, detail, status, width))
 	}
 	if len(s.matches) > maxItems {
@@ -237,15 +243,16 @@ func historyEntryLabelDetail(text string) (string, string) {
 	return label, detail
 }
 
-func rankHistoryEntry(text, normQuery string, tokens []string, index, total int) (int, bool) {
+func rankHistoryEntry(text, normQuery string, tokens []string, index, total int) (int, int, bool) {
 	rawText := strings.ToLower(strings.TrimSpace(text))
 	normText := strings.Join(strings.Fields(rawText), " ")
 	if normQuery == "" {
-		return 140 + indexRecencyBoost(index, total), true
+		return 140 + indexRecencyBoost(index, total), 0, true
 	}
 
 	score := 0
 	matched := false
+	occurrences := strings.Count(normText, normQuery)
 	firstLine := rawText
 	if idx := strings.IndexByte(firstLine, '\n'); idx >= 0 {
 		firstLine = strings.TrimSpace(firstLine[:idx])
@@ -300,11 +307,14 @@ func rankHistoryEntry(text, normQuery string, tokens []string, index, total int)
 	}
 
 	if !matched {
-		return 0, false
+		return 0, 0, false
 	}
 
+	if occurrences > 0 {
+		score += min(occurrences, 4) * 35
+	}
 	score += indexRecencyBoost(index, total)
-	return score, true
+	return score, occurrences, true
 }
 
 func indexRecencyBoost(index, total int) int {

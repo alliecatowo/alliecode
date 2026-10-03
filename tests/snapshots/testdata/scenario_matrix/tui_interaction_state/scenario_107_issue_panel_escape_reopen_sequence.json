@@ -1,0 +1,1 @@
+{"name":"issue_panel_escape_reopen_sequence","width":180,"height":30,"actions":["submit:/issue create lane5 startup-send issue","type:/issue","enter","esc","type:/issue","enter"],"want_contains":["Issue created","Issue mutation result.","input mode: chat"],"want_absent":["drawer: issue panel: /issue","ISSUE_STATUS","ISSUE_LIST","ISSUE_CREATE"]}

@@ -42,9 +42,9 @@ func (c *HelpCommand) Execute(_ context.Context, _ Context, inv Invocation) (Res
 	suggestions := c.registry.Suggestions(query)
 	if len(suggestions) == 0 {
 		if strings.TrimSpace(query) == "" {
-			return Result{Handled: true, Message: "HELP\ncount=0"}, nil
+			return resultWithIntents("HELP\ncount=0", helpIntents(query, nil)...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("HELP\nquery=%s\ncount=0", normalizeToken(query))}, nil
+		return resultWithIntents(fmt.Sprintf("HELP\nquery=%s\ncount=0", normalizeToken(query)), helpIntents(query, nil)...), nil
 	}
 
 	var b strings.Builder
@@ -89,7 +89,7 @@ func (c *HelpCommand) Execute(_ context.Context, _ Context, inv Invocation) (Res
 		}
 		b.WriteString(fmt.Sprintf("entry.%d.match_reason=%s\n", idx, normalizeToken(suggestion.MatchReason)))
 	}
-	return Result{Handled: true, Message: strings.TrimSpace(b.String())}, nil
+	return resultWithIntents(strings.TrimSpace(b.String()), helpIntents(query, suggestions)...), nil
 }
 
 // ModelCommand gets or sets the active model.
@@ -101,7 +101,9 @@ func (c *ModelCommand) Aliases() []string { return []string{"m"} }
 func (c *ModelCommand) Description() string {
 	return "Get or set active model for this session"
 }
-func (c *ModelCommand) Usage() string { return "/model [provider/model|model]" }
+func (c *ModelCommand) Usage() string {
+	return "/model [provider/model|model|list [provider|all]|doctor|repair [provider/model]]"
+}
 
 func (c *ModelCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
 	return executeModelCommand(cmdCtx, inv)
@@ -152,18 +154,22 @@ func (c *CompactCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		cmdCtx.State.CompactRequested = true
 		cmdCtx.State.CompactCount++
 		cmdCtx.State.LastCompactTarget = "now"
-		return Result{Handled: true, Message: fmt.Sprintf("COMPACT_REQUEST\nmode=%s\nrequested=true\ncount=%d\nlast_target=now", cmdCtx.State.CompactMode, cmdCtx.State.CompactCount)}, nil
+		message := fmt.Sprintf("COMPACT_REQUEST\nmode=%s\nrequested=true\ncount=%d\nlast_target=now", cmdCtx.State.CompactMode, cmdCtx.State.CompactCount)
+		return resultWithIntents(message, compactIntents(cmdCtx.State.CompactMode, true, cmdCtx.State.CompactCount, "now")...), nil
 	case "auto":
 		cmdCtx.State.CompactMode = "auto"
 		cmdCtx.State.CompactRequested = false
-		return Result{Handled: true, Message: fmt.Sprintf("COMPACT_MODE\nmode=auto\nrequested=%t\ncount=%d", cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount)}, nil
+		message := fmt.Sprintf("COMPACT_MODE\nmode=auto\nrequested=%t\ncount=%d", cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount)
+		return resultWithIntents(message, compactIntents(cmdCtx.State.CompactMode, cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount, cmdCtx.State.LastCompactTarget)...), nil
 	case "off":
 		cmdCtx.State.CompactMode = "off"
 		cmdCtx.State.CompactRequested = false
-		return Result{Handled: true, Message: fmt.Sprintf("COMPACT_MODE\nmode=off\nrequested=%t\ncount=%d", cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount)}, nil
+		message := fmt.Sprintf("COMPACT_MODE\nmode=off\nrequested=%t\ncount=%d", cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount)
+		return resultWithIntents(message, compactIntents(cmdCtx.State.CompactMode, cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount, cmdCtx.State.LastCompactTarget)...), nil
 	case "status":
 		lastTarget := normalizeToken(cmdCtx.State.LastCompactTarget)
-		return Result{Handled: true, Message: fmt.Sprintf("COMPACT_STATUS\nmode=%s\nrequested=%t\ncount=%d\nlast_target=%s", cmdCtx.State.CompactMode, cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount, lastTarget)}, nil
+		message := fmt.Sprintf("COMPACT_STATUS\nmode=%s\nrequested=%t\ncount=%d\nlast_target=%s", cmdCtx.State.CompactMode, cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount, lastTarget)
+		return resultWithIntents(message, compactIntents(cmdCtx.State.CompactMode, cmdCtx.State.CompactRequested, cmdCtx.State.CompactCount, lastTarget)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /compact [now|auto|off|status]")
 	}
@@ -194,7 +200,8 @@ func (c *PermissionsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 	}
 
 	if len(inv.Args) == 1 && (strings.EqualFold(strings.TrimSpace(inv.Args[0]), "get") || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "mode")) {
-		return Result{Handled: true, Message: fmt.Sprintf("PERMISSIONS_MODE\nmode=%s", modeString(cmdCtx.State.PermissionMode))}, nil
+		message := fmt.Sprintf("PERMISSIONS_MODE\nmode=%s", modeString(cmdCtx.State.PermissionMode))
+		return resultWithIntents(message, permissionsModeIntents(modeString(cmdCtx.State.PermissionMode))...), nil
 	}
 
 	if len(inv.Args) == 1 && (strings.EqualFold(strings.TrimSpace(inv.Args[0]), "summary") || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status")) {
@@ -206,7 +213,8 @@ func (c *PermissionsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 	}
 
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "list") {
-		return Result{Handled: true, Message: "PERMISSIONS_MODES\ncount=4\nmode.1=plan\nmode.2=default\nmode.3=auto\nmode.4=bypass"}, nil
+		message := "PERMISSIONS_MODES\ncount=4\nmode.1=plan\nmode.2=default\nmode.3=auto\nmode.4=bypass"
+		return resultWithIntents(message, permissionsModesIntents([]string{"plan", "default", "auto", "bypass"})...), nil
 	}
 
 	if len(inv.Args) >= 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "rules") {
@@ -240,7 +248,8 @@ func (c *PermissionsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		for i, command := range commands {
 			lines = append(lines, fmt.Sprintf("command.%d=%s", i+1, normalizeToken(command)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, permissionRetryIntents(commands)...), nil
 	}
 
 	args := inv.Args
@@ -256,7 +265,8 @@ func (c *PermissionsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		return Result{}, fmt.Errorf("unknown permission mode %q (expected: plan|default|auto|bypass)", args[0])
 	}
 	cmdCtx.State.PermissionMode = mode
-	return Result{Handled: true, Message: fmt.Sprintf("PERMISSIONS_SET\nmode=%s", modeString(mode))}, nil
+	message := fmt.Sprintf("PERMISSIONS_SET\nmode=%s", modeString(mode))
+	return resultWithIntents(message, permissionsModeIntents(modeString(mode))...), nil
 }
 
 func (c *PermissionsCommand) handleRulesSubcommand(state *RuntimeState, args []string) (Result, bool, error) {
@@ -275,7 +285,8 @@ func (c *PermissionsCommand) handleRulesSubcommand(state *RuntimeState, args []s
 			return Result{}, true, fmt.Errorf(permissionsUsage)
 		}
 		state.PermissionRules = uniqueSortedStrings(append(state.PermissionRules, rule))
-		return Result{Handled: true, Message: fmt.Sprintf("PERMISSIONS_RULES_ADD\nrule=%s\ncount=%d", normalizeToken(rule), len(state.PermissionRules))}, true, nil
+		message := fmt.Sprintf("PERMISSIONS_RULES_ADD\nrule=%s\ncount=%d", normalizeToken(rule), len(state.PermissionRules))
+		return resultWithIntents(message, permissionRulesIntents(state.PermissionRules)...), true, nil
 	case "remove":
 		if rule == "" {
 			return Result{}, true, fmt.Errorf(permissionsUsage)
@@ -290,7 +301,8 @@ func (c *PermissionsCommand) handleRulesSubcommand(state *RuntimeState, args []s
 			next = append(next, existing)
 		}
 		state.PermissionRules = uniqueSortedStrings(next)
-		return Result{Handled: true, Message: fmt.Sprintf("PERMISSIONS_RULES_REMOVE\nrule=%s\nremoved=%t\ncount=%d", normalizeToken(rule), removed, len(state.PermissionRules))}, true, nil
+		message := fmt.Sprintf("PERMISSIONS_RULES_REMOVE\nrule=%s\nremoved=%t\ncount=%d", normalizeToken(rule), removed, len(state.PermissionRules))
+		return resultWithIntents(message, permissionRulesIntents(state.PermissionRules)...), true, nil
 	default:
 		return Result{}, true, fmt.Errorf(permissionsUsage)
 	}
@@ -299,7 +311,7 @@ func (c *PermissionsCommand) handleRulesSubcommand(state *RuntimeState, args []s
 func renderPermissionRules(rules []string) Result {
 	views := permissionRulesFromStrings(rules)
 	if len(views) == 0 {
-		return Result{Handled: true, Message: "PERMISSIONS_RULES\ncount=0"}
+		return resultWithIntents("PERMISSIONS_RULES\ncount=0", permissionRulesIntents(nil)...)
 	}
 	lines := []string{"PERMISSIONS_RULES", fmt.Sprintf("count=%d", len(views))}
 	for i, rule := range views {
@@ -307,7 +319,7 @@ func renderPermissionRules(rules []string) Result {
 		lines = append(lines, fmt.Sprintf("rule.%d.source=%s", idx, normalizeToken(rule.Source)))
 		lines = append(lines, fmt.Sprintf("rule.%d.value=%s", idx, normalizeToken(rule.Value)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), permissionRulesIntents(rules)...)
 }
 
 type permissionRuleView struct {
@@ -336,7 +348,7 @@ func renderPermissionsSummary(state *RuntimeState) Result {
 		fmt.Sprintf("denials.count=%d", len(state.PermissionDenials)),
 		fmt.Sprintf("denials.groups=%d", len(denialGroups)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), permissionsSummaryIntents(state, denialGroupReasons(denialGroups))...)
 }
 
 func renderPermissionsLoops(state *RuntimeState) Result {
@@ -357,7 +369,7 @@ func renderPermissionsLoops(state *RuntimeState) Result {
 		lines = append(lines, fmt.Sprintf("loop.%d.next=%s", idx, normalizeToken(loop.Next)))
 	}
 	lines[1] = fmt.Sprintf("count=%d", idx)
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), correctiveLoopIntents("Permission loops", "Permission and settings corrective loops.", loops)...)
 }
 
 func permissionModeAliases(mode string) string {
@@ -378,7 +390,7 @@ type denialGroup struct {
 
 func renderPermissionDenials(denials []PermissionDenial) Result {
 	if len(denials) == 0 {
-		return Result{Handled: true, Message: "PERMISSIONS_DENIALS\ncount=0\ngroup_count=0"}
+		return resultWithIntents("PERMISSIONS_DENIALS\ncount=0\ngroup_count=0", permissionDenialsIntents(nil, nil)...)
 	}
 	groups := groupPermissionDenials(denials)
 	lines := []string{"PERMISSIONS_DENIALS", fmt.Sprintf("count=%d", len(denials)), fmt.Sprintf("group_count=%d", len(groups))}
@@ -394,7 +406,15 @@ func renderPermissionDenials(denials []PermissionDenial) Result {
 			flatIndex++
 		}
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), permissionDenialsIntents(denials, denialGroupReasons(groups))...)
+}
+
+func denialGroupReasons(groups []denialGroup) []string {
+	out := make([]string, 0, len(groups))
+	for _, group := range groups {
+		out = append(out, fmt.Sprintf("%s (%d)", group.Reason, len(group.Denials)))
+	}
+	return out
 }
 
 func groupPermissionDenials(denials []PermissionDenial) []denialGroup {
@@ -499,7 +519,8 @@ func (c *ResumeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	if len(inv.Args) == 1 {
 		arg := strings.TrimSpace(inv.Args[0])
 		if strings.EqualFold(arg, "status") {
-			return Result{Handled: true, Message: fmt.Sprintf("RESUME_STATUS\nrequested=%t\ncount=%d\nlast_target=%s", cmdCtx.State.ResumeRequested, cmdCtx.State.ResumeCount, normalizeToken(cmdCtx.State.LastResumeTarget))}, nil
+			message := fmt.Sprintf("RESUME_STATUS\nrequested=%t\ncount=%d\nlast_target=%s", cmdCtx.State.ResumeRequested, cmdCtx.State.ResumeCount, normalizeToken(cmdCtx.State.LastResumeTarget))
+			return resultWithIntents(message, resumeStatusIntents(cmdCtx.State.ResumeRequested, cmdCtx.State.ResumeCount, cmdCtx.State.LastResumeTarget)...), nil
 		}
 		if arg == "" {
 			return Result{}, fmt.Errorf("usage: /resume [latest|status|<target>]")
@@ -510,7 +531,8 @@ func (c *ResumeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	}
 	cmdCtx.State.ResumeRequested = true
 	cmdCtx.State.ResumeCount++
-	return Result{Handled: true, Message: fmt.Sprintf("RESUME_REQUEST\ntarget=%s\nrequested=true\ncount=%d\nlast_target=%s", normalizeToken(cmdCtx.State.LastResumeTarget), cmdCtx.State.ResumeCount, normalizeToken(cmdCtx.State.LastResumeTarget))}, nil
+	message := fmt.Sprintf("RESUME_REQUEST\ntarget=%s\nrequested=true\ncount=%d\nlast_target=%s", normalizeToken(cmdCtx.State.LastResumeTarget), cmdCtx.State.ResumeCount, normalizeToken(cmdCtx.State.LastResumeTarget))
+	return resultWithIntents(message, resumeRequestIntents(cmdCtx.State.LastResumeTarget, cmdCtx.State.ResumeCount)...), nil
 }
 
 // BranchCommand reports branch command availability.
@@ -532,7 +554,8 @@ func (c *BranchCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /branch [status|list|create [name]|switch <name>]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("BRANCH_STATUS\nactive=%s\ncount=%d\ncreated=%d\nswitches=%d", normalizeToken(cmdCtx.State.ActiveBranch), len(cmdCtx.State.Branches), cmdCtx.State.BranchCount, cmdCtx.State.BranchSwitchCount)}, nil
+		message := fmt.Sprintf("BRANCH_STATUS\nactive=%s\ncount=%d\ncreated=%d\nswitches=%d", normalizeToken(cmdCtx.State.ActiveBranch), len(cmdCtx.State.Branches), cmdCtx.State.BranchCount, cmdCtx.State.BranchSwitchCount)
+		return resultWithIntents(message, branchStatusIntents(cmdCtx.State.ActiveBranch, len(cmdCtx.State.Branches), cmdCtx.State.BranchCount, cmdCtx.State.BranchSwitchCount)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -547,7 +570,8 @@ func (c *BranchCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		for i, name := range branches {
 			lines = append(lines, fmt.Sprintf("branch.%d=%s", i+1, normalizeToken(name)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, branchListIntents(cmdCtx.State.ActiveBranch, branches)...), nil
 	case "create":
 		if len(inv.Args) > 2 {
 			return Result{}, fmt.Errorf("usage: /branch [status|list|create [name]|switch <name>]")
@@ -565,7 +589,8 @@ func (c *BranchCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		}
 		cmdCtx.State.ActiveBranch = name
 		cmdCtx.State.BranchCount++
-		return Result{Handled: true, Message: fmt.Sprintf("BRANCH_CREATE\nname=%s\nactive=%s\ncount=%d\ncreated=%d\nswitched=true\nswitches=%d", normalizeToken(name), normalizeToken(cmdCtx.State.ActiveBranch), len(cmdCtx.State.Branches), cmdCtx.State.BranchCount, cmdCtx.State.BranchSwitchCount)}, nil
+		message := fmt.Sprintf("BRANCH_CREATE\nname=%s\nactive=%s\ncount=%d\ncreated=%d\nswitched=true\nswitches=%d", normalizeToken(name), normalizeToken(cmdCtx.State.ActiveBranch), len(cmdCtx.State.Branches), cmdCtx.State.BranchCount, cmdCtx.State.BranchSwitchCount)
+		return resultWithIntents(message, branchMutationIntents("Branch created", name, "-", true, cmdCtx.State.BranchSwitchCount)...), nil
 	case "switch":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /branch [status|list|create [name]|switch <name>]")
@@ -583,7 +608,8 @@ func (c *BranchCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if changed {
 			cmdCtx.State.BranchSwitchCount++
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("BRANCH_SWITCH\nactive=%s\nprevious=%s\nchanged=%t\nswitches=%d", normalizeToken(name), normalizeToken(previous), changed, cmdCtx.State.BranchSwitchCount)}, nil
+		message := fmt.Sprintf("BRANCH_SWITCH\nactive=%s\nprevious=%s\nchanged=%t\nswitches=%d", normalizeToken(name), normalizeToken(previous), changed, cmdCtx.State.BranchSwitchCount)
+		return resultWithIntents(message, branchMutationIntents("Branch switched", name, previous, changed, cmdCtx.State.BranchSwitchCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /branch [status|list|create [name]|switch <name>]")
 	}
@@ -621,7 +647,8 @@ func (c *DiffCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("DIFF_STATUS\nmode=%s\nentries=%d\nupdates=%d\nclears=%d", normalizeToken(cmdCtx.State.DiffMode), len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)}, nil
+		message := fmt.Sprintf("DIFF_STATUS\nmode=%s\nentries=%d\nupdates=%d\nclears=%d", normalizeToken(cmdCtx.State.DiffMode), len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)
+		return resultWithIntents(message, diffStatusIntents(cmdCtx.State.DiffMode, len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)...), nil
 	case "mode":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -630,7 +657,8 @@ func (c *DiffCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		switch mode {
 		case "working", "staged", "all":
 			cmdCtx.State.DiffMode = mode
-			return Result{Handled: true, Message: fmt.Sprintf("DIFF_MODE\nmode=%s", mode)}, nil
+			message := fmt.Sprintf("DIFF_MODE\nmode=%s", mode)
+			return resultWithIntents(message, diffModeIntents(mode)...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
@@ -659,14 +687,16 @@ func (c *DiffCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		}
 		upsertDiffEntry(cmdCtx.State, DiffEntry{Path: path, Added: added, Removed: removed, Modified: modified})
 		cmdCtx.State.DiffCount++
-		return Result{Handled: true, Message: fmt.Sprintf("DIFF_ADD\npath=%s\nadded=%d\nremoved=%d\nmodified=%d\nentries=%d\nupdates=%d", normalizeToken(path), added, removed, modified, len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount)}, nil
+		message := fmt.Sprintf("DIFF_ADD\npath=%s\nadded=%d\nremoved=%d\nmodified=%d\nentries=%d\nupdates=%d", normalizeToken(path), added, removed, modified, len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount)
+		return resultWithIntents(message, diffMutationIntents(path, added, removed, modified, len(cmdCtx.State.DiffEntries), cmdCtx.State.DiffCount)...), nil
 	case "clear":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.DiffEntries = nil
 		cmdCtx.State.DiffClearCount++
-		return Result{Handled: true, Message: fmt.Sprintf("DIFF_CLEAR\nentries=0\nupdates=%d\nclears=%d", cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)}, nil
+		message := fmt.Sprintf("DIFF_CLEAR\nentries=0\nupdates=%d\nclears=%d", cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)
+		return resultWithIntents(message, diffClearIntents(cmdCtx.State.DiffCount, cmdCtx.State.DiffClearCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -696,7 +726,8 @@ func (c *CostCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		fmt.Sprintf("cache_read_tokens=%d", state.CostCacheRead),
 		fmt.Sprintf("cache_write_tokens=%d", state.CostCacheWrite),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	message := strings.Join(lines, "\n")
+	return resultWithIntents(message, costBreakdownIntents(state.CostInputTokens, state.CostOutputTokens, state.CostCacheRead, state.CostCacheWrite)...), nil
 }
 
 // DoctorCommand reports doctor command availability.
@@ -763,7 +794,7 @@ func (c *DoctorCommand) renderDoctor(state *RuntimeState, format string) (Result
 		if err != nil {
 			return Result{}, fmt.Errorf("encode doctor report: %w", err)
 		}
-		return Result{Handled: true, Message: string(payload)}, nil
+		return resultWithIntents(string(payload), legacyOutputIntents(string(payload))...), nil
 	}
 
 	lines := []string{
@@ -785,7 +816,7 @@ func (c *DoctorCommand) renderDoctor(state *RuntimeState, format string) (Result
 			lines = append(lines, fmt.Sprintf("section.%d.check.%d.detail=%s", sidx, cidx, normalizeToken(check.Detail)))
 		}
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), doctorReportIntents(status, sections)...), nil
 }
 
 func renderDoctorFixPlan(state *RuntimeState, status string, sections []doctorSection) Result {
@@ -793,8 +824,9 @@ func renderDoctorFixPlan(state *RuntimeState, status string, sections []doctorSe
 	providerName := ""
 	modelName := ""
 	if state != nil {
-		providerName = strings.TrimSpace(state.ProviderName)
-		modelName = strings.TrimSpace(state.Model)
+		selection := RuntimeSelectionTruth(state)
+		providerName = strings.TrimSpace(selection.ProviderName)
+		modelName = strings.TrimSpace(selection.ModelName)
 	}
 	if providerName == "" {
 		quickFixes = append(quickFixes, "/provider set ollama")
@@ -833,7 +865,7 @@ func renderDoctorFixPlan(state *RuntimeState, status string, sections []doctorSe
 		lines = append(lines, fmt.Sprintf("loop.%d.action=%s", idx, normalizeToken(loop.Action)))
 		lines = append(lines, fmt.Sprintf("loop.%d.next=%s", idx, normalizeToken(loop.Next)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), doctorFixPlanIntents(status, warnSections, quickFixes, correctiveLoopsForState(state))...)
 }
 
 func countWarnDoctorSections(sections []doctorSection) int {
@@ -881,6 +913,7 @@ func doctorChecks(state *RuntimeState) (string, []doctorSection) {
 	}
 
 	runtimeChecks := []doctorCheck{{ID: "runtime_state", Status: "ok", Detail: "runtime state available"}}
+	selection := RuntimeSelectionTruth(state)
 	transport := strings.TrimSpace(state.TransportMode)
 	if transport == "" {
 		transport = "local"
@@ -890,7 +923,7 @@ func doctorChecks(state *RuntimeState) (string, []doctorSection) {
 	providerChecks := make([]doctorCheck, 0, 3)
 	providerConfiguredStatus := "warn"
 	providerConfiguredDetail := "provider not configured"
-	if strings.TrimSpace(state.ProviderName) != "" {
+	if strings.TrimSpace(selection.ProviderName) != "" {
 		providerConfiguredStatus = "ok"
 		providerConfiguredDetail = "provider configured"
 	}
@@ -898,9 +931,9 @@ func doctorChecks(state *RuntimeState) (string, []doctorSection) {
 
 	providerReadyStatus := "warn"
 	providerReadyDetail := "provider unavailable"
-	if strings.TrimSpace(state.ProviderName) == "" {
+	if strings.TrimSpace(selection.ProviderName) == "" {
 		providerReadyDetail = "provider unavailable (not configured)"
-	} else if state.ProviderReady {
+	} else if selection.ProviderReady {
 		providerReadyStatus = "ok"
 		providerReadyDetail = "provider available"
 	}
@@ -908,7 +941,7 @@ func doctorChecks(state *RuntimeState) (string, []doctorSection) {
 
 	modelStatus := "warn"
 	modelDetail := "model not selected"
-	if strings.TrimSpace(state.Model) != "" {
+	if strings.TrimSpace(selection.ModelName) != "" {
 		modelStatus = "ok"
 		modelDetail = "model selected"
 	}
@@ -937,7 +970,7 @@ func doctorChecks(state *RuntimeState) (string, []doctorSection) {
 		compactMode = "auto"
 	}
 	sessionChecks = append(sessionChecks, doctorCheck{ID: "compact_mode", Status: "ok", Detail: fmt.Sprintf("mode=%s", compactMode)})
-	sessionChecks = append(sessionChecks, doctorCheck{ID: "auth", Status: ternaryStatus(state.LoggedIn), Detail: fmt.Sprintf("logged_in=%t provider=%s", state.LoggedIn, normalizeToken(state.ProviderName))})
+	sessionChecks = append(sessionChecks, doctorCheck{ID: "auth", Status: ternaryStatus(selection.LoggedIn), Detail: fmt.Sprintf("logged_in=%t provider=%s", selection.LoggedIn, normalizeToken(selection.ProviderName))})
 
 	integrationChecks := []doctorCheck{
 		{ID: "terminal_setup", Status: ternaryStatus(state.TerminalConfigured), Detail: fmt.Sprintf("configured=%t profile=%s", state.TerminalConfigured, normalizeToken(state.TerminalProfile))},
@@ -1029,7 +1062,7 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf(configUsage)
 		}
-		return Result{Handled: true, Message: "CONFIG_PANEL\nopened=true\nmode=interactive"}, nil
+		return resultWithIntents("CONFIG_PANEL\nopened=true\nmode=interactive", configPanelIntents()...), nil
 	}
 
 	if len(inv.Args) == 0 || strings.EqualFold(inv.Args[0], "show") {
@@ -1037,7 +1070,7 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			return Result{}, fmt.Errorf(configUsage)
 		}
 		if cmdCtx.State == nil || len(cmdCtx.State.ConfigValues) == 0 {
-			return Result{Handled: true, Message: "CONFIG_SHOW\ncount=0"}, nil
+			return resultWithIntents("CONFIG_SHOW\ncount=0", configShowIntents(nil)...), nil
 		}
 		keys := make([]string, 0, len(cmdCtx.State.ConfigValues))
 		for key := range cmdCtx.State.ConfigValues {
@@ -1050,7 +1083,7 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			lines = append(lines, fmt.Sprintf("entry.%d.key=%s", idx, normalizeToken(key)))
 			lines = append(lines, fmt.Sprintf("entry.%d.value=%s", idx, normalizeToken(cmdCtx.State.ConfigValues[key])))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), configShowIntents(cmdCtx.State.ConfigValues)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "get") {
@@ -1062,13 +1095,16 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			return Result{}, fmt.Errorf(configUsage)
 		}
 		if cmdCtx.State == nil || cmdCtx.State.ConfigValues == nil {
-			return Result{Handled: true, Message: fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=false", normalizeToken(key))}, nil
+			message := fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=false", normalizeToken(key))
+			return resultWithIntents(message, configGetIntents(key, false, "")...), nil
 		}
 		value, ok := cmdCtx.State.ConfigValues[key]
 		if !ok {
-			return Result{Handled: true, Message: fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=false", normalizeToken(key))}, nil
+			message := fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=false", normalizeToken(key))
+			return resultWithIntents(message, configGetIntents(key, false, "")...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=true\nvalue=%s", normalizeToken(key), normalizeToken(value))}, nil
+		message := fmt.Sprintf("CONFIG_GET\nkey=%s\nfound=true\nvalue=%s", normalizeToken(key), normalizeToken(value))
+		return resultWithIntents(message, configGetIntents(key, true, value)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "repair") {
@@ -1119,7 +1155,8 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		}
 		cmdCtx.State.ConfigRepairCount++
 		cmdCtx.State.ConfigLastRepairProfile = profile
-		return Result{Handled: true, Message: fmt.Sprintf("CONFIG_REPAIR\nchanged=%t\noutput_style=%s\noutput_format=%s\ntransport=%s\nprofile=%s\nrepairs=%d", changed, normalizeToken(cmdCtx.State.ConfigValues["settings.output-style"]), normalizeToken(cmdCtx.State.ConfigValues["settings.output-format"]), normalizeToken(cmdCtx.State.ConfigValues["settings.transport"]), normalizeToken(profile), cmdCtx.State.ConfigRepairCount)}, nil
+		message := fmt.Sprintf("CONFIG_REPAIR\nchanged=%t\noutput_style=%s\noutput_format=%s\ntransport=%s\nprofile=%s\nrepairs=%d", changed, normalizeToken(cmdCtx.State.ConfigValues["settings.output-style"]), normalizeToken(cmdCtx.State.ConfigValues["settings.output-format"]), normalizeToken(cmdCtx.State.ConfigValues["settings.transport"]), normalizeToken(profile), cmdCtx.State.ConfigRepairCount)
+		return resultWithIntents(message, configRepairIntents(profile, changed, cmdCtx.State.ConfigRepairCount, cmdCtx.State.ConfigValues)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "set") {
@@ -1137,9 +1174,10 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			return Result{}, fmt.Errorf(configUsage)
 		}
 		value := strings.Join(inv.Args[2:], " ")
-		_, existed := cmdCtx.State.ConfigValues[key]
+		previous, existed := cmdCtx.State.ConfigValues[key]
 		cmdCtx.State.ConfigValues[key] = value
-		return Result{Handled: true, Message: fmt.Sprintf("CONFIG_SET\nkey=%s\nupdated=%t\nvalue=%s", normalizeToken(key), existed, normalizeToken(value))}, nil
+		message := fmt.Sprintf("CONFIG_SET\nkey=%s\nupdated=%t\nvalue=%s", normalizeToken(key), existed, normalizeToken(value))
+		return resultWithIntents(message, configMutationIntents("Config updated", key, value, !existed || previous != value)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "unset") {
@@ -1151,11 +1189,13 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			return Result{}, fmt.Errorf(configUsage)
 		}
 		if cmdCtx.State == nil || cmdCtx.State.ConfigValues == nil {
-			return Result{Handled: true, Message: fmt.Sprintf("CONFIG_UNSET\nkey=%s\nremoved=false", normalizeToken(key))}, nil
+			message := fmt.Sprintf("CONFIG_UNSET\nkey=%s\nremoved=false", normalizeToken(key))
+			return resultWithIntents(message, configMutationIntents("Config removed", key, "", false)...), nil
 		}
 		_, ok := cmdCtx.State.ConfigValues[key]
 		delete(cmdCtx.State.ConfigValues, key)
-		return Result{Handled: true, Message: fmt.Sprintf("CONFIG_UNSET\nkey=%s\nremoved=%t", normalizeToken(key), ok)}, nil
+		message := fmt.Sprintf("CONFIG_UNSET\nkey=%s\nremoved=%t", normalizeToken(key), ok)
+		return resultWithIntents(message, configMutationIntents("Config removed", key, "", ok)...), nil
 	}
 
 	return Result{}, fmt.Errorf(configUsage)
@@ -1163,7 +1203,8 @@ func (c *ConfigCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 
 func renderConfigStatus(state *RuntimeState) Result {
 	if state == nil {
-		return Result{Handled: true, Message: "CONFIG_STATUS\ncount=0\nmissing_required=3\nrepairs=0\ndoctor_runs=0\nlast_profile=-"}
+		message := "CONFIG_STATUS\ncount=0\nmissing_required=3\nrepairs=0\ndoctor_runs=0\nlast_profile=-"
+		return resultWithIntents(message, configStatusIntents(nil, 3)...)
 	}
 	required := []string{"settings.output-style", "settings.output-format", "settings.transport"}
 	missing := 0
@@ -1172,7 +1213,8 @@ func renderConfigStatus(state *RuntimeState) Result {
 			missing++
 		}
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("CONFIG_STATUS\ncount=%d\nmissing_required=%d\nrepairs=%d\ndoctor_runs=%d\nlast_profile=%s", len(state.ConfigValues), missing, state.ConfigRepairCount, state.ConfigDoctorCount, normalizeToken(state.ConfigLastRepairProfile))}
+	message := fmt.Sprintf("CONFIG_STATUS\ncount=%d\nmissing_required=%d\nrepairs=%d\ndoctor_runs=%d\nlast_profile=%s", len(state.ConfigValues), missing, state.ConfigRepairCount, state.ConfigDoctorCount, normalizeToken(state.ConfigLastRepairProfile))
+	return resultWithIntents(message, configStatusIntents(state, missing)...)
 }
 
 func renderConfigDoctor(state *RuntimeState) Result {
@@ -1186,7 +1228,17 @@ func renderConfigDoctor(state *RuntimeState) Result {
 		strings.TrimSpace(strings.TrimPrefix(status.Message, "CONFIG_STATUS\n")),
 		fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	missing := 3
+	if state != nil {
+		required := []string{"settings.output-style", "settings.output-format", "settings.transport"}
+		missing = 0
+		for _, key := range required {
+			if strings.TrimSpace(state.ConfigValues[key]) == "" {
+				missing++
+			}
+		}
+	}
+	return resultWithIntents(strings.Join(lines, "\n"), configDoctorIntents(state, missing, quickFix)...)
 }
 
 // InitCommand provides stable init command parsing and messages.
@@ -1203,9 +1255,9 @@ func (c *InitCommand) Execute(_ context.Context, _ Context, inv Invocation) (Res
 		return Result{}, fmt.Errorf("usage: /init [path]")
 	}
 	if len(inv.Args) == 0 {
-		return Result{Handled: true, Message: "Initialization requested for current workspace."}, nil
+		return resultWithIntents("Initialization requested for current workspace.", legacyOutputIntents("Initialization requested for current workspace.")...), nil
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("Initialization requested for %s.", inv.Args[0])}, nil
+	return resultWithIntents(fmt.Sprintf("Initialization requested for %s.", inv.Args[0]), legacyOutputIntents(fmt.Sprintf("Initialization requested for %s.", inv.Args[0]))...), nil
 }
 
 // CopyCommand provides stable copy command parsing and messages.
@@ -1228,7 +1280,8 @@ func (c *CopyCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 	normalized := normalizeToken(text)
 	cmdCtx.State.CopyCount++
 	cmdCtx.State.LastCopiedText = text
-	return Result{Handled: true, Message: fmt.Sprintf("COPY_RESULT\ntext=%s\ncount=%d\nlast_text=%s", normalized, cmdCtx.State.CopyCount, normalizeToken(cmdCtx.State.LastCopiedText))}, nil
+	message := fmt.Sprintf("COPY_RESULT\ntext=%s\ncount=%d\nlast_text=%s", normalized, cmdCtx.State.CopyCount, normalizeToken(cmdCtx.State.LastCopiedText))
+	return resultWithIntents(message, copyResultIntents(text, cmdCtx.State.CopyCount, cmdCtx.State.LastCopiedText)...), nil
 }
 
 // VersionCommand reports slash command runtime version.
@@ -1244,7 +1297,8 @@ func (c *VersionCommand) Execute(_ context.Context, _ Context, inv Invocation) (
 	if len(inv.Args) > 0 {
 		return Result{}, fmt.Errorf("usage: /version")
 	}
-	return Result{Handled: true, Message: "VERSION_INFO\nruntime=parity\nversion=v1"}, nil
+	message := "VERSION_INFO\nruntime=parity\nversion=v1"
+	return resultWithIntents(message, versionInfoIntents("parity", "v1")...), nil
 }
 
 // UsageCommand reports session usage-oriented state.
@@ -1263,7 +1317,8 @@ func (c *UsageCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		return Result{}, fmt.Errorf("usage: /usage")
 	}
 	if cmdCtx.State == nil {
-		return Result{Handled: true, Message: "USAGE_SNAPSHOT\nmodel=unknown\npermission=default\ncompact_requested=false"}, nil
+		message := "USAGE_SNAPSHOT\nmodel=unknown\npermission=default\ncompact_requested=false"
+		return resultWithIntents(message, usageSnapshotIntents("unknown", "default", false)...), nil
 	}
 	model := cmdCtx.State.Model
 	if strings.TrimSpace(model) == "" {
@@ -1275,7 +1330,8 @@ func (c *UsageCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		fmt.Sprintf("permission=%s", modeString(cmdCtx.State.PermissionMode)),
 		fmt.Sprintf("compact_requested=%t", cmdCtx.State.CompactRequested),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	message := strings.Join(lines, "\n")
+	return resultWithIntents(message, usageSnapshotIntents(model, modeString(cmdCtx.State.PermissionMode), cmdCtx.State.CompactRequested)...), nil
 }
 
 // ContextCommand reports and mutates local context flags.
@@ -1310,7 +1366,8 @@ func (c *ContextCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			fmt.Sprintf("branch_active=%s", normalizeToken(cmdCtx.State.ActiveBranch)),
 			fmt.Sprintf("diff_entries=%d", len(cmdCtx.State.DiffEntries)),
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, contextStateIntents(cmdCtx.State)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "clear") {
@@ -1321,7 +1378,8 @@ func (c *ContextCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		cmdCtx.State.LastCompactTarget = ""
 		cmdCtx.State.CompactRequested = false
 		cmdCtx.State.ResumeRequested = false
-		return Result{Handled: true, Message: "CONTEXT_CLEAR\ncompact_requested=false\nresume_requested=false\nlast_resume_target=-\nlast_compact_target=-"}, nil
+		message := "CONTEXT_CLEAR\ncompact_requested=false\nresume_requested=false\nlast_resume_target=-\nlast_compact_target=-"
+		return resultWithIntents(message, contextClearedIntents()...), nil
 	}
 
 	return Result{}, fmt.Errorf("usage: /context [show|clear]")
@@ -1346,7 +1404,8 @@ func (c *ExitCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 	cmdCtx.State.ExitRequested = true
 	cmdCtx.State.ExitCount++
 	cmdCtx.State.LastExitCommand = inv.Name
-	return Result{Handled: true, Message: fmt.Sprintf("EXIT_REQUEST\nrequested=true\ncount=%d\ncommand=%s", cmdCtx.State.ExitCount, normalizeToken(cmdCtx.State.LastExitCommand))}, nil
+	message := fmt.Sprintf("EXIT_REQUEST\nrequested=true\ncount=%d\ncommand=%s", cmdCtx.State.ExitCount, normalizeToken(cmdCtx.State.LastExitCommand))
+	return resultWithIntents(message, exitRequestIntents(cmdCtx.State.ExitCount, cmdCtx.State.LastExitCommand)...), nil
 }
 
 // PlanCommand provides deterministic plan-mode behavior.
@@ -1365,7 +1424,8 @@ func (c *PlanCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("PLAN_STATUS\nenabled=%t\nenable_count=%d\nopen_count=%d\nlast_description=%s", cmdCtx.State.PlanModeEnabled, cmdCtx.State.PlanEnableCount, cmdCtx.State.PlanOpenCount, normalizeToken(cmdCtx.State.LastPlanDescription))}, nil
+		message := fmt.Sprintf("PLAN_STATUS\nenabled=%t\nenable_count=%d\nopen_count=%d\nlast_description=%s", cmdCtx.State.PlanModeEnabled, cmdCtx.State.PlanEnableCount, cmdCtx.State.PlanOpenCount, normalizeToken(cmdCtx.State.LastPlanDescription))
+		return resultWithIntents(message, planStatusIntents(cmdCtx.State.PlanModeEnabled, cmdCtx.State.PlanEnableCount, cmdCtx.State.PlanOpenCount, cmdCtx.State.LastPlanDescription)...), nil
 	}
 
 	raw := strings.TrimSpace(strings.Join(inv.Args, " "))
@@ -1374,17 +1434,21 @@ func (c *PlanCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		cmdCtx.State.PlanEnableCount++
 		if raw != "" && !strings.EqualFold(raw, "open") {
 			cmdCtx.State.LastPlanDescription = raw
-			return Result{Handled: true, Message: fmt.Sprintf("PLAN_ENABLE\nenabled=true\nenable_count=%d\ndescription=%s\nquery_hint=true", cmdCtx.State.PlanEnableCount, normalizeToken(raw))}, nil
+			message := fmt.Sprintf("PLAN_ENABLE\nenabled=true\nenable_count=%d\ndescription=%s\nquery_hint=true", cmdCtx.State.PlanEnableCount, normalizeToken(raw))
+			return resultWithIntents(message, planMutationIntents("Plan enabled", raw, true, cmdCtx.State.PlanOpenCount)...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PLAN_ENABLE\nenabled=true\nenable_count=%d\ndescription=-\nquery_hint=false", cmdCtx.State.PlanEnableCount)}, nil
+		message := fmt.Sprintf("PLAN_ENABLE\nenabled=true\nenable_count=%d\ndescription=-\nquery_hint=false", cmdCtx.State.PlanEnableCount)
+		return resultWithIntents(message, planMutationIntents("Plan enabled", "", false, cmdCtx.State.PlanOpenCount)...), nil
 	}
 
 	if len(inv.Args) > 0 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "open") {
 		cmdCtx.State.PlanOpenCount++
-		return Result{Handled: true, Message: fmt.Sprintf("PLAN_OPEN\npath=.claude/plan.md\nopen_count=%d", cmdCtx.State.PlanOpenCount)}, nil
+		message := fmt.Sprintf("PLAN_OPEN\npath=.claude/plan.md\nopen_count=%d", cmdCtx.State.PlanOpenCount)
+		return resultWithIntents(message, planMutationIntents("Plan opened", cmdCtx.State.LastPlanDescription, false, cmdCtx.State.PlanOpenCount)...), nil
 	}
 
-	return Result{Handled: true, Message: fmt.Sprintf("PLAN_CURRENT\nenabled=true\npath=.claude/plan.md\nlast_description=%s", normalizeToken(cmdCtx.State.LastPlanDescription))}, nil
+	message := fmt.Sprintf("PLAN_CURRENT\nenabled=true\npath=.claude/plan.md\nlast_description=%s", normalizeToken(cmdCtx.State.LastPlanDescription))
+	return resultWithIntents(message, planMutationIntents("Plan current", cmdCtx.State.LastPlanDescription, false, cmdCtx.State.PlanOpenCount)...), nil
 }
 
 // ReviewCommand provides deterministic review intent behavior.
@@ -1430,14 +1494,14 @@ func (c *ReviewCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 				lines = append(lines, fmt.Sprintf("section.%d.item.%d=%s", sidx, j+1, normalizeToken(item)))
 			}
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 	}
 	if len(inv.Args) == 2 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "focus") {
 		focus := strings.ToLower(strings.TrimSpace(inv.Args[1]))
 		switch focus {
 		case "risk", "perf", "tests", "security":
 			cmdCtx.State.LastReviewTarget = "focus:" + focus
-			return Result{Handled: true, Message: fmt.Sprintf("REVIEW_FOCUS\nfocus=%s\nnext=/review_status", focus)}, nil
+			return resultWithIntents(fmt.Sprintf("REVIEW_FOCUS\nfocus=%s\nnext=/review_status", focus), legacyOutputIntents(fmt.Sprintf("REVIEW_FOCUS\nfocus=%s\nnext=/review_status", focus))...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
@@ -1463,7 +1527,7 @@ func (c *ReviewCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	for i, item := range checklist {
 		lines = append(lines, fmt.Sprintf("checklist.%d=%s", i+1, normalizeToken(item)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 }
 
 type reviewTarget struct {
@@ -1761,7 +1825,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 				return Result{}, fmt.Errorf(sessionUsage)
 			}
 			cmdCtx.State.RemoteSessionURL = url
-			return Result{Handled: true, Message: fmt.Sprintf("SESSION_URL_SET\nurl=%s", normalizeToken(url))}, nil
+			message := fmt.Sprintf("SESSION_URL_SET\nurl=%s", normalizeToken(url))
+			return resultWithIntents(message, sessionURLIntents(url)...), nil
 		case "host":
 			if len(inv.Args) > 2 {
 				return Result{}, fmt.Errorf(sessionUsage)
@@ -1804,7 +1869,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			cmdCtx.State.SessionTransport = transport
 			cmdCtx.State.SessionTCPTransport = transport
 			cmdCtx.State.SessionManager = mgr
-			return Result{Handled: true, Message: fmt.Sprintf("SESSION_HOST\nhosting=true\naddr=%s\ntoken_prefix=%s\nhost_count=%d", normalizeToken(cmdCtx.State.SessionHostAddr), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionHostCount)}, nil
+			message := fmt.Sprintf("SESSION_HOST\nhosting=true\naddr=%s\ntoken_prefix=%s\nhost_count=%d", normalizeToken(cmdCtx.State.SessionHostAddr), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionHostCount)
+			return resultWithIntents(message, sessionHostIntents(cmdCtx.State.SessionHostAddr, cmdCtx.State.SessionTokenPrefix, cmdCtx.State.SessionHostCount)...), nil
 		case "connect":
 			if len(inv.Args) != 3 {
 				return Result{}, fmt.Errorf(sessionUsage)
@@ -1851,7 +1917,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			cmdCtx.State.SessionTransport = transport
 			cmdCtx.State.SessionTCPTransport = transport
 			cmdCtx.State.SessionManager = mgr
-			return Result{Handled: true, Message: fmt.Sprintf("SESSION_CONNECT\nconnected=true\naddr=%s\ntoken_prefix=%s\nconnect_count=%d", normalizeToken(addr), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionConnectCount)}, nil
+			message := fmt.Sprintf("SESSION_CONNECT\nconnected=true\naddr=%s\ntoken_prefix=%s\nconnect_count=%d", normalizeToken(addr), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionConnectCount)
+			return resultWithIntents(message, sessionConnectIntents(addr, cmdCtx.State.SessionTokenPrefix, cmdCtx.State.SessionConnectCount)...), nil
 		case "disconnect":
 			if len(inv.Args) != 1 {
 				return Result{}, fmt.Errorf(sessionUsage)
@@ -1870,7 +1937,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			cmdCtx.State.SessionToken = ""
 			cmdCtx.State.SessionTokenPrefix = ""
 			cmdCtx.State.SessionDisconnectCount++
-			return Result{Handled: true, Message: fmt.Sprintf("SESSION_DISCONNECT\nconnected=false\nwas_connected=%t\nprevious_addr=%s\ndisconnect_count=%d", wasConnected, normalizeToken(previousAddr), cmdCtx.State.SessionDisconnectCount)}, nil
+			message := fmt.Sprintf("SESSION_DISCONNECT\nconnected=false\nwas_connected=%t\nprevious_addr=%s\ndisconnect_count=%d", wasConnected, normalizeToken(previousAddr), cmdCtx.State.SessionDisconnectCount)
+			return resultWithIntents(message, sessionDisconnectIntents(wasConnected, previousAddr, cmdCtx.State.SessionDisconnectCount)...), nil
 		case "diagnostics", "doctor":
 			if len(inv.Args) != 1 {
 				return Result{}, fmt.Errorf(sessionUsage)
@@ -1895,13 +1963,14 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			}
 		case "token":
 			if len(inv.Args) == 1 || (len(inv.Args) == 2 && strings.EqualFold(strings.TrimSpace(inv.Args[1]), "show")) {
-				return Result{Handled: true, Message: fmt.Sprintf("SESSION_TOKEN\nsource=%s\nprefix=%s\nset=%t", normalizeToken(cmdCtx.State.SessionTokenSource), normalizeToken(cmdCtx.State.SessionTokenPrefix), strings.TrimSpace(cmdCtx.State.SessionToken) != "")}, nil
+				message := fmt.Sprintf("SESSION_TOKEN\nsource=%s\nprefix=%s\nset=%t", normalizeToken(cmdCtx.State.SessionTokenSource), normalizeToken(cmdCtx.State.SessionTokenPrefix), strings.TrimSpace(cmdCtx.State.SessionToken) != "")
+				return resultWithIntents(message, sessionTokenIntents(cmdCtx.State.SessionTokenSource, cmdCtx.State.SessionTokenPrefix, strings.TrimSpace(cmdCtx.State.SessionToken) != "")...), nil
 			}
 			if len(inv.Args) == 2 && strings.EqualFold(strings.TrimSpace(inv.Args[1]), "clear") {
 				cmdCtx.State.SessionTokenSource = ""
 				cmdCtx.State.SessionToken = ""
 				cmdCtx.State.SessionTokenPrefix = ""
-				return Result{Handled: true, Message: "SESSION_TOKEN_SET\nset=false\nprefix=-"}, nil
+				return resultWithIntents("SESSION_TOKEN_SET\nset=false\nprefix=-", sessionTokenIntents("", "", false)...), nil
 			}
 			if len(inv.Args) < 3 || !strings.EqualFold(strings.TrimSpace(inv.Args[1]), "set") {
 				return Result{}, fmt.Errorf(sessionUsage)
@@ -1913,7 +1982,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			cmdCtx.State.SessionTokenSource = "manual"
 			cmdCtx.State.SessionToken = token
 			cmdCtx.State.SessionTokenPrefix = sessionTokenPrefix(token)
-			return Result{Handled: true, Message: fmt.Sprintf("SESSION_TOKEN_SET\nset=true\nprefix=%s", normalizeToken(cmdCtx.State.SessionTokenPrefix))}, nil
+			message := fmt.Sprintf("SESSION_TOKEN_SET\nset=true\nprefix=%s", normalizeToken(cmdCtx.State.SessionTokenPrefix))
+			return resultWithIntents(message, sessionTokenIntents(cmdCtx.State.SessionTokenSource, cmdCtx.State.SessionTokenPrefix, true)...), nil
 		default:
 			return Result{}, fmt.Errorf(sessionUsage)
 		}
@@ -1924,7 +1994,8 @@ func (c *SessionCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 	qrAvailable := url != ""
 	remoteMode := strings.EqualFold(strings.TrimSpace(cmdCtx.State.TransportMode), "remote")
 	health := sessionHealthSummary(cmdCtx.State.SessionManager)
-	return Result{Handled: true, Message: fmt.Sprintf("SESSION_INFO\nremote_mode=%t\nsession_id=%s\nsession_path=%s\nurl=%s\nqr_available=%t\nviews=%d\nhosting=%t\nhost_addr=%s\nconnected=%t\nconnected_addr=%s\ntoken_source=%s\ntoken_prefix=%s\nhost_count=%d\nconnect_count=%d\ndisconnect_count=%d\nmode=%s\nmanager_state=%s\ntransport_state=%s\nreconnecting=%t\nreconnect_reason=%s\nreconnect_error_class=%s\nreconnect_count=%d\nreconnect_detail=%s", remoteMode, normalizeToken(cmdCtx.State.SessionID), normalizeToken(cmdCtx.State.SessionPath), normalizeToken(url), qrAvailable, cmdCtx.State.SessionViewCount, cmdCtx.State.SessionHosted, normalizeToken(cmdCtx.State.SessionHostAddr), cmdCtx.State.SessionConnected, normalizeToken(cmdCtx.State.SessionConnectedAddr), normalizeToken(cmdCtx.State.SessionTokenSource), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionHostCount, cmdCtx.State.SessionConnectCount, cmdCtx.State.SessionDisconnectCount, normalizeToken(cmdCtx.State.SessionMode), normalizeToken(health.managerState), normalizeToken(health.transportState), health.reconnecting, normalizeToken(health.reconnectReason), normalizeToken(health.reconnectErrorClass), health.reconnectCount, normalizeToken(health.reconnectDetail))}, nil
+	message := fmt.Sprintf("SESSION_INFO\nremote_mode=%t\nsession_id=%s\nsession_path=%s\nurl=%s\nqr_available=%t\nviews=%d\nhosting=%t\nhost_addr=%s\nconnected=%t\nconnected_addr=%s\ntoken_source=%s\ntoken_prefix=%s\nhost_count=%d\nconnect_count=%d\ndisconnect_count=%d\nmode=%s\nmanager_state=%s\ntransport_state=%s\nreconnecting=%t\nreconnect_reason=%s\nreconnect_error_class=%s\nreconnect_count=%d\nreconnect_detail=%s", remoteMode, normalizeToken(cmdCtx.State.SessionID), normalizeToken(cmdCtx.State.SessionPath), normalizeToken(url), qrAvailable, cmdCtx.State.SessionViewCount, cmdCtx.State.SessionHosted, normalizeToken(cmdCtx.State.SessionHostAddr), cmdCtx.State.SessionConnected, normalizeToken(cmdCtx.State.SessionConnectedAddr), normalizeToken(cmdCtx.State.SessionTokenSource), normalizeToken(cmdCtx.State.SessionTokenPrefix), cmdCtx.State.SessionHostCount, cmdCtx.State.SessionConnectCount, cmdCtx.State.SessionDisconnectCount, normalizeToken(cmdCtx.State.SessionMode), normalizeToken(health.managerState), normalizeToken(health.transportState), health.reconnecting, normalizeToken(health.reconnectReason), normalizeToken(health.reconnectErrorClass), health.reconnectCount, normalizeToken(health.reconnectDetail))
+	return resultWithIntents(message, sessionInfoIntents(cmdCtx.State, remoteMode, qrAvailable, health)...), nil
 }
 
 func renderSessionDiagnostics(state *RuntimeState) Result {
@@ -1957,12 +2028,12 @@ func renderSessionDiagnostics(state *RuntimeState) Result {
 		fmt.Sprintf("last_repair=%s", normalizeToken(state.SessionLastRepairAction)),
 		fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), sessionDiagnosticsIntents(state, health, quickFix)...)
 }
 
 func repairSessionState(state *RuntimeState, action string) Result {
 	if state == nil {
-		return Result{Handled: true, Message: "SESSION_REPAIR\naction=none\nchanged=false\nquick_fix=/session host\nrepairs=0"}
+		return resultWithIntents("SESSION_REPAIR\naction=none\nchanged=false\nquick_fix=/session host\nrepairs=0", sessionRepairIntents("none", false, "/session host", 0)...)
 	}
 	changed := false
 	applied := action
@@ -2002,7 +2073,8 @@ func repairSessionState(state *RuntimeState, action string) Result {
 	}
 	state.SessionRepairCount++
 	state.SessionLastRepairAction = applied
-	return Result{Handled: true, Message: fmt.Sprintf("SESSION_REPAIR\naction=%s\nchanged=%t\nquick_fix=%s\nrepairs=%d", normalizeToken(applied), changed, normalizeToken(quickFix), state.SessionRepairCount)}
+	message := fmt.Sprintf("SESSION_REPAIR\naction=%s\nchanged=%t\nquick_fix=%s\nrepairs=%d", normalizeToken(applied), changed, normalizeToken(quickFix), state.SessionRepairCount)
+	return resultWithIntents(message, sessionRepairIntents(applied, changed, quickFix, state.SessionRepairCount)...)
 }
 
 type sessionHealth struct {
@@ -2066,11 +2138,69 @@ func sessionIDOrDefault(state *RuntimeState) string {
 // SkillsCommand provides deterministic skills listing and edits.
 type SkillsCommand struct{}
 
-func NewSkillsCommand() *SkillsCommand       { return &SkillsCommand{} }
-func (c *SkillsCommand) Name() string        { return "skills" }
-func (c *SkillsCommand) Aliases() []string   { return nil }
-func (c *SkillsCommand) Description() string { return "List available skills" }
-func (c *SkillsCommand) Usage() string       { return "/skills [list|status|add <name>|remove <name>|sync]" }
+func NewSkillsCommand() *SkillsCommand     { return &SkillsCommand{} }
+func (c *SkillsCommand) Name() string      { return "skills" }
+func (c *SkillsCommand) Aliases() []string { return nil }
+func (c *SkillsCommand) Description() string {
+	return "Inspect and repair skills from file/plugin sources"
+}
+func (c *SkillsCommand) Usage() string {
+	return "/skills [list|status|doctor|repair [sync|auto|dedupe]|add <name>|remove <name>|sync]"
+}
+
+const skillsUsage = "usage: /skills [list|status|doctor|repair [sync|auto|dedupe]|add <name>|remove <name>|sync]"
+
+func normalizedSkillMaps(state *RuntimeState) (map[string]string, map[string]string, map[string]bool) {
+	sources := make(map[string]string, len(state.SkillsSources))
+	origins := make(map[string]string, len(state.SkillsOrigins))
+	enabled := make(map[string]bool, len(state.SkillsEnabled))
+	for key, value := range state.SkillsSources {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		sources[k] = normalizeToken(strings.TrimSpace(value))
+	}
+	for key, value := range state.SkillsOrigins {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		origins[k] = normalizeToken(strings.TrimSpace(value))
+	}
+	for key, value := range state.SkillsEnabled {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		enabled[k] = value
+	}
+	for _, raw := range state.Skills {
+		name := strings.TrimSpace(raw)
+		if name == "" {
+			continue
+		}
+		if _, ok := sources[name]; !ok {
+			sources[name] = "state"
+		}
+		if _, ok := origins[name]; !ok {
+			origins[name] = "state"
+		}
+		if _, ok := enabled[name]; !ok {
+			enabled[name] = true
+		}
+	}
+	return sources, origins, enabled
+}
+
+func applySkillsSnapshot(state *RuntimeState, snapshot skillsSnapshot, source string) {
+	state.Skills = uniqueSortedStrings(append([]string(nil), snapshot.Names...))
+	state.SkillsSources = cloneSkillStringMap(snapshot.Sources)
+	state.SkillsOrigins = cloneSkillStringMap(snapshot.Origins)
+	state.SkillsEnabled = cloneSkillBoolMap(snapshot.Enabled)
+	state.SkillsConflictCount = len(snapshot.Conflicts)
+	state.SkillsLastSyncSource = source
+}
 
 func (c *SkillsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
 	if cmdCtx.State == nil {
@@ -2078,42 +2208,84 @@ func (c *SkillsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	}
 	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "list") || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
 		if len(inv.Args) > 1 {
-			return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>|sync]")
+			return Result{}, fmt.Errorf(skillsUsage)
 		}
 		cmdCtx.State.SkillsViewCount++
 		skills := uniqueSortedStrings(append([]string(nil), cmdCtx.State.Skills...))
-		lines := []string{"SKILLS_LIST", fmt.Sprintf("count=%d", len(skills)), fmt.Sprintf("views=%d", cmdCtx.State.SkillsViewCount)}
-		for i, skill := range skills {
-			lines = append(lines, fmt.Sprintf("skill.%d=%s", i+1, normalizeToken(skill)))
+		sources, origins, enabled := normalizedSkillMaps(cmdCtx.State)
+		enabledCount := 0
+		disabledCount := 0
+		lines := []string{
+			"SKILLS_LIST",
+			fmt.Sprintf("count=%d", len(skills)),
+			fmt.Sprintf("views=%d", cmdCtx.State.SkillsViewCount),
+			"enabled=0",
+			"disabled=0",
+			fmt.Sprintf("conflicts=%d", cmdCtx.State.SkillsConflictCount),
+			fmt.Sprintf("last_source=%s", normalizeToken(cmdCtx.State.SkillsLastSyncSource)),
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		for i, skill := range skills {
+			if enabled[skill] {
+				enabledCount++
+			} else {
+				disabledCount++
+			}
+			lines = append(lines,
+				fmt.Sprintf("skill.%d.name=%s", i+1, normalizeToken(skill)),
+				fmt.Sprintf("skill.%d.state=%s", i+1, boolState(enabled[skill], "enabled", "disabled")),
+				fmt.Sprintf("skill.%d.source=%s", i+1, normalizeToken(sources[skill])),
+				fmt.Sprintf("skill.%d.origin=%s", i+1, normalizeToken(origins[skill])),
+			)
+		}
+		lines[3] = fmt.Sprintf("enabled=%d", enabledCount)
+		lines[4] = fmt.Sprintf("disabled=%d", disabledCount)
+		return resultWithIntents(strings.Join(lines, "\n"), skillsListIntents(skills, cmdCtx.State.SkillsViewCount, sources, origins, enabled, cmdCtx.State.SkillsConflictCount)...), nil
 	}
 
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "sync") {
-		before := len(cmdCtx.State.Skills)
-		merged, source := syncedSkillsFromRuntime(cmdCtx.State.Skills)
-		cmdCtx.State.Skills = merged
+		before := strings.Join(uniqueSortedStrings(append([]string(nil), cmdCtx.State.Skills...)), "|")
+		snapshot, source := syncedSkillsFromRuntime(cmdCtx.State.Skills)
+		applySkillsSnapshot(cmdCtx.State, snapshot, source)
 		cmdCtx.State.SkillsSyncCount++
-		cmdCtx.State.SkillsLastSyncSource = source
-		return Result{Handled: true, Message: fmt.Sprintf("SKILLS_SYNC\ncount=%d\nchanged=%t\nsource=%s\nsync_count=%d", len(cmdCtx.State.Skills), len(cmdCtx.State.Skills) != before, normalizeToken(source), cmdCtx.State.SkillsSyncCount)}, nil
+		after := strings.Join(cmdCtx.State.Skills, "|")
+		changed := before != after
+		message := fmt.Sprintf("SKILLS_SYNC\ncount=%d\nchanged=%t\nsource=%s\nsync_count=%d\nconflicts=%d", len(cmdCtx.State.Skills), changed, normalizeToken(source), cmdCtx.State.SkillsSyncCount, cmdCtx.State.SkillsConflictCount)
+		return resultWithIntents(message, skillsRepairIntents("sync", changed, "/skills status", len(cmdCtx.State.Skills))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "doctor") {
 		cmdCtx.State.SkillsDoctorCount++
+		sources, origins, enabled := normalizedSkillMaps(cmdCtx.State)
+		enabledCount := 0
+		disabledCount := 0
+		for _, name := range cmdCtx.State.Skills {
+			trimmed := strings.TrimSpace(name)
+			if trimmed == "" {
+				continue
+			}
+			if enabled[trimmed] {
+				enabledCount++
+			} else {
+				disabledCount++
+			}
+		}
 		quickFix := "/skills sync"
 		if len(cmdCtx.State.Skills) == 0 {
 			quickFix = "/skills add <name>"
+		} else if cmdCtx.State.SkillsConflictCount > 0 {
+			quickFix = "/skills sync"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SKILLS_DOCTOR\ncount=%d\nviews=%d\nsync_count=%d\ndoctor_count=%d\nlast_source=%s\nquick_fix=%s", len(cmdCtx.State.Skills), cmdCtx.State.SkillsViewCount, cmdCtx.State.SkillsSyncCount, cmdCtx.State.SkillsDoctorCount, normalizeToken(cmdCtx.State.SkillsLastSyncSource), normalizeToken(quickFix))}, nil
+		message := fmt.Sprintf("SKILLS_DOCTOR\ncount=%d\nenabled=%d\ndisabled=%d\nviews=%d\nsync_count=%d\ndoctor_count=%d\nconflicts=%d\nlast_source=%s\nquick_fix=%s", len(cmdCtx.State.Skills), enabledCount, disabledCount, cmdCtx.State.SkillsViewCount, cmdCtx.State.SkillsSyncCount, cmdCtx.State.SkillsDoctorCount, cmdCtx.State.SkillsConflictCount, normalizeToken(cmdCtx.State.SkillsLastSyncSource), normalizeToken(quickFix))
+		return resultWithIntents(message, skillsDoctorIntents(len(cmdCtx.State.Skills), enabledCount, disabledCount, cmdCtx.State.SkillsConflictCount, cmdCtx.State.SkillsViewCount, cmdCtx.State.SkillsSyncCount, cmdCtx.State.SkillsDoctorCount, cmdCtx.State.SkillsLastSyncSource, quickFix, sources, origins)...), nil
 	}
 	if len(inv.Args) >= 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "repair") {
 		if len(inv.Args) > 2 {
-			return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>|sync]")
+			return Result{}, fmt.Errorf(skillsUsage)
 		}
 		mode := "sync"
 		if len(inv.Args) == 2 {
 			mode = strings.ToLower(strings.TrimSpace(inv.Args[1]))
 			if mode == "" {
-				return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>|sync]")
+				return Result{}, fmt.Errorf(skillsUsage)
 			}
 		}
 		changed := false
@@ -2121,9 +2293,8 @@ func (c *SkillsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		switch mode {
 		case "sync", "auto":
 			before := strings.Join(uniqueSortedStrings(append([]string(nil), cmdCtx.State.Skills...)), "|")
-			merged, source := syncedSkillsFromRuntime(cmdCtx.State.Skills)
-			cmdCtx.State.Skills = merged
-			cmdCtx.State.SkillsLastSyncSource = source
+			snapshot, source := syncedSkillsFromRuntime(cmdCtx.State.Skills)
+			applySkillsSnapshot(cmdCtx.State, snapshot, source)
 			after := strings.Join(cmdCtx.State.Skills, "|")
 			changed = before != after
 			quickFix = "/skills status"
@@ -2135,22 +2306,36 @@ func (c *SkillsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		default:
 			quickFix = "/skills repair sync"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SKILLS_REPAIR\nmode=%s\nchanged=%t\nquick_fix=%s\ncount=%d", normalizeToken(mode), changed, normalizeToken(quickFix), len(cmdCtx.State.Skills))}, nil
+		message := fmt.Sprintf("SKILLS_REPAIR\nmode=%s\nchanged=%t\nquick_fix=%s\ncount=%d\nconflicts=%d", normalizeToken(mode), changed, normalizeToken(quickFix), len(cmdCtx.State.Skills), cmdCtx.State.SkillsConflictCount)
+		return resultWithIntents(message, skillsRepairIntents(mode, changed, quickFix, len(cmdCtx.State.Skills))...), nil
 	}
 	if len(inv.Args) < 2 {
-		return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>|sync]")
+		return Result{}, fmt.Errorf(skillsUsage)
 	}
 	action := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	name := strings.TrimSpace(strings.Join(inv.Args[1:], " "))
 	if name == "" {
-		return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>]")
+		return Result{}, fmt.Errorf("usage: /skills [add <name>|remove <name>]")
 	}
 	switch action {
 	case "add":
 		before := len(cmdCtx.State.Skills)
 		cmdCtx.State.Skills = uniqueSortedStrings(append(cmdCtx.State.Skills, name))
 		added := len(cmdCtx.State.Skills) > before
-		return Result{Handled: true, Message: fmt.Sprintf("SKILLS_ADD\nname=%s\nadded=%t\ncount=%d", normalizeToken(name), added, len(cmdCtx.State.Skills))}, nil
+		if cmdCtx.State.SkillsSources == nil {
+			cmdCtx.State.SkillsSources = map[string]string{}
+		}
+		if cmdCtx.State.SkillsOrigins == nil {
+			cmdCtx.State.SkillsOrigins = map[string]string{}
+		}
+		if cmdCtx.State.SkillsEnabled == nil {
+			cmdCtx.State.SkillsEnabled = map[string]bool{}
+		}
+		cmdCtx.State.SkillsSources[name] = "state"
+		cmdCtx.State.SkillsOrigins[name] = "manual"
+		cmdCtx.State.SkillsEnabled[name] = true
+		message := fmt.Sprintf("SKILLS_ADD\nname=%s\nadded=%t\ncount=%d\nsource=state\norigin=manual\nstate=enabled", normalizeToken(name), added, len(cmdCtx.State.Skills))
+		return resultWithIntents(message, skillsMutationIntents("Skill added", name, len(cmdCtx.State.Skills), added)...), nil
 	case "remove":
 		removed := false
 		next := make([]string, 0, len(cmdCtx.State.Skills))
@@ -2162,9 +2347,19 @@ func (c *SkillsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			next = append(next, s)
 		}
 		cmdCtx.State.Skills = uniqueSortedStrings(next)
-		return Result{Handled: true, Message: fmt.Sprintf("SKILLS_REMOVE\nname=%s\nremoved=%t\ncount=%d", normalizeToken(name), removed, len(cmdCtx.State.Skills))}, nil
+		if cmdCtx.State.SkillsSources != nil {
+			delete(cmdCtx.State.SkillsSources, name)
+		}
+		if cmdCtx.State.SkillsOrigins != nil {
+			delete(cmdCtx.State.SkillsOrigins, name)
+		}
+		if cmdCtx.State.SkillsEnabled != nil {
+			delete(cmdCtx.State.SkillsEnabled, name)
+		}
+		message := fmt.Sprintf("SKILLS_REMOVE\nname=%s\nremoved=%t\ncount=%d", normalizeToken(name), removed, len(cmdCtx.State.Skills))
+		return resultWithIntents(message, skillsMutationIntents("Skill removed", name, len(cmdCtx.State.Skills), removed)...), nil
 	default:
-		return Result{}, fmt.Errorf("usage: /skills [list|status|add <name>|remove <name>|sync]")
+		return Result{}, fmt.Errorf(skillsUsage)
 	}
 }
 
@@ -2184,7 +2379,8 @@ func (c *RewindCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("REWIND_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.RewindCount, normalizeToken(cmdCtx.State.LastRewindTarget))}, nil
+		message := fmt.Sprintf("REWIND_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.RewindCount, normalizeToken(cmdCtx.State.LastRewindTarget))
+		return resultWithIntents(message, rewindStatusIntents(cmdCtx.State.RewindCount, cmdCtx.State.LastRewindTarget)...), nil
 	}
 	target := "latest"
 	if len(inv.Args) > 0 {
@@ -2197,7 +2393,8 @@ func (c *RewindCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	cmdCtx.State.LastRewindTarget = target
 	cmdCtx.State.CompactRequested = false
 	cmdCtx.State.ResumeRequested = false
-	return Result{Handled: true, Message: fmt.Sprintf("REWIND_REQUEST\ntarget=%s\ncount=%d\nrequested=true", normalizeToken(target), cmdCtx.State.RewindCount)}, nil
+	message := fmt.Sprintf("REWIND_REQUEST\ntarget=%s\ncount=%d\nrequested=true", normalizeToken(target), cmdCtx.State.RewindCount)
+	return resultWithIntents(message, rewindRequestIntents(target, cmdCtx.State.RewindCount)...), nil
 }
 
 // TagCommand provides deterministic session tag toggling.
@@ -2216,7 +2413,8 @@ func (c *TagCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 0 || (len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status")) {
-		return Result{Handled: true, Message: fmt.Sprintf("TAG_STATUS\ncurrent=%s\nupdates=%d", normalizeToken(cmdCtx.State.CurrentTag), cmdCtx.State.TagUpdates)}, nil
+		message := fmt.Sprintf("TAG_STATUS\ncurrent=%s\nupdates=%d", normalizeToken(cmdCtx.State.CurrentTag), cmdCtx.State.TagUpdates)
+		return resultWithIntents(message, tagStatusIntents(cmdCtx.State.CurrentTag, cmdCtx.State.TagUpdates)...), nil
 	}
 	name := strings.TrimSpace(strings.Join(inv.Args, " "))
 	if name == "" {
@@ -2225,11 +2423,13 @@ func (c *TagCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 	if strings.TrimSpace(cmdCtx.State.CurrentTag) == name {
 		cmdCtx.State.CurrentTag = ""
 		cmdCtx.State.TagUpdates++
-		return Result{Handled: true, Message: fmt.Sprintf("TAG_REMOVE\ntag=%s\nupdates=%d", normalizeToken(name), cmdCtx.State.TagUpdates)}, nil
+		message := fmt.Sprintf("TAG_REMOVE\ntag=%s\nupdates=%d", normalizeToken(name), cmdCtx.State.TagUpdates)
+		return resultWithIntents(message, tagMutationIntents("Tag removed", name, cmdCtx.State.TagUpdates)...), nil
 	}
 	cmdCtx.State.CurrentTag = name
 	cmdCtx.State.TagUpdates++
-	return Result{Handled: true, Message: fmt.Sprintf("TAG_SET\ntag=%s\nupdates=%d", normalizeToken(name), cmdCtx.State.TagUpdates)}, nil
+	message := fmt.Sprintf("TAG_SET\ntag=%s\nupdates=%d", normalizeToken(name), cmdCtx.State.TagUpdates)
+	return resultWithIntents(message, tagMutationIntents("Tag set", name, cmdCtx.State.TagUpdates)...), nil
 }
 
 // RemoteEnvCommand provides deterministic remote environment configuration.
@@ -2253,10 +2453,12 @@ func (c *RemoteEnvCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		if env == "-" {
 			env = "default"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("REMOTE_ENV_STATUS\nenvironment=%s\nupdates=%d", env, cmdCtx.State.RemoteEnvUpdates)}, nil
+		message := fmt.Sprintf("REMOTE_ENV_STATUS\nenvironment=%s\nupdates=%d", env, cmdCtx.State.RemoteEnvUpdates)
+		return resultWithIntents(message, remoteEnvStatusIntents(env, cmdCtx.State.RemoteEnvUpdates)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "list") {
-		return Result{Handled: true, Message: "REMOTE_ENV_LIST\ncount=3\nenv.1=default\nenv.2=code-review\nenv.3=hardened-linux"}, nil
+		message := "REMOTE_ENV_LIST\ncount=3\nenv.1=default\nenv.2=code-review\nenv.3=hardened-linux"
+		return resultWithIntents(message, remoteEnvListIntents()...), nil
 	}
 	if len(inv.Args) < 2 || !strings.EqualFold(strings.TrimSpace(inv.Args[0]), "set") {
 		return Result{}, fmt.Errorf("usage: /remote-env [status|list|set <name>]")
@@ -2267,7 +2469,8 @@ func (c *RemoteEnvCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 	}
 	cmdCtx.State.RemoteEnvironment = env
 	cmdCtx.State.RemoteEnvUpdates++
-	return Result{Handled: true, Message: fmt.Sprintf("REMOTE_ENV_SET\nenvironment=%s\nupdates=%d", normalizeToken(env), cmdCtx.State.RemoteEnvUpdates)}, nil
+	message := fmt.Sprintf("REMOTE_ENV_SET\nenvironment=%s\nupdates=%d", normalizeToken(env), cmdCtx.State.RemoteEnvUpdates)
+	return resultWithIntents(message, remoteEnvSetIntents(env, cmdCtx.State.RemoteEnvUpdates)...), nil
 }
 
 // SecurityReviewCommand provides deterministic security review intent.
@@ -2286,7 +2489,8 @@ func (c *SecurityReviewCommand) Execute(_ context.Context, cmdCtx Context, inv I
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("SECURITY_REVIEW_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.SecurityReviewCount, normalizeToken(cmdCtx.State.LastSecurityTarget))}, nil
+		message := fmt.Sprintf("SECURITY_REVIEW_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.SecurityReviewCount, normalizeToken(cmdCtx.State.LastSecurityTarget))
+		return resultWithIntents(message, securityReviewStatusIntents(cmdCtx.State.SecurityReviewCount, cmdCtx.State.LastSecurityTarget)...), nil
 	}
 	target := "current-branch"
 	if len(inv.Args) > 0 {
@@ -2297,7 +2501,8 @@ func (c *SecurityReviewCommand) Execute(_ context.Context, cmdCtx Context, inv I
 	}
 	cmdCtx.State.SecurityReviewCount++
 	cmdCtx.State.LastSecurityTarget = target
-	return Result{Handled: true, Message: fmt.Sprintf("SECURITY_REVIEW_REQUEST\ntarget=%s\ncount=%d\nmode=focused", normalizeToken(target), cmdCtx.State.SecurityReviewCount)}, nil
+	message := fmt.Sprintf("SECURITY_REVIEW_REQUEST\ntarget=%s\ncount=%d\nmode=focused", normalizeToken(target), cmdCtx.State.SecurityReviewCount)
+	return resultWithIntents(message, securityReviewRequestIntents(target, cmdCtx.State.SecurityReviewCount)...), nil
 }
 
 // AddDirCommand provides stable add-dir parsing and messages.
@@ -2339,7 +2544,8 @@ func (c *AddDirCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		cmdCtx.State.WorkspaceDirs = append(cmdCtx.State.WorkspaceDirs, clean)
 		cmdCtx.State.WorkspaceDirs = uniqueSortedStrings(cmdCtx.State.WorkspaceDirs)
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("Workspace directory added: %s", clean)}, nil
+	message := fmt.Sprintf("Workspace directory added: %s", clean)
+	return resultWithIntents(message, addDirIntents(clean)...), nil
 }
 
 // AgentsCommand provides stable agents subcommand parsing and messages.
@@ -2356,7 +2562,8 @@ func (c *AgentsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /agents [list|create <name>|status]")
 		}
-		return Result{Handled: true, Message: "AGENTS_LIST\ncount=1\nagent.1.name=local\nagent.1.status=available"}, nil
+		message := "AGENTS_LIST\ncount=1\nagent.1.name=local\nagent.1.status=available"
+		return resultWithIntents(message, agentsListIntents()...), nil
 	}
 
 	switch strings.ToLower(strings.TrimSpace(inv.Args[0])) {
@@ -2364,15 +2571,18 @@ func (c *AgentsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /agents [list|create <name>|status]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("AGENTS_CREATE\nname=%s\nstatus=created", normalizeToken(inv.Args[1]))}, nil
+		message := fmt.Sprintf("AGENTS_CREATE\nname=%s\nstatus=created", normalizeToken(inv.Args[1]))
+		return resultWithIntents(message, agentsCreateIntents(inv.Args[1])...), nil
 	case "status":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /agents [list|create <name>|status]")
 		}
 		if cmdCtx.State != nil && cmdCtx.State.Agent != nil {
-			return Result{Handled: true, Message: "AGENTS_STATUS\nstatus=configured"}, nil
+			message := "AGENTS_STATUS\nstatus=configured"
+			return resultWithIntents(message, agentsStatusIntents(true)...), nil
 		}
-		return Result{Handled: true, Message: "AGENTS_STATUS\nstatus=none"}, nil
+		message := "AGENTS_STATUS\nstatus=none"
+		return resultWithIntents(message, agentsStatusIntents(false)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /agents [list|create <name>|status]")
 	}
@@ -2402,7 +2612,8 @@ func (c *ClearCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	}
 
 	if scope == "status" {
-		return Result{Handled: true, Message: fmt.Sprintf("CLEAR_STATUS\ncount=%d\ncontext_clears=%d\ndiff_clears=%d\nlast_scope=%s\ncompact_requested=%t\nresume_requested=%t\nlast_resume_target=%s", cmdCtx.State.ClearCount, cmdCtx.State.ClearContextCount, cmdCtx.State.ClearDiffCount, normalizeToken(cmdCtx.State.LastClearScope), cmdCtx.State.CompactRequested, cmdCtx.State.ResumeRequested, normalizeToken(cmdCtx.State.LastResumeTarget))}, nil
+		message := fmt.Sprintf("CLEAR_STATUS\ncount=%d\ncontext_clears=%d\ndiff_clears=%d\nlast_scope=%s\ncompact_requested=%t\nresume_requested=%t\nlast_resume_target=%s", cmdCtx.State.ClearCount, cmdCtx.State.ClearContextCount, cmdCtx.State.ClearDiffCount, normalizeToken(cmdCtx.State.LastClearScope), cmdCtx.State.CompactRequested, cmdCtx.State.ResumeRequested, normalizeToken(cmdCtx.State.LastResumeTarget))
+		return resultWithIntents(message, clearStatusIntents(cmdCtx.State)...), nil
 	}
 
 	clearDisplay := false
@@ -2437,7 +2648,8 @@ func (c *ClearCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	}
 	cmdCtx.State.LastClearScope = scope
 
-	return Result{Handled: true, Message: fmt.Sprintf("CLEAR_RESULT\nscope=%s\nclear_display=%t\nclear_context=%t\nclear_diff=%t\ncount=%d\ncontext_clears=%d\ndiff_clears=%d", scope, clearDisplay, clearContext, clearDiff, cmdCtx.State.ClearCount, cmdCtx.State.ClearContextCount, cmdCtx.State.ClearDiffCount)}, nil
+	message := fmt.Sprintf("CLEAR_RESULT\nscope=%s\nclear_display=%t\nclear_context=%t\nclear_diff=%t\ncount=%d\ncontext_clears=%d\ndiff_clears=%d", scope, clearDisplay, clearContext, clearDiff, cmdCtx.State.ClearCount, cmdCtx.State.ClearContextCount, cmdCtx.State.ClearDiffCount)
+	return resultWithIntents(message, clearResultIntents(scope, clearDisplay, clearContext, clearDiff, cmdCtx.State.ClearCount, cmdCtx.State.ClearContextCount, cmdCtx.State.ClearDiffCount)...), nil
 }
 
 // HistoryCommand provides stable history subcommand parsing and messages.
@@ -2468,10 +2680,11 @@ func (c *HistoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "latest") {
 		if len(entries) == 0 {
-			return Result{Handled: true, Message: "HISTORY_LATEST\nfound=false"}, nil
+			return resultWithIntents("HISTORY_LATEST\nfound=false", historyLatestIntents(HistoryEntry{}, false)...), nil
 		}
 		entry := entries[len(entries)-1]
-		return Result{Handled: true, Message: fmt.Sprintf("HISTORY_LATEST\nfound=true\nid=%s\npath=%s\ncreated=%s\nmodel=%s\nturns=%d\ntitle=%s", normalizeToken(entry.ID), normalizeToken(entry.Path), normalizeToken(entry.CreatedAt), normalizeToken(entry.Model), entry.Turns, normalizeToken(entry.Title))}, nil
+		message := fmt.Sprintf("HISTORY_LATEST\nfound=true\nid=%s\npath=%s\ncreated=%s\nmodel=%s\nturns=%d\ntitle=%s", normalizeToken(entry.ID), normalizeToken(entry.Path), normalizeToken(entry.CreatedAt), normalizeToken(entry.Model), entry.Turns, normalizeToken(entry.Title))
+		return resultWithIntents(message, historyLatestIntents(entry, true)...), nil
 	}
 
 	if len(inv.Args) == 0 || strings.EqualFold(inv.Args[0], "list") {
@@ -2489,7 +2702,8 @@ func (c *HistoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			entries = entries[len(entries)-limit:]
 		}
 		if len(entries) == 0 {
-			return Result{Handled: true, Message: fmt.Sprintf("HISTORY_LIST\nfilter.type=%s\nfilter.value=%s\nlimit=%d\ncount=0", normalizeToken(filterType), normalizeToken(filterValue), limit)}, nil
+			message := fmt.Sprintf("HISTORY_LIST\nfilter.type=%s\nfilter.value=%s\nlimit=%d\ncount=0", normalizeToken(filterType), normalizeToken(filterValue), limit)
+			return resultWithIntents(message, historyListIntents(filterType, filterValue, limit, nil)...), nil
 		}
 		lines := []string{
 			"HISTORY_LIST",
@@ -2507,7 +2721,7 @@ func (c *HistoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			lines = append(lines, fmt.Sprintf("entry.%d.turns=%d", idx, entry.Turns))
 			lines = append(lines, fmt.Sprintf("entry.%d.title=%s", idx, normalizeToken(entry.Title)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), historyListIntents(filterType, filterValue, limit, entries)...), nil
 	}
 
 	if strings.EqualFold(inv.Args[0], "show") {
@@ -2533,7 +2747,7 @@ func (c *HistoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 					fmt.Sprintf("section.2.title=%s", normalizeToken(entry.Title)),
 					fmt.Sprintf("section.2.summary=%s", normalizeToken(entry.Summary)),
 				}
-				return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+				return resultWithIntents(strings.Join(lines, "\n"), historyShowIntents(entry)...), nil
 			}
 		}
 		return Result{}, fmt.Errorf("history entry not found: %s", id)
@@ -2652,7 +2866,7 @@ func defaultHistoryEntries(state *RuntimeState) []HistoryEntry {
 
 func renderHistoryStatus(state *RuntimeState, entries []HistoryEntry) Result {
 	if state == nil {
-		return Result{Handled: true, Message: "HISTORY_STATUS\ncount=0\nviews=0\nlast_filter_type=-\nlast_filter_value=-\nlast_limit=0\nmodels=0"}
+		return resultWithIntents("HISTORY_STATUS\ncount=0\nviews=0\nlast_filter_type=-\nlast_filter_value=-\nlast_limit=0\nmodels=0", historyStatusIntents(&RuntimeState{}, 0, 0)...)
 	}
 	modelSet := make(map[string]struct{})
 	for _, entry := range entries {
@@ -2662,7 +2876,8 @@ func renderHistoryStatus(state *RuntimeState, entries []HistoryEntry) Result {
 		}
 		modelSet[model] = struct{}{}
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("HISTORY_STATUS\ncount=%d\nviews=%d\nlast_filter_type=%s\nlast_filter_value=%s\nlast_limit=%d\nmodels=%d", len(entries), state.HistoryViews, normalizeToken(state.HistoryLastFilterType), normalizeToken(state.HistoryLastFilterValue), state.HistoryLastLimit, len(modelSet))}
+	message := fmt.Sprintf("HISTORY_STATUS\ncount=%d\nviews=%d\nlast_filter_type=%s\nlast_filter_value=%s\nlast_limit=%d\nmodels=%d", len(entries), state.HistoryViews, normalizeToken(state.HistoryLastFilterType), normalizeToken(state.HistoryLastFilterValue), state.HistoryLastLimit, len(modelSet))
+	return resultWithIntents(message, historyStatusIntents(state, len(entries), len(modelSet))...)
 }
 
 func renderHistoryDoctor(state *RuntimeState, entries []HistoryEntry) Result {
@@ -2672,7 +2887,7 @@ func renderHistoryDoctor(state *RuntimeState, entries []HistoryEntry) Result {
 		quickFix = "/history list"
 	}
 	lines := []string{"HISTORY_DOCTOR", strings.TrimSpace(strings.TrimPrefix(status.Message, "HISTORY_STATUS\n")), fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix))}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), historyDoctorIntents(len(entries), quickFix)...)
 }
 
 func normalizeToken(v string) string {
@@ -2762,7 +2977,11 @@ func renderDiffList(state *RuntimeState) Result {
 		lines = append(lines, fmt.Sprintf("entry.%d.removed=%d", idx, entry.Removed))
 		lines = append(lines, fmt.Sprintf("entry.%d.modified=%d", idx, entry.Modified))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	rows := make([]types.RenderTableRow, 0, len(state.PluginMarketplaces))
+	for _, value := range state.PluginMarketplaces {
+		rows = append(rows, tableRow(value))
+	}
+	return resultWithIntents(strings.Join(lines, "\n"), tableIntent("Plugin marketplaces", "Configured marketplace endpoints.", []string{"URL"}, rows...))
 }
 
 func parseNonNegativeInt(raw string) (int, error) {
@@ -2822,7 +3041,11 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 				lines = append(lines, fmt.Sprintf("server.%d.auth_status=%s", idx, normalizeToken(string(status.AuthStatus))))
 				lines = append(lines, fmt.Sprintf("server.%d.authenticated=%t", idx, status.Authenticated))
 			}
-			return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+			rows := make([]types.RenderTableRow, 0, len(statuses))
+			for _, status := range statuses {
+				rows = append(rows, tableRow(status.ServerName, string(status.TransportType), string(status.AuthStatus), boolState(status.Authenticated, "yes", "no")))
+			}
+			return resultWithIntents(strings.Join(lines, "\n"), mcpListIntents(rows)...), nil
 		}
 
 		names := make([]string, 0, len(cmdCtx.State.MCPConnections))
@@ -2842,7 +3065,11 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			lines = append(lines, fmt.Sprintf("server.%d.status=%s", idx, status))
 			lines = append(lines, fmt.Sprintf("server.%d.connected=%t", idx, connected))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		rows := make([]types.RenderTableRow, 0, len(names))
+		for _, name := range names {
+			rows = append(rows, tableRow(name, boolState(cmdCtx.State.MCPConnections[name], "connected", "disconnected"), "-", boolState(cmdCtx.State.MCPConnections[name], "yes", "no")))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), mcpListIntents(rows)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -2851,7 +3078,7 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		if len(inv.Args) != 1 {
 			return Result{}, fmt.Errorf(mcpUsage)
 		}
-		return Result{Handled: true, Message: "MCP_SETTINGS\nredirect=false"}, nil
+		return resultWithIntents("MCP_SETTINGS\nredirect=false", mcpSettingsIntents(false)...), nil
 	case "reconnect":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -2862,7 +3089,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		}
 		cmdCtx.State.MCPConnections[name] = true
 		cmdCtx.State.MCPLastQuickFix = "/mcp status " + name
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_RECONNECT\nname=%s\nconnected=true\nquick_fix=%s", normalizeToken(name), normalizeToken(cmdCtx.State.MCPLastQuickFix))}, nil
+		message := fmt.Sprintf("MCP_RECONNECT\nname=%s\nconnected=true\nquick_fix=%s", normalizeToken(name), normalizeToken(cmdCtx.State.MCPLastQuickFix))
+		return resultWithIntents(message, mcpReconnectIntents(name, cmdCtx.State.MCPLastQuickFix)...), nil
 	case "enable", "disable":
 		if len(inv.Args) > 2 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -2900,7 +3128,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			action = "Disabled"
 		}
 		message := fmt.Sprintf("%s %d MCP server(s)", action, changed)
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_TOGGLE\naction=%s\ntarget=%s\nchanged=%d\nmessage=%s", normalizeToken(sub), normalizeToken(target), changed, normalizeToken(message))}, nil
+		payload := fmt.Sprintf("MCP_TOGGLE\naction=%s\ntarget=%s\nchanged=%d\nmessage=%s", normalizeToken(sub), normalizeToken(target), changed, normalizeToken(message))
+		return resultWithIntents(payload, mcpToggleIntents(sub, target, changed, message)...), nil
 	case "doctor":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -2925,7 +3154,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			fix = "/mcp list-tools"
 		}
 		cmdCtx.State.MCPLastQuickFix = fix
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_DOCTOR\nmanager=%t\nservers=%d\nconnected=%d\nquick_fix=%s\ndoctor_runs=%d", cmdCtx.MCPManager != nil, len(cmdCtx.State.MCPConnections), connected, normalizeToken(fix), cmdCtx.State.MCPDoctorCount)}, nil
+		message := fmt.Sprintf("MCP_DOCTOR\nmanager=%t\nservers=%d\nconnected=%d\nquick_fix=%s\ndoctor_runs=%d", cmdCtx.MCPManager != nil, len(cmdCtx.State.MCPConnections), connected, normalizeToken(fix), cmdCtx.State.MCPDoctorCount)
+		return resultWithIntents(message, mcpDoctorIntents(cmdCtx.MCPManager != nil, len(cmdCtx.State.MCPConnections), connected, cmdCtx.State.MCPDoctorCount, fix)...), nil
 	case "diagnostics":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -2977,7 +3207,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		if err := cmdCtx.MCPManager.AddServerConfig(cfg); err != nil {
 			return Result{}, err
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_ADD\nname=%s\ntransport=%s\nadded=true", normalizeToken(name), normalizeToken(string(cfg.Transport)))}, nil
+		message := fmt.Sprintf("MCP_ADD\nname=%s\ntransport=%s\nadded=true", normalizeToken(name), normalizeToken(string(cfg.Transport)))
+		return resultWithIntents(message, mcpMutationIntents("MCP server added", name, string(cfg.Transport), true)...), nil
 	case "remove":
 		if cmdCtx.MCPManager == nil {
 			return Result{}, fmt.Errorf("mcp manager unavailable")
@@ -2990,7 +3221,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			return Result{}, fmt.Errorf(mcpUsage)
 		}
 		removed := cmdCtx.MCPManager.RemoveServerConfig(name)
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_REMOVE\nname=%s\nremoved=%t", normalizeToken(name), removed)}, nil
+		message := fmt.Sprintf("MCP_REMOVE\nname=%s\nremoved=%t", normalizeToken(name), removed)
+		return resultWithIntents(message, mcpMutationIntents("MCP server removed", name, "-", removed)...), nil
 	case "connect":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -3000,7 +3232,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			return Result{}, fmt.Errorf(mcpUsage)
 		}
 		cmdCtx.State.MCPConnections[name] = true
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_CONNECT\nname=%s\nstatus=connected\nconnected=true", normalizeToken(name))}, nil
+		message := fmt.Sprintf("MCP_CONNECT\nname=%s\nstatus=connected\nconnected=true", normalizeToken(name))
+		return resultWithIntents(message, mcpConnectionIntents("MCP connected", name, "connected", true)...), nil
 	case "disconnect":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -3010,7 +3243,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			return Result{}, fmt.Errorf(mcpUsage)
 		}
 		cmdCtx.State.MCPConnections[name] = false
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_DISCONNECT\nname=%s\nstatus=disconnected\nconnected=false", normalizeToken(name))}, nil
+		message := fmt.Sprintf("MCP_DISCONNECT\nname=%s\nstatus=disconnected\nconnected=false", normalizeToken(name))
+		return resultWithIntents(message, mcpConnectionIntents("MCP disconnected", name, "disconnected", false)...), nil
 	case "status":
 		if cmdCtx.MCPManager != nil {
 			if len(inv.Args) > 2 {
@@ -3027,7 +3261,11 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 					lines = append(lines, fmt.Sprintf("server.%d.auth_status=%s", idx, normalizeToken(string(status.AuthStatus))))
 					lines = append(lines, fmt.Sprintf("server.%d.authenticated=%t", idx, status.Authenticated))
 				}
-				return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+				options := make([]types.RenderOption, 0, len(statuses))
+				for _, status := range statuses {
+					options = append(options, option(status.ServerName, fmt.Sprintf("transport=%s auth=%s", status.TransportType, status.AuthStatus), string(status.ConnectionState), "/mcp status "+status.ServerName, false))
+				}
+				return resultWithIntents(strings.Join(lines, "\n"), mcpStatusIntents("all", options)...), nil
 			}
 
 			name := strings.TrimSpace(inv.Args[1])
@@ -3038,7 +3276,9 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			if !ok {
 				return Result{}, fmt.Errorf("mcp server not found: %s", name)
 			}
-			return Result{Handled: true, Message: fmt.Sprintf("MCP_STATUS\nname=%s\nconnection_state=%s\ntransport=%s\nauth_status=%s\nauthenticated=%t\ncached_resources=%d\ncached_contents=%d", normalizeToken(name), normalizeToken(string(status.ConnectionState)), normalizeToken(string(status.TransportType)), normalizeToken(string(status.AuthStatus)), status.Authenticated, status.CachedResourceCount, status.CachedContentEntries)}, nil
+			message := fmt.Sprintf("MCP_STATUS\nname=%s\nconnection_state=%s\ntransport=%s\nauth_status=%s\nauthenticated=%t\ncached_resources=%d\ncached_contents=%d", normalizeToken(name), normalizeToken(string(status.ConnectionState)), normalizeToken(string(status.TransportType)), normalizeToken(string(status.AuthStatus)), status.Authenticated, status.CachedResourceCount, status.CachedContentEntries)
+			options := []types.RenderOption{option(name, fmt.Sprintf("transport=%s auth=%s cached=%d/%d", status.TransportType, status.AuthStatus, status.CachedResourceCount, status.CachedContentEntries), string(status.ConnectionState), "/mcp auth-status "+name, true)}
+			return resultWithIntents(message, mcpStatusIntents(name, options)...), nil
 		}
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(mcpUsage)
@@ -3052,7 +3292,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		if connected {
 			status = "connected"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("MCP_STATUS\nname=%s\nstatus=%s\nconnected=%t", normalizeToken(name), status, connected)}, nil
+		message := fmt.Sprintf("MCP_STATUS\nname=%s\nstatus=%s\nconnected=%t", normalizeToken(name), status, connected)
+		return resultWithIntents(message, mcpStatusIntents(name, []types.RenderOption{option(name, "connection tracked in local runtime state", status, toggleCommand(connected, "/mcp disconnect "+name, "/mcp connect "+name), true)})...), nil
 	case "list-tools":
 		if cmdCtx.MCPManager == nil {
 			return Result{}, fmt.Errorf("mcp manager unavailable")
@@ -3092,7 +3333,14 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		if serverFilter != "" {
 			lines = append([]string{lines[0], lines[1], fmt.Sprintf("server=%s", normalizeToken(serverFilter))}, lines[2:]...)
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		options := make([]types.RenderOption, 0, count)
+		for _, tool := range tools {
+			if serverFilter != "" && !strings.EqualFold(tool.ServerName, serverFilter) {
+				continue
+			}
+			options = append(options, option(tool.Def.Name, tool.Def.Description, tool.ServerName, "/mcp list-tools "+tool.ServerName, false))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), mcpToolsIntents(serverFilter, options)...), nil
 	case "list-resources":
 		if cmdCtx.MCPManager == nil {
 			return Result{}, fmt.Errorf("mcp manager unavailable")
@@ -3127,7 +3375,14 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 		if serverFilter != "" {
 			lines = append([]string{lines[0], lines[1], fmt.Sprintf("server=%s", normalizeToken(serverFilter))}, lines[2:]...)
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		options := make([]types.RenderOption, 0, count)
+		for _, resource := range resources {
+			if serverFilter != "" && !strings.EqualFold(resource.ServerName, serverFilter) {
+				continue
+			}
+			options = append(options, option(resource.Name, resource.URI, resource.MIMEType, "/mcp list-resources "+resource.ServerName, false))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), mcpResourcesIntents(serverFilter, options)...), nil
 	case "auth-status":
 		if cmdCtx.MCPManager == nil {
 			return Result{}, fmt.Errorf("mcp manager unavailable")
@@ -3144,7 +3399,8 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			if !ok {
 				return Result{}, fmt.Errorf("mcp server not found: %s", name)
 			}
-			return Result{Handled: true, Message: fmt.Sprintf("MCP_AUTH_STATUS\nname=%s\nauth_status=%s\nauthenticated=%t\nconnection_state=%s", normalizeToken(name), normalizeToken(string(status.AuthStatus)), status.Authenticated, normalizeToken(string(status.ConnectionState)))}, nil
+			message := fmt.Sprintf("MCP_AUTH_STATUS\nname=%s\nauth_status=%s\nauthenticated=%t\nconnection_state=%s", normalizeToken(name), normalizeToken(string(status.AuthStatus)), status.Authenticated, normalizeToken(string(status.ConnectionState)))
+			return resultWithIntents(message, mcpAuthStatusIntents([]types.RenderOption{option(name, fmt.Sprintf("connection=%s authenticated=%t", status.ConnectionState, status.Authenticated), string(status.AuthStatus), "/mcp status "+name, true)})...), nil
 		}
 		statuses := cmdCtx.MCPManager.ServerStatuses()
 		lines := []string{"MCP_AUTH_STATUS", fmt.Sprintf("count=%d", len(statuses))}
@@ -3155,7 +3411,11 @@ func (c *MCPCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocation
 			lines = append(lines, fmt.Sprintf("server.%d.authenticated=%t", idx, status.Authenticated))
 			lines = append(lines, fmt.Sprintf("server.%d.connection_state=%s", idx, normalizeToken(string(status.ConnectionState))))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		options := make([]types.RenderOption, 0, len(statuses))
+		for _, status := range statuses {
+			options = append(options, option(status.ServerName, fmt.Sprintf("connection=%s authenticated=%t", status.ConnectionState, status.Authenticated), string(status.AuthStatus), "/mcp auth-status "+status.ServerName, false))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), mcpAuthStatusIntents(options)...), nil
 	default:
 		return Result{}, fmt.Errorf(mcpUsage)
 	}
@@ -3196,7 +3456,8 @@ func (c *VimCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /vim [enable|disable|status]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("VIM_STATUS\nenabled=%t", cmdCtx.State.VimEnabled)}, nil
+		message := fmt.Sprintf("VIM_STATUS\nenabled=%t", cmdCtx.State.VimEnabled)
+		return resultWithIntents(message, vimStatusIntents(cmdCtx.State.VimEnabled)...), nil
 	}
 
 	switch strings.ToLower(strings.TrimSpace(inv.Args[0])) {
@@ -3205,13 +3466,15 @@ func (c *VimCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 			return Result{}, fmt.Errorf("usage: /vim [enable|disable|status]")
 		}
 		cmdCtx.State.VimEnabled = true
-		return Result{Handled: true, Message: "VIM_SET\nenabled=true"}, nil
+		message := "VIM_SET\nenabled=true"
+		return resultWithIntents(message, vimSetIntents(true)...), nil
 	case "disable":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /vim [enable|disable|status]")
 		}
 		cmdCtx.State.VimEnabled = false
-		return Result{Handled: true, Message: "VIM_SET\nenabled=false"}, nil
+		message := "VIM_SET\nenabled=false"
+		return resultWithIntents(message, vimSetIntents(false)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /vim [enable|disable|status]")
 	}
@@ -3237,7 +3500,8 @@ func (c *VoiceCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /voice [enable|disable|status]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("VOICE_STATUS\nmode=local-placeholder\nenabled=%t", cmdCtx.State.VoiceEnabled)}, nil
+		message := fmt.Sprintf("VOICE_STATUS\nmode=local-placeholder\nenabled=%t", cmdCtx.State.VoiceEnabled)
+		return resultWithIntents(message, voiceStatusIntents(cmdCtx.State.VoiceEnabled)...), nil
 	}
 
 	switch strings.ToLower(strings.TrimSpace(inv.Args[0])) {
@@ -3246,13 +3510,15 @@ func (c *VoiceCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 			return Result{}, fmt.Errorf("usage: /voice [enable|disable|status]")
 		}
 		cmdCtx.State.VoiceEnabled = true
-		return Result{Handled: true, Message: "VOICE_SET\nmode=local-placeholder\nenabled=true"}, nil
+		message := "VOICE_SET\nmode=local-placeholder\nenabled=true"
+		return resultWithIntents(message, voiceSetIntents(true)...), nil
 	case "disable":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /voice [enable|disable|status]")
 		}
 		cmdCtx.State.VoiceEnabled = false
-		return Result{Handled: true, Message: "VOICE_SET\nmode=local-placeholder\nenabled=false"}, nil
+		message := "VOICE_SET\nmode=local-placeholder\nenabled=false"
+		return resultWithIntents(message, voiceSetIntents(false)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /voice [enable|disable|status]")
 	}
@@ -3319,29 +3585,37 @@ func (c *BuddyCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	case "status":
 		return c.renderBuddyStatus(cmdCtx.State), nil
 	case "help":
-		return Result{Handled: true, Message: "BUDDY_HELP\nusage=/buddy [status|hatch|pet|mute|unmute|help]\nsubcommands=status,hatch,pet,mute,unmute,help"}, nil
+		message := "BUDDY_HELP\nusage=/buddy [status|hatch|pet|mute|unmute|help]\nsubcommands=status,hatch,pet,mute,unmute,help"
+		return resultWithIntents(message, buddyHelpIntents()...), nil
 	case "hatch":
 		if cmdCtx.State.BuddyHatched {
-			return Result{Handled: true, Message: "BUDDY_HATCH\nstatus=already_hatched\nhatched=true"}, nil
+			message := "BUDDY_HATCH\nstatus=already_hatched\nhatched=true"
+			return resultWithIntents(message, buddyActionIntents("Buddy hatch", "already_hatched", true, cmdCtx.State.BuddyMuted, cmdCtx.State.BuddyPetCount)...), nil
 		}
 		cmdCtx.State.BuddyHatched = true
 		cmdCtx.State.BuddyPetCount = 0
-		return Result{Handled: true, Message: "BUDDY_HATCH\nstatus=hatched\nhatched=true"}, nil
+		message := "BUDDY_HATCH\nstatus=hatched\nhatched=true"
+		return resultWithIntents(message, buddyActionIntents("Buddy hatch", "hatched", true, cmdCtx.State.BuddyMuted, cmdCtx.State.BuddyPetCount)...), nil
 	case "pet":
 		if !cmdCtx.State.BuddyHatched {
-			return Result{Handled: true, Message: "BUDDY_PET\nstatus=not_hatched\nhatched=false\npet_count=0"}, nil
+			message := "BUDDY_PET\nstatus=not_hatched\nhatched=false\npet_count=0"
+			return resultWithIntents(message, buddyActionIntents("Buddy pet", "not_hatched", false, cmdCtx.State.BuddyMuted, 0)...), nil
 		}
 		cmdCtx.State.BuddyPetCount++
 		if cmdCtx.State.BuddyMuted {
-			return Result{Handled: true, Message: fmt.Sprintf("BUDDY_PET\nstatus=pet_muted\nhatched=true\nmuted=true\npet_count=%d", cmdCtx.State.BuddyPetCount)}, nil
+			message := fmt.Sprintf("BUDDY_PET\nstatus=pet_muted\nhatched=true\nmuted=true\npet_count=%d", cmdCtx.State.BuddyPetCount)
+			return resultWithIntents(message, buddyActionIntents("Buddy pet", "pet_muted", true, true, cmdCtx.State.BuddyPetCount)...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("BUDDY_PET\nstatus=pet\nhatched=true\nmuted=false\npet_count=%d", cmdCtx.State.BuddyPetCount)}, nil
+		message := fmt.Sprintf("BUDDY_PET\nstatus=pet\nhatched=true\nmuted=false\npet_count=%d", cmdCtx.State.BuddyPetCount)
+		return resultWithIntents(message, buddyActionIntents("Buddy pet", "pet", true, false, cmdCtx.State.BuddyPetCount)...), nil
 	case "mute":
 		cmdCtx.State.BuddyMuted = true
-		return Result{Handled: true, Message: "BUDDY_MUTE\nmuted=true"}, nil
+		message := "BUDDY_MUTE\nmuted=true"
+		return resultWithIntents(message, buddyActionIntents("Buddy mute", "muted", cmdCtx.State.BuddyHatched, true, cmdCtx.State.BuddyPetCount)...), nil
 	case "unmute":
 		cmdCtx.State.BuddyMuted = false
-		return Result{Handled: true, Message: "BUDDY_UNMUTE\nmuted=false"}, nil
+		message := "BUDDY_UNMUTE\nmuted=false"
+		return resultWithIntents(message, buddyActionIntents("Buddy unmute", "unmuted", cmdCtx.State.BuddyHatched, false, cmdCtx.State.BuddyPetCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /buddy [status|hatch|pet|mute|unmute|help]")
 	}
@@ -3349,10 +3623,13 @@ func (c *BuddyCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 
 func (c *BuddyCommand) renderBuddyStatus(state *RuntimeState) Result {
 	status := "egg"
+	summary := "Buddy is waiting to hatch."
 	if state.BuddyHatched {
 		status = "hatched"
+		summary = "Buddy is active and can be petted."
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("BUDDY_STATUS\nstate=%s\nhatched=%t\nmuted=%t\npet_count=%d", status, state.BuddyHatched, state.BuddyMuted, state.BuddyPetCount)}
+	message := fmt.Sprintf("BUDDY_STATUS\nstate=%s\nhatched=%t\nmuted=%t\npet_count=%d", status, state.BuddyHatched, state.BuddyMuted, state.BuddyPetCount)
+	return resultWithIntents(message, buddyStatusIntents(status, summary, state.BuddyHatched, state.BuddyMuted, state.BuddyPetCount)...)
 }
 
 // FilesCommand provides deterministic context-file controls.
@@ -3385,7 +3662,8 @@ func (c *FilesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /files [list|add <path>|remove <path>|clear|status]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("FILES_STATUS\ncount=%d\nproject_paths=%d\nadds=%d\nremoves=%d\nclears=%d\nlast_action=%s\nlast_path=%s", len(effectiveContextFiles(cmdCtx.State)), len(uniqueSortedStrings(append([]string(nil), cmdCtx.State.ProjectPaths...))), cmdCtx.State.FilesAdds, cmdCtx.State.FilesRemoves, cmdCtx.State.FilesClears, normalizeToken(cmdCtx.State.LastFileAction), normalizeToken(cmdCtx.State.LastFilePath))}, nil
+		message := fmt.Sprintf("FILES_STATUS\ncount=%d\nproject_paths=%d\nadds=%d\nremoves=%d\nclears=%d\nlast_action=%s\nlast_path=%s", len(effectiveContextFiles(cmdCtx.State)), len(uniqueSortedStrings(append([]string(nil), cmdCtx.State.ProjectPaths...))), cmdCtx.State.FilesAdds, cmdCtx.State.FilesRemoves, cmdCtx.State.FilesClears, normalizeToken(cmdCtx.State.LastFileAction), normalizeToken(cmdCtx.State.LastFilePath))
+		return resultWithIntents(message, filesStatusIntents(len(effectiveContextFiles(cmdCtx.State)), len(uniqueSortedStrings(append([]string(nil), cmdCtx.State.ProjectPaths...))), cmdCtx.State.FilesAdds, cmdCtx.State.FilesRemoves, cmdCtx.State.FilesClears, cmdCtx.State.LastFileAction, cmdCtx.State.LastFilePath)...), nil
 	case "add":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: /files [list|add <path>|remove <path>|clear|status]")
@@ -3402,7 +3680,8 @@ func (c *FilesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		}
 		cmdCtx.State.LastFileAction = "add"
 		cmdCtx.State.LastFilePath = path
-		return Result{Handled: true, Message: fmt.Sprintf("FILES_ADD\npath=%s\nadded=%t\ncount=%d", normalizeToken(path), added, len(cmdCtx.State.ContextFiles))}, nil
+		message := fmt.Sprintf("FILES_ADD\npath=%s\nadded=%t\ncount=%d", normalizeToken(path), added, len(cmdCtx.State.ContextFiles))
+		return resultWithIntents(message, filesMutationIntents("File added", path, added, len(cmdCtx.State.ContextFiles))...), nil
 	case "remove":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: /files [list|add <path>|remove <path>|clear|status]")
@@ -3426,7 +3705,8 @@ func (c *FilesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		}
 		cmdCtx.State.LastFileAction = "remove"
 		cmdCtx.State.LastFilePath = path
-		return Result{Handled: true, Message: fmt.Sprintf("FILES_REMOVE\npath=%s\nremoved=%t\ncount=%d", normalizeToken(path), removed, len(cmdCtx.State.ContextFiles))}, nil
+		message := fmt.Sprintf("FILES_REMOVE\npath=%s\nremoved=%t\ncount=%d", normalizeToken(path), removed, len(cmdCtx.State.ContextFiles))
+		return resultWithIntents(message, filesMutationIntents("File removed", path, removed, len(cmdCtx.State.ContextFiles))...), nil
 	case "clear":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /files [list|add <path>|remove <path>|clear|status]")
@@ -3435,7 +3715,8 @@ func (c *FilesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		cmdCtx.State.FilesClears++
 		cmdCtx.State.LastFileAction = "clear"
 		cmdCtx.State.LastFilePath = ""
-		return Result{Handled: true, Message: "FILES_CLEAR\ncount=0"}, nil
+		message := "FILES_CLEAR\ncount=0"
+		return resultWithIntents(message, filesMutationIntents("Files cleared", "", true, 0)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /files [list|add <path>|remove <path>|clear|status]")
 	}
@@ -3444,13 +3725,14 @@ func (c *FilesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 func renderFilesList(files []string) Result {
 	files = uniqueSortedStrings(append([]string(nil), files...))
 	if len(files) == 0 {
-		return Result{Handled: true, Message: "FILES_LIST\ncount=0"}
+		return resultWithIntents("FILES_LIST\ncount=0", filesListIntents(nil)...)
 	}
 	lines := []string{"FILES_LIST", fmt.Sprintf("count=%d", len(files))}
 	for i, f := range files {
 		lines = append(lines, fmt.Sprintf("file.%d=%s", i+1, normalizeToken(f)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	message := strings.Join(lines, "\n")
+	return resultWithIntents(message, filesListIntents(files)...)
 }
 
 func effectiveContextFiles(state *RuntimeState) []string {
@@ -3487,7 +3769,8 @@ func (c *ThemeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		if theme == "-" {
 			theme = "system"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("THEME_STATUS\ntheme=%s", theme)}, nil
+		message := fmt.Sprintf("THEME_STATUS\ntheme=%s", theme)
+		return resultWithIntents(message, themeStatusIntents(theme)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -3496,7 +3779,8 @@ func (c *ThemeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /theme [get|status|list|set <light|dark|system>]")
 		}
-		return Result{Handled: true, Message: "THEME_LIST\ncount=3\ntheme.1=dark\ntheme.2=light\ntheme.3=system"}, nil
+		message := "THEME_LIST\ncount=3\ntheme.1=dark\ntheme.2=light\ntheme.3=system"
+		return resultWithIntents(message, themeListIntents()...), nil
 	case "set":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /theme [get|status|list|set <light|dark|system>]")
@@ -3506,7 +3790,8 @@ func (c *ThemeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		case "dark", "light", "system":
 			cmdCtx.State.OutputStyle = next
 			cmdCtx.State.ThemeSetCount++
-			return Result{Handled: true, Message: fmt.Sprintf("THEME_SET\ntheme=%s\nset_count=%d", next, cmdCtx.State.ThemeSetCount)}, nil
+			message := fmt.Sprintf("THEME_SET\ntheme=%s\nset_count=%d", next, cmdCtx.State.ThemeSetCount)
+			return resultWithIntents(message, themeMutationIntents("Theme set", next, cmdCtx.State.ThemeSetCount)...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: /theme [get|status|list|set <light|dark|system>|cycle|preview <light|dark|system>]")
 		}
@@ -3528,7 +3813,8 @@ func (c *ThemeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		}
 		cmdCtx.State.OutputStyle = next
 		cmdCtx.State.ThemeSetCount++
-		return Result{Handled: true, Message: fmt.Sprintf("THEME_CYCLE\ntheme=%s\nset_count=%d", next, cmdCtx.State.ThemeSetCount)}, nil
+		message := fmt.Sprintf("THEME_CYCLE\ntheme=%s\nset_count=%d", next, cmdCtx.State.ThemeSetCount)
+		return resultWithIntents(message, themeMutationIntents("Theme cycled", next, cmdCtx.State.ThemeSetCount)...), nil
 	case "preview":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /theme [get|status|list|set <light|dark|system>|cycle|preview <light|dark|system>]")
@@ -3536,7 +3822,8 @@ func (c *ThemeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		next := strings.ToLower(strings.TrimSpace(inv.Args[1]))
 		switch next {
 		case "dark", "light", "system":
-			return Result{Handled: true, Message: fmt.Sprintf("THEME_PREVIEW\ntheme=%s\napplied=false", next)}, nil
+			message := fmt.Sprintf("THEME_PREVIEW\ntheme=%s\napplied=false", next)
+			return resultWithIntents(message, themePreviewIntents(next)...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: /theme [get|status|list|set <light|dark|system>|cycle|preview <light|dark|system>]")
 		}
@@ -3568,10 +3855,12 @@ func (c *OutputStyleCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		if style == "-" {
 			style = "default"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("OUTPUT_STYLE_STATUS\nstyle=%s\nset_count=%d", style, cmdCtx.State.OutputStyleSetCount)}, nil
+		message := fmt.Sprintf("OUTPUT_STYLE_STATUS\nstyle=%s\nset_count=%d", style, cmdCtx.State.OutputStyleSetCount)
+		return resultWithIntents(message, outputStyleStatusIntents(style, cmdCtx.State.OutputStyleSetCount)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "list") {
-		return Result{Handled: true, Message: "OUTPUT_STYLE_LIST\ncount=4\nstyle.1=default\nstyle.2=concise\nstyle.3=explanatory\nstyle.4=json"}, nil
+		message := "OUTPUT_STYLE_LIST\ncount=4\nstyle.1=default\nstyle.2=concise\nstyle.3=explanatory\nstyle.4=json"
+		return resultWithIntents(message, outputStyleListIntents()...), nil
 	}
 	if len(inv.Args) != 2 || !strings.EqualFold(inv.Args[0], "set") {
 		return Result{}, fmt.Errorf("%s", usage)
@@ -3581,7 +3870,8 @@ func (c *OutputStyleCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 	case "default", "concise", "explanatory", "json":
 		cmdCtx.State.OutputFormat = style
 		cmdCtx.State.OutputStyleSetCount++
-		return Result{Handled: true, Message: fmt.Sprintf("OUTPUT_STYLE_SET\nstyle=%s\nset_count=%d", style, cmdCtx.State.OutputStyleSetCount)}, nil
+		message := fmt.Sprintf("OUTPUT_STYLE_SET\nstyle=%s\nset_count=%d", style, cmdCtx.State.OutputStyleSetCount)
+		return resultWithIntents(message, outputStyleStatusIntents(style, cmdCtx.State.OutputStyleSetCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("%s", usage)
 	}
@@ -3611,7 +3901,12 @@ func (c *StatuslineCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 			return Result{}, fmt.Errorf("usage: /statusline [status|setup [prompt]]")
 		}
 		runtime := statusRuntimeSnapshot(cmdCtx.State)
-		return Result{Handled: true, Message: fmt.Sprintf("STATUSLINE_STATUS\ncount=%d\nlast_prompt=%s\nlast_render_ms=%d\ntool_calls=%d\npermission_events=%d\nstate_transitions=%d\nturns=%d\ntool_inflight=%d\ntasks_total=%d\ntasks_running=%d\ntasks_completed=%d\nteams_total=%d\nteams_active=%d\nlast_stop_reason=%s", cmdCtx.State.StatuslineCount, normalizeToken(cmdCtx.State.LastStatusline), cmdCtx.State.StatuslineLastRenderMS, cmdCtx.State.StatuslineToolCalls, cmdCtx.State.StatuslinePermissions, cmdCtx.State.StatuslineTransitions, runtime.Turns, runtime.ToolInflight, runtime.TasksTotal, runtime.TasksRunning, runtime.TasksCompleted, runtime.TeamsTotal, runtime.TeamsActive, normalizeToken(string(runtime.LastStopReason)))}, nil
+		workingDir := strings.TrimSpace(statusWorkingDir(cmdCtx.State))
+		if workingDir == "" {
+			workingDir = "."
+		}
+		message := fmt.Sprintf("STATUSLINE_STATUS\ncount=%d\nlast_prompt=%s\nprovider=%s\nmodel=%s\nmodel_ref=%s\nlogged_in=%t\nprovider_ready=%t\nworking_dir=%s\nworkspace_root=%s\npath_scope=%s\nlast_render_ms=%d\ntool_calls=%d\npermission_events=%d\nstate_transitions=%d\nturns=%d\ntool_inflight=%d\ntasks_total=%d\ntasks_running=%d\ntasks_completed=%d\nteams_total=%d\nteams_active=%d\nlast_stop_reason=%s", cmdCtx.State.StatuslineCount, normalizeToken(cmdCtx.State.LastStatusline), normalizeToken(runtime.ProviderName), normalizeToken(runtime.Model), normalizeToken(runtime.ModelRef), runtime.LoggedIn, runtime.ProviderReady, normalizeToken(workingDir), normalizeToken(workingDir), normalizeToken("workspace"), cmdCtx.State.StatuslineLastRenderMS, cmdCtx.State.StatuslineToolCalls, cmdCtx.State.StatuslinePermissions, cmdCtx.State.StatuslineTransitions, runtime.Turns, runtime.ToolInflight, runtime.TasksTotal, runtime.TasksRunning, runtime.TasksCompleted, runtime.TeamsTotal, runtime.TeamsActive, normalizeToken(string(runtime.LastStopReason)))
+		return resultWithIntents(message, statuslineStatusIntents(cmdCtx.State, runtime)...), nil
 	case "setup":
 		prompt := strings.TrimSpace(strings.Join(inv.Args[1:], " "))
 		if prompt == "" {
@@ -3630,7 +3925,8 @@ func (c *StatuslineCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 func (c *StatuslineCommand) statuslineSetup(state *RuntimeState, prompt string) Result {
 	state.StatuslineCount++
 	state.LastStatusline = prompt
-	return Result{Handled: true, Message: fmt.Sprintf("STATUSLINE_SETUP\nsubagent_type=statusline-setup\nprompt=%s\ncount=%d", normalizeToken(prompt), state.StatuslineCount)}
+	message := fmt.Sprintf("STATUSLINE_SETUP\nsubagent_type=statusline-setup\nprompt=%s\ncount=%d", normalizeToken(prompt), state.StatuslineCount)
+	return resultWithIntents(message, statuslineSetupIntents(prompt, state.StatuslineCount)...)
 }
 
 // IDECommand provides provider-agnostic editor detection and open hints.
@@ -3672,7 +3968,8 @@ func (c *IDECommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		for i, hint := range hints {
 			lines = append(lines, fmt.Sprintf("hint.%d=%s", i+1, normalizeToken(hint)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, ideStatusIntents(cmdCtx.State.IDEEditor, cmdCtx.State.IDEDetectedEditor, cmdCtx.State.IDEDetectSource, cmdCtx.State.IDEOpenCount, cmdCtx.State.IDEConfigCount, hints)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -3694,7 +3991,8 @@ func (c *IDECommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		for i, hint := range hints {
 			lines = append(lines, fmt.Sprintf("hint.%d=%s", i+1, normalizeToken(hint)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, ideDetectIntents(editor, source, hints)...), nil
 	case "set-editor":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("%s", usage)
@@ -3705,7 +4003,8 @@ func (c *IDECommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		}
 		cmdCtx.State.IDEEditor = editor
 		cmdCtx.State.IDEConfigCount++
-		return Result{Handled: true, Message: fmt.Sprintf("IDE_SET_EDITOR\neditor=%s\nconfig_count=%d", normalizeToken(editor), cmdCtx.State.IDEConfigCount)}, nil
+		message := fmt.Sprintf("IDE_SET_EDITOR\neditor=%s\nconfig_count=%d", normalizeToken(editor), cmdCtx.State.IDEConfigCount)
+		return resultWithIntents(message, ideSetEditorIntents(editor, cmdCtx.State.IDEConfigCount)...), nil
 	case "open":
 		if len(inv.Args) > 2 {
 			return Result{}, fmt.Errorf("%s", usage)
@@ -3723,7 +4022,9 @@ func (c *IDECommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 			cmdCtx.State.IDEDetectedEditor = editor
 		}
 		cmdCtx.State.IDEOpenCount++
-		return Result{Handled: true, Message: fmt.Sprintf("IDE_OPEN_HINT\neditor=%s\ntarget=%s\ncommand=%s\nopen_count=%d", normalizeToken(editor), normalizeToken(target), normalizeToken(editorOpenHint(editor, target)), cmdCtx.State.IDEOpenCount)}, nil
+		command := editorOpenHint(editor, target)
+		message := fmt.Sprintf("IDE_OPEN_HINT\neditor=%s\ntarget=%s\ncommand=%s\nopen_count=%d", normalizeToken(editor), normalizeToken(target), normalizeToken(command), cmdCtx.State.IDEOpenCount)
+		return resultWithIntents(message, ideOpenHintIntents(editor, target, command, cmdCtx.State.IDEOpenCount)...), nil
 	case "hints":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("%s", usage)
@@ -3738,7 +4039,8 @@ func (c *IDECommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		for i, hint := range hints {
 			lines = append(lines, fmt.Sprintf("hint.%d=%s", i+1, normalizeToken(hint)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, ideDetectIntents(editor, cmdCtx.State.IDEDetectSource, hints)...), nil
 	default:
 		return Result{}, fmt.Errorf("%s", usage)
 	}
@@ -3764,17 +4066,20 @@ func (c *KeybindingsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 			return Result{}, fmt.Errorf("usage: /keybindings [status|path|open|enable|disable]")
 		}
 		if !cmdCtx.State.KeybindingsEnabled {
-			return Result{Handled: true, Message: "Keybinding customization is not enabled. This feature is currently in preview."}, nil
+			message := "Keybinding customization is not enabled. This feature is currently in preview."
+			return resultWithIntents(message, keybindingsOpenDisabledIntents()...), nil
 		}
 		if strings.TrimSpace(cmdCtx.State.KeybindingsPath) == "" {
 			cmdCtx.State.KeybindingsPath = "~/.claude/keybindings.json"
 		}
 		cmdCtx.State.KeybindingsOpens++
 		if cmdCtx.State.KeybindingsExists {
-			return Result{Handled: true, Message: fmt.Sprintf("Opened %s in your editor.", cmdCtx.State.KeybindingsPath)}, nil
+			message := fmt.Sprintf("Opened %s in your editor.", cmdCtx.State.KeybindingsPath)
+			return resultWithIntents(message, keybindingsOpenIntents(cmdCtx.State.KeybindingsPath, true)...), nil
 		}
 		cmdCtx.State.KeybindingsExists = true
-		return Result{Handled: true, Message: fmt.Sprintf("Created %s with template. Opened in your editor.", cmdCtx.State.KeybindingsPath)}, nil
+		message := fmt.Sprintf("Created %s with template. Opened in your editor.", cmdCtx.State.KeybindingsPath)
+		return resultWithIntents(message, keybindingsOpenIntents(cmdCtx.State.KeybindingsPath, false)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -3787,7 +4092,8 @@ func (c *KeybindingsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		if path == "-" {
 			path = "~/.claude/keybindings.json"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("KEYBINDINGS_STATUS\nenabled=%t\npath=%s\nexists=%t\nopens=%d", cmdCtx.State.KeybindingsEnabled, path, cmdCtx.State.KeybindingsExists, cmdCtx.State.KeybindingsOpens)}, nil
+		message := fmt.Sprintf("KEYBINDINGS_STATUS\nenabled=%t\npath=%s\nexists=%t\nopens=%d", cmdCtx.State.KeybindingsEnabled, path, cmdCtx.State.KeybindingsExists, cmdCtx.State.KeybindingsOpens)
+		return resultWithIntents(message, keybindingsStatusIntents(cmdCtx.State.KeybindingsEnabled, path, cmdCtx.State.KeybindingsExists, cmdCtx.State.KeybindingsOpens)...), nil
 	case "path":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /keybindings [status|path|open|enable|disable]")
@@ -3796,19 +4102,22 @@ func (c *KeybindingsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		if path == "-" {
 			path = "~/.claude/keybindings.json"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("KEYBINDINGS_PATH\npath=%s", path)}, nil
+		message := fmt.Sprintf("KEYBINDINGS_PATH\npath=%s", path)
+		return resultWithIntents(message, keybindingsPathIntents(path)...), nil
 	case "enable":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /keybindings [status|path|open|enable|disable]")
 		}
 		cmdCtx.State.KeybindingsEnabled = true
-		return Result{Handled: true, Message: "KEYBINDINGS_SET\nenabled=true"}, nil
+		message := "KEYBINDINGS_SET\nenabled=true"
+		return resultWithIntents(message, keybindingsSetIntents(true)...), nil
 	case "disable":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /keybindings [status|path|open|enable|disable]")
 		}
 		cmdCtx.State.KeybindingsEnabled = false
-		return Result{Handled: true, Message: "KEYBINDINGS_SET\nenabled=false"}, nil
+		message := "KEYBINDINGS_SET\nenabled=false"
+		return resultWithIntents(message, keybindingsSetIntents(false)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /keybindings [status|path|open|enable|disable]")
 	}
@@ -3840,8 +4149,10 @@ func (c *StatusCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	if state == nil {
 		state = &RuntimeState{}
 	}
+	syncProviderReadiness(state)
 	state.StatusViewCount++
-	model := normalizeToken(state.Model)
+	selection := RuntimeSelectionTruth(state)
+	model := normalizeToken(selection.ModelName)
 	if model == "-" {
 		model = "unknown"
 	}
@@ -3849,14 +4160,19 @@ func (c *StatusCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	if compactMode == "-" {
 		compactMode = "auto"
 	}
+	runtime := statusRuntimeSnapshot(state)
+	workingDir := strings.TrimSpace(statusWorkingDir(state))
+	if workingDir == "" {
+		workingDir = "."
+	}
 	lines := []string{
 		"STATUS_REPORT",
 		fmt.Sprintf("model=%s", model),
 		fmt.Sprintf("model_capabilities=%s", statusModelCapabilitySummary(state)),
-		fmt.Sprintf("provider=%s", normalizeToken(state.ProviderName)),
-		fmt.Sprintf("logged_in=%t", state.LoggedIn),
+		fmt.Sprintf("provider=%s", normalizeToken(selection.ProviderName)),
+		fmt.Sprintf("logged_in=%t", selection.LoggedIn),
 		fmt.Sprintf("account=%s", normalizeToken(state.AuthAccount)),
-		fmt.Sprintf("provider_ready=%t", state.ProviderReady),
+		fmt.Sprintf("provider_ready=%t", selection.ProviderReady),
 		fmt.Sprintf("permission_mode=%s", modeString(state.PermissionMode)),
 		fmt.Sprintf("compact_mode=%s", compactMode),
 		fmt.Sprintf("compact_requested=%t", state.CompactRequested),
@@ -3869,8 +4185,10 @@ func (c *StatusCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		fmt.Sprintf("project_paths=%d", len(uniqueSortedStrings(append([]string(nil), state.ProjectPaths...)))),
 		fmt.Sprintf("history_entries=%d", len(defaultHistoryEntries(state))),
 		fmt.Sprintf("memory_entries=%d", len(state.MemoryEntries)),
+		fmt.Sprintf("working_dir=%s", normalizeToken(workingDir)),
+		fmt.Sprintf("workspace_root=%s", normalizeToken(workingDir)),
+		fmt.Sprintf("path_scope=%s", normalizeToken("workspace")),
 	}
-	runtime := statusRuntimeSnapshot(state)
 	lines = append(lines,
 		fmt.Sprintf("turns=%d", runtime.Turns),
 		fmt.Sprintf("tool_inflight=%d", runtime.ToolInflight),
@@ -3881,20 +4199,24 @@ func (c *StatusCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		fmt.Sprintf("teams_active=%d", runtime.TeamsActive),
 		fmt.Sprintf("last_stop_reason=%s", normalizeToken(string(runtime.LastStopReason))),
 	)
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	if next := strings.TrimSpace(RuntimeSelectionNextAction(state)); next != "" {
+		lines = append(lines, fmt.Sprintf("next=%s", normalizeToken(next)))
+	}
+	return resultWithIntents(strings.Join(lines, "\n"), statusReportIntents(state, runtime)...), nil
 }
 
 func renderStatusDiagnostics(state *RuntimeState) Result {
 	if state == nil {
 		state = &RuntimeState{}
 	}
+	selection := RuntimeSelectionTruth(state)
 	loops := correctiveLoopsForState(state)
 	lines := []string{
 		"STATUS_DIAGNOSTICS",
 		fmt.Sprintf("views=%d", state.StatusViewCount),
 		fmt.Sprintf("diagnostics=%d", state.StatusDiagnosticsCount),
-		fmt.Sprintf("provider=%s", normalizeToken(state.ProviderName)),
-		fmt.Sprintf("model=%s", normalizeToken(state.Model)),
+		fmt.Sprintf("provider=%s", normalizeToken(selection.ProviderName)),
+		fmt.Sprintf("model=%s", normalizeToken(selection.ModelName)),
 		fmt.Sprintf("permission_mode=%s", modeString(state.PermissionMode)),
 		fmt.Sprintf("loop_count=%d", len(loops)),
 	}
@@ -3905,7 +4227,7 @@ func renderStatusDiagnostics(state *RuntimeState) Result {
 		lines = append(lines, fmt.Sprintf("loop.%d.action=%s", idx, normalizeToken(loop.Action)))
 		lines = append(lines, fmt.Sprintf("loop.%d.next=%s", idx, normalizeToken(loop.Next)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), statusDiagnosticsIntents(state, loops)...)
 }
 
 func statusRuntimeSnapshot(state *RuntimeState) types.AgentRuntimeSnapshot {
@@ -3913,8 +4235,23 @@ func statusRuntimeSnapshot(state *RuntimeState) types.AgentRuntimeSnapshot {
 		return types.AgentRuntimeSnapshot{}
 	}
 	runtime := state.Runtime
+	selection := RuntimeSelectionTruth(state)
+	runtime.ProviderName = selection.ProviderName
+	runtime.Model = selection.ModelName
+	runtime.ModelRef = selection.ModelRef
+	runtime.LoggedIn = selection.LoggedIn
+	runtime.ProviderReady = selection.ProviderReady
 	if state.Agent != nil {
 		agentRuntime := state.Agent.RuntimeSnapshot()
+		if strings.TrimSpace(agentRuntime.ProviderName) != "" {
+			runtime.ProviderName = agentRuntime.ProviderName
+		}
+		if strings.TrimSpace(agentRuntime.Model) != "" {
+			runtime.Model = agentRuntime.Model
+		}
+		if strings.TrimSpace(agentRuntime.ModelRef) != "" {
+			runtime.ModelRef = agentRuntime.ModelRef
+		}
 		if agentRuntime.Turns > runtime.Turns {
 			runtime.Turns = agentRuntime.Turns
 		}
@@ -3934,7 +4271,7 @@ func statusRuntimeSnapshot(state *RuntimeState) types.AgentRuntimeSnapshot {
 		if agentRuntime.TeamsActive > runtime.TeamsActive {
 			runtime.TeamsActive = agentRuntime.TeamsActive
 		}
-		if runtime.LastStopReason == "" {
+		if agentRuntime.LastStopReason != "" {
 			runtime.LastStopReason = agentRuntime.LastStopReason
 		}
 	}
@@ -3947,11 +4284,24 @@ func statusRuntimeSnapshot(state *RuntimeState) types.AgentRuntimeSnapshot {
 	return runtime
 }
 
+func statusWorkingDir(state *RuntimeState) string {
+	if state == nil {
+		return "."
+	}
+	if state.Agent != nil {
+		if wd := strings.TrimSpace(state.Agent.WorkingDir()); wd != "" {
+			return wd
+		}
+	}
+	return "."
+}
+
 func statusModelCapabilitySummary(state *RuntimeState) string {
 	if state == nil {
 		return "-"
 	}
-	provider, model, ok := resolveModelForStatus(state.Model, state.ProviderName)
+	selection := RuntimeSelectionTruth(state)
+	provider, model, ok := resolveModelForStatus(selection.ModelName, selection.ProviderName)
 	if !ok {
 		return "-"
 	}
@@ -3992,7 +4342,7 @@ func (c *StatsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		fmt.Sprintf("memory_writes=%d", state.MemoryWrites),
 		fmt.Sprintf("tasks_completed=%d", state.TasksCompleted),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 }
 
 // MemoryCommand provides deterministic local memory controls.
@@ -4014,7 +4364,8 @@ func (c *MemoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /memory [status|list|add <text>|remove <index>|clear]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("MEMORY_STATUS\ncount=%d\nwrites=%d\nremoves=%d\nclears=%d\nlast=%s", len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryWrites, cmdCtx.State.MemoryRemoves, cmdCtx.State.MemoryClears, normalizeToken(cmdCtx.State.LastMemory))}, nil
+		message := fmt.Sprintf("MEMORY_STATUS\ncount=%d\nwrites=%d\nremoves=%d\nclears=%d\nlast=%s", len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryWrites, cmdCtx.State.MemoryRemoves, cmdCtx.State.MemoryClears, normalizeToken(cmdCtx.State.LastMemory))
+		return resultWithIntents(message, memoryStatusIntents(cmdCtx.State)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -4027,7 +4378,8 @@ func (c *MemoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		for i, entry := range cmdCtx.State.MemoryEntries {
 			lines = append(lines, fmt.Sprintf("entry.%d=%s", i+1, normalizeToken(entry)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		message := strings.Join(lines, "\n")
+		return resultWithIntents(message, memoryListIntents(cmdCtx.State.MemoryEntries)...), nil
 	case "add":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: /memory [status|list|add <text>|remove <index>|clear]")
@@ -4039,7 +4391,8 @@ func (c *MemoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		cmdCtx.State.MemoryEntries = append(cmdCtx.State.MemoryEntries, entry)
 		cmdCtx.State.MemoryWrites++
 		cmdCtx.State.LastMemory = entry
-		return Result{Handled: true, Message: fmt.Sprintf("MEMORY_ADD\nentry=%s\ncount=%d\nwrites=%d", normalizeToken(entry), len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryWrites)}, nil
+		message := fmt.Sprintf("MEMORY_ADD\nentry=%s\ncount=%d\nwrites=%d", normalizeToken(entry), len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryWrites)
+		return resultWithIntents(message, memoryMutationIntents("Memory added", entry, len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryWrites)...), nil
 	case "remove":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /memory [status|list|add <text>|remove <index>|clear]")
@@ -4054,7 +4407,8 @@ func (c *MemoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(cmdCtx.State.MemoryEntries) == 0 {
 			cmdCtx.State.LastMemory = ""
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("MEMORY_REMOVE\nindex=%d\nentry=%s\ncount=%d\nremoves=%d", idx, normalizeToken(removed), len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryRemoves)}, nil
+		message := fmt.Sprintf("MEMORY_REMOVE\nindex=%d\nentry=%s\ncount=%d\nremoves=%d", idx, normalizeToken(removed), len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryRemoves)
+		return resultWithIntents(message, memoryMutationIntents("Memory removed", removed, len(cmdCtx.State.MemoryEntries), cmdCtx.State.MemoryRemoves)...), nil
 	case "clear":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /memory [status|list|add <text>|remove <index>|clear]")
@@ -4062,7 +4416,8 @@ func (c *MemoryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		cmdCtx.State.MemoryEntries = nil
 		cmdCtx.State.LastMemory = ""
 		cmdCtx.State.MemoryClears++
-		return Result{Handled: true, Message: fmt.Sprintf("MEMORY_CLEAR\ncount=0\nclears=%d", cmdCtx.State.MemoryClears)}, nil
+		message := fmt.Sprintf("MEMORY_CLEAR\ncount=0\nclears=%d", cmdCtx.State.MemoryClears)
+		return resultWithIntents(message, memoryMutationIntents("Memory cleared", "", 0, cmdCtx.State.MemoryClears)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /memory [status|list|add <text>|remove <index>|clear]")
 	}
@@ -4089,10 +4444,12 @@ func (c *PrivacySettingsCommand) Execute(_ context.Context, cmdCtx Context, inv 
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /privacy-settings [show|status|list|set telemetry <on|off>|set training <on|off>]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PRIVACY_SETTINGS\ntelemetry=%t\ntraining=%t\nupdates=%d", cmdCtx.State.PrivacyTelemetry, cmdCtx.State.PrivacyTraining, cmdCtx.State.PrivacyUpdates)}, nil
+		message := fmt.Sprintf("PRIVACY_SETTINGS\ntelemetry=%t\ntraining=%t\nupdates=%d", cmdCtx.State.PrivacyTelemetry, cmdCtx.State.PrivacyTraining, cmdCtx.State.PrivacyUpdates)
+		return resultWithIntents(message, privacyStatusIntents(cmdCtx.State.PrivacyTelemetry, cmdCtx.State.PrivacyTraining, cmdCtx.State.PrivacyUpdates)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "list") {
-		return Result{Handled: true, Message: "PRIVACY_FIELDS\ncount=2\nfield.1=telemetry\nfield.2=training"}, nil
+		message := "PRIVACY_FIELDS\ncount=2\nfield.1=telemetry\nfield.2=training"
+		return resultWithIntents(message, privacyFieldsIntents()...), nil
 	}
 	if len(inv.Args) != 3 || !strings.EqualFold(inv.Args[0], "set") {
 		return Result{}, fmt.Errorf("usage: /privacy-settings [show|status|list|set telemetry <on|off>|set training <on|off>]")
@@ -4122,7 +4479,8 @@ func (c *PrivacySettingsCommand) Execute(_ context.Context, cmdCtx Context, inv 
 	if updated {
 		cmdCtx.State.PrivacyUpdates++
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("PRIVACY_SET\nfield=%s\nenabled=%t\nupdated=%t\nupdates=%d", field, enabled, updated, cmdCtx.State.PrivacyUpdates)}, nil
+	message := fmt.Sprintf("PRIVACY_SET\nfield=%s\nenabled=%t\nupdated=%t\nupdates=%d", field, enabled, updated, cmdCtx.State.PrivacyUpdates)
+	return resultWithIntents(message, privacySetIntents(field, enabled, updated, cmdCtx.State.PrivacyUpdates)...), nil
 }
 
 // UpgradeCommand provides deterministic upgrade intent behavior.
@@ -4139,7 +4497,8 @@ func (c *UpgradeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("UPGRADE_STATUS\nrequested=%t\ncount=%d\nlast_plan=%s", cmdCtx.State.UpgradeRequested, cmdCtx.State.UpgradeCount, normalizeToken(cmdCtx.State.LastUpgradePlan))}, nil
+		message := fmt.Sprintf("UPGRADE_STATUS\nrequested=%t\ncount=%d\nlast_plan=%s", cmdCtx.State.UpgradeRequested, cmdCtx.State.UpgradeCount, normalizeToken(cmdCtx.State.LastUpgradePlan))
+		return resultWithIntents(message, upgradeStatusIntents(cmdCtx.State.UpgradeRequested, cmdCtx.State.UpgradeCount, cmdCtx.State.LastUpgradePlan)...), nil
 	}
 	if len(inv.Args) > 1 {
 		return Result{}, fmt.Errorf("usage: /upgrade [status|max|pro|team|enterprise]")
@@ -4153,7 +4512,8 @@ func (c *UpgradeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		cmdCtx.State.UpgradeRequested = true
 		cmdCtx.State.UpgradeCount++
 		cmdCtx.State.LastUpgradePlan = plan
-		return Result{Handled: true, Message: fmt.Sprintf("UPGRADE_REQUEST\nplan=%s\nrequested=true\ncount=%d\nnext=complete_upgrade_in_provider_portal", plan, cmdCtx.State.UpgradeCount)}, nil
+		message := fmt.Sprintf("UPGRADE_REQUEST\nplan=%s\nrequested=true\ncount=%d\nnext=complete_upgrade_in_provider_portal", plan, cmdCtx.State.UpgradeCount)
+		return resultWithIntents(message, upgradeRequestIntents(plan, cmdCtx.State.UpgradeCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /upgrade [status|max|pro|team|enterprise]")
 	}
@@ -4194,7 +4554,7 @@ func (c *TerminalSetupCommand) Execute(_ context.Context, cmdCtx Context, inv In
 		for i, hint := range hints {
 			lines = append(lines, fmt.Sprintf("hint.%d=%s", i+1, normalizeToken(hint)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), terminalSetupDetectIntents(profile, source, supported, hints)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
 		lines := []string{
@@ -4209,7 +4569,7 @@ func (c *TerminalSetupCommand) Execute(_ context.Context, cmdCtx Context, inv In
 		for i, hint := range cmdCtx.State.TerminalSetupHints {
 			lines = append(lines, fmt.Sprintf("hint.%d=%s", i+1, normalizeToken(hint)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), terminalSetupStatusIntents(cmdCtx.State)...), nil
 	}
 	if !strings.EqualFold(inv.Args[0], "apply") || len(inv.Args) > 2 {
 		return Result{}, fmt.Errorf("usage: /terminal-setup [status|detect|apply [profile]]")
@@ -4233,7 +4593,7 @@ func (c *TerminalSetupCommand) Execute(_ context.Context, cmdCtx Context, inv In
 	cmdCtx.State.TerminalConfigured = true
 	cmdCtx.State.TerminalSetupCount++
 	cmdCtx.State.TerminalProfile = profile
-	return Result{Handled: true, Message: fmt.Sprintf("TERMINAL_SETUP_APPLY\nprofile=%s\nconfigured=true\ncount=%d", normalizeToken(profile), cmdCtx.State.TerminalSetupCount)}, nil
+	return resultWithIntents(fmt.Sprintf("TERMINAL_SETUP_APPLY\nprofile=%s\nconfigured=true\ncount=%d", normalizeToken(profile), cmdCtx.State.TerminalSetupCount), terminalSetupApplyIntents(profile, cmdCtx.State.TerminalSetupCount)...), nil
 }
 
 func detectTerminalProfile() (profile string, source string, supported bool, hints []string) {
@@ -4399,14 +4759,14 @@ func (c *ReleaseNotesCommand) Execute(_ context.Context, cmdCtx Context, inv Inv
 		}
 		cmdCtx.State.ReleaseNotesSeen++
 		cmdCtx.State.LastReleaseVersion = "v1.0.0"
-		return Result{Handled: true, Message: fmt.Sprintf("RELEASE_NOTES_LATEST\nversion=v1.0.0\nentry_count=2\nentry.1=Massive command parity improvements\nentry.2=Deterministic slash command output contracts\nseen=%d", cmdCtx.State.ReleaseNotesSeen)}, nil
+		return resultWithIntents(fmt.Sprintf("RELEASE_NOTES_LATEST\nversion=v1.0.0\nentry_count=2\nentry.1=Massive command parity improvements\nentry.2=Deterministic slash command output contracts\nseen=%d", cmdCtx.State.ReleaseNotesSeen), releaseNotesLatestIntents("v1.0.0", cmdCtx.State.ReleaseNotesSeen)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "list") {
 		cmdCtx.State.ReleaseNotesSeen++
-		return Result{Handled: true, Message: fmt.Sprintf("RELEASE_NOTES_LIST\ncount=3\nversion.1=v1.0.0\nversion.2=v0.9.0\nversion.3=v0.8.0\nseen=%d", cmdCtx.State.ReleaseNotesSeen)}, nil
+		return resultWithIntents(fmt.Sprintf("RELEASE_NOTES_LIST\ncount=3\nversion.1=v1.0.0\nversion.2=v0.9.0\nversion.3=v0.8.0\nseen=%d", cmdCtx.State.ReleaseNotesSeen), releaseNotesListIntents([]string{"v1.0.0", "v0.9.0", "v0.8.0"}, cmdCtx.State.ReleaseNotesSeen)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("RELEASE_NOTES_STATUS\nseen=%d\nlast_version=%s", cmdCtx.State.ReleaseNotesSeen, normalizeToken(cmdCtx.State.LastReleaseVersion))}, nil
+		return resultWithIntents(fmt.Sprintf("RELEASE_NOTES_STATUS\nseen=%d\nlast_version=%s", cmdCtx.State.ReleaseNotesSeen, normalizeToken(cmdCtx.State.LastReleaseVersion)), releaseNotesStatusIntents(cmdCtx.State.ReleaseNotesSeen, cmdCtx.State.LastReleaseVersion)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: /release-notes [latest|list|status]")
 }
@@ -4438,10 +4798,10 @@ func (c *InstallGitHubAppCommand) Execute(_ context.Context, cmdCtx Context, inv
 		}
 		cmdCtx.State.LastGitHubRepo = repo
 		cmdCtx.State.GitHubAppInstalls++
-		return Result{Handled: true, Message: fmt.Sprintf("INSTALL_GITHUB_APP_START\nrepo=%s\ncount=%d\nnext=run_gh_auth_and_repo_setup", normalizeToken(repo), cmdCtx.State.GitHubAppInstalls)}, nil
+		return resultWithIntents(fmt.Sprintf("INSTALL_GITHUB_APP_START\nrepo=%s\ncount=%d\nnext=run_gh_auth_and_repo_setup", normalizeToken(repo), cmdCtx.State.GitHubAppInstalls), installFlowIntents("Install GitHub app", detailRow("Repo", defaultDash(repo), "info", "Target repository."), detailRow("Count", fmt.Sprintf("%d", cmdCtx.State.GitHubAppInstalls), "info", "Install attempts."), detailRow("Next", "run_gh_auth_and_repo_setup", "hint", "Suggested next step."))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("INSTALL_GITHUB_APP_STATUS\ncount=%d\nlast_repo=%s", cmdCtx.State.GitHubAppInstalls, normalizeToken(cmdCtx.State.LastGitHubRepo))}, nil
+		return resultWithIntents(fmt.Sprintf("INSTALL_GITHUB_APP_STATUS\ncount=%d\nlast_repo=%s", cmdCtx.State.GitHubAppInstalls, normalizeToken(cmdCtx.State.LastGitHubRepo)), installFlowIntents("Install GitHub app status", detailRow("Count", fmt.Sprintf("%d", cmdCtx.State.GitHubAppInstalls), "info", "Install attempts."), detailRow("Last repo", defaultDash(cmdCtx.State.LastGitHubRepo), "info", "Most recent target repository."))...), nil
 	}
 	if len(inv.Args) == 2 && strings.EqualFold(inv.Args[0], "repo") {
 		repo := strings.TrimSpace(inv.Args[1])
@@ -4449,7 +4809,7 @@ func (c *InstallGitHubAppCommand) Execute(_ context.Context, cmdCtx Context, inv
 			return Result{}, fmt.Errorf("usage: /install-github-app [status|repo <owner/repo>|start [owner/repo]]")
 		}
 		cmdCtx.State.LastGitHubRepo = repo
-		return Result{Handled: true, Message: fmt.Sprintf("INSTALL_GITHUB_APP_REPO\nrepo=%s", normalizeToken(repo))}, nil
+		return resultWithIntents(fmt.Sprintf("INSTALL_GITHUB_APP_REPO\nrepo=%s", normalizeToken(repo)), installFlowIntents("Install GitHub app repo", detailRow("Repo", defaultDash(repo), "set", "Configured repository target."))...), nil
 	}
 	return Result{}, fmt.Errorf("usage: /install-github-app [status|repo <owner/repo>|start [owner/repo]]")
 }
@@ -4471,10 +4831,10 @@ func (c *InstallSlackAppCommand) Execute(_ context.Context, cmdCtx Context, inv 
 			return Result{}, fmt.Errorf("usage: /install-slack-app [status|start]")
 		}
 		cmdCtx.State.SlackAppInstalls++
-		return Result{Handled: true, Message: fmt.Sprintf("INSTALL_SLACK_APP_START\ncount=%d\nnext=open_slack_marketplace_link", cmdCtx.State.SlackAppInstalls)}, nil
+		return resultWithIntents(fmt.Sprintf("INSTALL_SLACK_APP_START\ncount=%d\nnext=open_slack_marketplace_link", cmdCtx.State.SlackAppInstalls), installFlowIntents("Install Slack app", detailRow("Count", fmt.Sprintf("%d", cmdCtx.State.SlackAppInstalls), "info", "Install attempts."), detailRow("Next", "open_slack_marketplace_link", "hint", "Suggested next step."))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("INSTALL_SLACK_APP_STATUS\ncount=%d", cmdCtx.State.SlackAppInstalls)}, nil
+		return resultWithIntents(fmt.Sprintf("INSTALL_SLACK_APP_STATUS\ncount=%d", cmdCtx.State.SlackAppInstalls), installFlowIntents("Install Slack app status", detailRow("Count", fmt.Sprintf("%d", cmdCtx.State.SlackAppInstalls), "info", "Install attempts."))...), nil
 	}
 	return Result{}, fmt.Errorf("usage: /install-slack-app [status|start]")
 }
@@ -4495,7 +4855,7 @@ func (c *FeedbackCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /feedback [status|submit <message>]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("FEEDBACK_STATUS\ncount=%d\nlast=%s", cmdCtx.State.FeedbackCount, normalizeToken(cmdCtx.State.LastFeedback))}, nil
+		return resultWithIntents(fmt.Sprintf("FEEDBACK_STATUS\ncount=%d\nlast=%s", cmdCtx.State.FeedbackCount, normalizeToken(cmdCtx.State.LastFeedback)), feedbackStatusIntents(cmdCtx.State.FeedbackCount, cmdCtx.State.LastFeedback)...), nil
 	}
 	if !strings.EqualFold(inv.Args[0], "submit") || len(inv.Args) < 2 {
 		return Result{}, fmt.Errorf("usage: /feedback [status|submit <message>]")
@@ -4506,7 +4866,7 @@ func (c *FeedbackCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 	}
 	cmdCtx.State.LastFeedback = message
 	cmdCtx.State.FeedbackCount++
-	return Result{Handled: true, Message: fmt.Sprintf("FEEDBACK_SUBMIT\nmessage=%s\ncount=%d", normalizeToken(message), cmdCtx.State.FeedbackCount)}, nil
+	return resultWithIntents(fmt.Sprintf("FEEDBACK_SUBMIT\nmessage=%s\ncount=%d", normalizeToken(message), cmdCtx.State.FeedbackCount), feedbackSubmitIntents(message, cmdCtx.State.FeedbackCount)...), nil
 }
 
 // HooksCommand provides deterministic hook controls.
@@ -4530,7 +4890,7 @@ func (c *HooksCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /hooks [status|enable <pre|post|all>|disable <pre|post|all>]")
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("HOOKS_STATUS\npre=%t\npost=%t", cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled)}, nil
+		return resultWithIntents(fmt.Sprintf("HOOKS_STATUS\npre=%t\npost=%t", cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled), hooksStatusIntents(cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled)...), nil
 	}
 	if len(inv.Args) != 2 {
 		return Result{}, fmt.Errorf("usage: /hooks [status|enable <pre|post|all>|disable <pre|post|all>]")
@@ -4557,7 +4917,7 @@ func (c *HooksCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	default:
 		return Result{}, fmt.Errorf("usage: /hooks [status|enable <pre|post|all>|disable <pre|post|all>]")
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("HOOKS_SET\naction=%s\ntarget=%s\npre=%t\npost=%t", action, target, cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled)}, nil
+	return resultWithIntents(fmt.Sprintf("HOOKS_SET\naction=%s\ntarget=%s\npre=%t\npost=%t", action, target, cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled), hooksSetIntents(action, target, cmdCtx.State.HookPreEnabled, cmdCtx.State.HookPostEnabled)...), nil
 }
 
 // SandboxCommand provides deterministic sandbox mode controls.
@@ -4587,7 +4947,7 @@ func (c *SandboxCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf(sandboxUsage)
 		}
-		return renderSandboxStatus(settings), nil
+		return renderSandboxStatus(settings, cmdCtx.State), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -4611,7 +4971,7 @@ func (c *SandboxCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		}
 		after := permissions.EffectiveSandboxPolicySummary(settings)
 		changed := before.Mode != after.Mode || before.WorkspaceLocked != after.WorkspaceLocked || before.ExcludedCount != after.ExcludedCount
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_REPAIR\nchanged=%t\nmode=%s\nworkspace_locked=%t\nexcluded_count=%d", changed, normalizeToken(after.Mode), after.WorkspaceLocked, after.ExcludedCount)}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_REPAIR\nchanged=%t\nmode=%s\nworkspace_locked=%t\nexcluded_count=%d", changed, normalizeToken(after.Mode), after.WorkspaceLocked, after.ExcludedCount), legacyOutputIntents(fmt.Sprintf("SANDBOX_REPAIR\nchanged=%t\nmode=%s\nworkspace_locked=%t\nexcluded_count=%d", changed, normalizeToken(after.Mode), after.WorkspaceLocked, after.ExcludedCount))...), nil
 	case "set", "mode":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(sandboxUsage)
@@ -4624,10 +4984,10 @@ func (c *SandboxCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		if err := saveSandboxSettings(cmdCtx.State, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_SET\nmode=%s", mode)}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_SET\nmode=%s", mode), legacyOutputIntents(fmt.Sprintf("SANDBOX_SET\nmode=%s", mode))...), nil
 	case "lock":
 		if len(inv.Args) == 1 || (len(inv.Args) == 2 && strings.EqualFold(strings.TrimSpace(inv.Args[1]), "status")) {
-			return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_LOCK\nworkspace_locked=%t", settings.WorkspaceLocked)}, nil
+			return resultWithIntents(fmt.Sprintf("SANDBOX_LOCK\nworkspace_locked=%t", settings.WorkspaceLocked), legacyOutputIntents(fmt.Sprintf("SANDBOX_LOCK\nworkspace_locked=%t", settings.WorkspaceLocked))...), nil
 		}
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf(sandboxUsage)
@@ -4644,7 +5004,7 @@ func (c *SandboxCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		if err := saveSandboxSettings(cmdCtx.State, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_LOCK_SET\nworkspace_locked=%t", settings.WorkspaceLocked)}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_LOCK_SET\nworkspace_locked=%t", settings.WorkspaceLocked), legacyOutputIntents(fmt.Sprintf("SANDBOX_LOCK_SET\nworkspace_locked=%t", settings.WorkspaceLocked))...), nil
 	case "exclude":
 		return c.executeSandboxExclude(cmdCtx.State, settings, inv.Args[1:])
 	default:
@@ -4674,7 +5034,7 @@ func (c *SandboxCommand) executeSandboxExclude(state *RuntimeState, settings per
 		if err := saveSandboxSettings(state, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands))}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands)), legacyOutputIntents(fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands)))...), nil
 	case "remove":
 		pattern := strings.TrimSpace(strings.Join(args[1:], " "))
 		if pattern == "" {
@@ -4694,14 +5054,14 @@ func (c *SandboxCommand) executeSandboxExclude(state *RuntimeState, settings per
 		if err := saveSandboxSettings(state, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_EXCLUDE_REMOVE\npattern=%s\nremoved=%t\ncount=%d", normalizeToken(pattern), removed, len(settings.ExcludedCommands))}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_EXCLUDE_REMOVE\npattern=%s\nremoved=%t\ncount=%d", normalizeToken(pattern), removed, len(settings.ExcludedCommands)), legacyOutputIntents(fmt.Sprintf("SANDBOX_EXCLUDE_REMOVE\npattern=%s\nremoved=%t\ncount=%d", normalizeToken(pattern), removed, len(settings.ExcludedCommands)))...), nil
 	case "clear":
 		removed := len(settings.ExcludedCommands)
 		settings.ExcludedCommands = nil
 		if err := saveSandboxSettings(state, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_EXCLUDE_CLEAR\nremoved=%d\ncount=0", removed)}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_EXCLUDE_CLEAR\nremoved=%d\ncount=0", removed), legacyOutputIntents(fmt.Sprintf("SANDBOX_EXCLUDE_CLEAR\nremoved=%d\ncount=0", removed))...), nil
 	default:
 		pattern := strings.TrimSpace(strings.Join(args, " "))
 		if pattern == "" {
@@ -4714,11 +5074,11 @@ func (c *SandboxCommand) executeSandboxExclude(state *RuntimeState, settings per
 		if err := saveSandboxSettings(state, settings); err != nil {
 			return Result{}, fmt.Errorf("persist sandbox settings: %w", err)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands))}, nil
+		return resultWithIntents(fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands)), legacyOutputIntents(fmt.Sprintf("SANDBOX_EXCLUDE_ADD\npattern=%s\nadded=%t\ncount=%d", normalizeToken(pattern), added, len(settings.ExcludedCommands)))...), nil
 	}
 }
 
-func renderSandboxStatus(settings permissions.SandboxSettings) Result {
+func renderSandboxStatus(settings permissions.SandboxSettings, state *RuntimeState) Result {
 	policy := permissions.EffectiveSandboxPolicySummary(settings)
 	mode := normalizeToken(policy.Mode)
 	diagnostics := gatherSandboxDiagnostics(settings)
@@ -4736,8 +5096,12 @@ func renderSandboxStatus(settings permissions.SandboxSettings) Result {
 		fmt.Sprintf("policy.effective.alias=%s", policy.ModeAlias),
 		fmt.Sprintf("policy.effective.workspace_locked=%t", policy.WorkspaceLocked),
 		fmt.Sprintf("policy.effective.excluded_count=%d", policy.ExcludedCount),
+		fmt.Sprintf("scope.working_dir=%s", normalizeToken(statusWorkingDir(state))),
+		fmt.Sprintf("scope.workspace_root=%s", normalizeToken(statusWorkingDir(state))),
+		fmt.Sprintf("scope.path_scope=%s", normalizeToken("workspace")),
+		fmt.Sprintf("scope.restrictions=%s", normalizeToken(sandboxScopeRestrictionLabel(policy))),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...)
 }
 
 type sandboxDiagnostics struct {
@@ -4753,6 +5117,19 @@ type sandboxPreflightCheck struct {
 	ID     string
 	Status string
 	Detail string
+}
+
+func sandboxScopeRestrictionLabel(policy permissions.SandboxPolicySummary) string {
+	if strings.EqualFold(strings.TrimSpace(policy.Mode), "read-only") {
+		return "read_only_filesystem"
+	}
+	if policy.WorkspaceLocked {
+		return "workspace_locked"
+	}
+	if strings.EqualFold(strings.TrimSpace(policy.Mode), "danger-full-access") {
+		return "full_access"
+	}
+	return "workspace_write"
 }
 
 func gatherSandboxDiagnostics(settings permissions.SandboxSettings) sandboxDiagnostics {
@@ -4850,20 +5227,20 @@ func renderSandboxCheck(settings permissions.SandboxSettings) Result {
 		lines = append(lines, fmt.Sprintf("check.%d.status=%s", idx, normalizeToken(check.Status)))
 		lines = append(lines, fmt.Sprintf("check.%d.detail=%s", idx, normalizeToken(check.Detail)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...)
 }
 
 func renderSandboxExcludeList(patterns []string) Result {
 	patterns = append([]string(nil), patterns...)
 	sort.Strings(patterns)
 	if len(patterns) == 0 {
-		return Result{Handled: true, Message: "SANDBOX_EXCLUDE_LIST\ncount=0"}
+		return resultWithIntents("SANDBOX_EXCLUDE_LIST\ncount=0", legacyOutputIntents("SANDBOX_EXCLUDE_LIST\ncount=0")...)
 	}
 	lines := []string{"SANDBOX_EXCLUDE_LIST", fmt.Sprintf("count=%d", len(patterns))}
 	for i, pattern := range patterns {
 		lines = append(lines, fmt.Sprintf("pattern.%d=%s", i+1, normalizeToken(pattern)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...)
 }
 
 func loadSandboxSettings(state *RuntimeState) (permissions.SandboxSettings, error) {
@@ -4938,7 +5315,7 @@ func (c *TasksCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		for i, task := range cmdCtx.State.Tasks {
 			lines = append(lines, fmt.Sprintf("task.%d=%s", i+1, normalizeToken(task)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), tasksListStateIntents(cmdCtx.State.Tasks, cmdCtx.State.TasksCompleted)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -4951,7 +5328,8 @@ func (c *TasksCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 			return Result{}, fmt.Errorf("usage: /tasks [list|add <text>|done <index>|clear]")
 		}
 		cmdCtx.State.Tasks = append(cmdCtx.State.Tasks, task)
-		return Result{Handled: true, Message: fmt.Sprintf("TASKS_ADD\ntask=%s\ncount=%d", normalizeToken(task), len(cmdCtx.State.Tasks))}, nil
+		message := fmt.Sprintf("TASKS_ADD\ntask=%s\ncount=%d", normalizeToken(task), len(cmdCtx.State.Tasks))
+		return resultWithIntents(message, tasksMutationIntents("Task added", task, len(cmdCtx.State.Tasks), cmdCtx.State.TasksCompleted)...), nil
 	case "done":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /tasks [list|add <text>|done <index>|clear]")
@@ -4963,13 +5341,15 @@ func (c *TasksCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		task := cmdCtx.State.Tasks[idx-1]
 		cmdCtx.State.Tasks = append(cmdCtx.State.Tasks[:idx-1], cmdCtx.State.Tasks[idx:]...)
 		cmdCtx.State.TasksCompleted++
-		return Result{Handled: true, Message: fmt.Sprintf("TASKS_DONE\nindex=%d\ntask=%s\ncount=%d\ncompleted=%d", idx, normalizeToken(task), len(cmdCtx.State.Tasks), cmdCtx.State.TasksCompleted)}, nil
+		message := fmt.Sprintf("TASKS_DONE\nindex=%d\ntask=%s\ncount=%d\ncompleted=%d", idx, normalizeToken(task), len(cmdCtx.State.Tasks), cmdCtx.State.TasksCompleted)
+		return resultWithIntents(message, tasksMutationIntents("Task completed", task, len(cmdCtx.State.Tasks), cmdCtx.State.TasksCompleted)...), nil
 	case "clear":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: /tasks [list|add <text>|done <index>|clear]")
 		}
 		cmdCtx.State.Tasks = nil
-		return Result{Handled: true, Message: fmt.Sprintf("TASKS_CLEAR\ncount=0\ncompleted=%d", cmdCtx.State.TasksCompleted)}, nil
+		message := fmt.Sprintf("TASKS_CLEAR\ncount=0\ncompleted=%d", cmdCtx.State.TasksCompleted)
+		return resultWithIntents(message, tasksMutationIntents("Tasks cleared", "", 0, cmdCtx.State.TasksCompleted)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /tasks [list|add <text>|done <index>|clear]")
 	}
@@ -4993,7 +5373,7 @@ func (c *AdvisorCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		active := strings.TrimSpace(cmdCtx.State.AdvisorModel) != ""
-		return Result{Handled: true, Message: fmt.Sprintf("ADVISOR_STATUS\nmodel=%s\nactive=%t\nupdates=%d", normalizeToken(cmdCtx.State.AdvisorModel), active, cmdCtx.State.AdvisorUpdates)}, nil
+		return resultWithIntents(fmt.Sprintf("ADVISOR_STATUS\nmodel=%s\nactive=%t\nupdates=%d", normalizeToken(cmdCtx.State.AdvisorModel), active, cmdCtx.State.AdvisorUpdates), advisorStatusIntents(cmdCtx.State.AdvisorModel, active, cmdCtx.State.AdvisorUpdates)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5006,11 +5386,11 @@ func (c *AdvisorCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		prev := cmdCtx.State.AdvisorModel
 		cmdCtx.State.AdvisorModel = ""
 		cmdCtx.State.AdvisorUpdates++
-		return Result{Handled: true, Message: fmt.Sprintf("ADVISOR_UNSET\nprevious=%s\nactive=false\nupdates=%d", normalizeToken(prev), cmdCtx.State.AdvisorUpdates)}, nil
+		return resultWithIntents(fmt.Sprintf("ADVISOR_UNSET\nprevious=%s\nactive=false\nupdates=%d", normalizeToken(prev), cmdCtx.State.AdvisorUpdates), advisorSetIntents("", false, cmdCtx.State.AdvisorUpdates)...), nil
 	}
 	cmdCtx.State.AdvisorModel = arg
 	cmdCtx.State.AdvisorUpdates++
-	return Result{Handled: true, Message: fmt.Sprintf("ADVISOR_SET\nmodel=%s\nactive=true\nupdates=%d", normalizeToken(arg), cmdCtx.State.AdvisorUpdates)}, nil
+	return resultWithIntents(fmt.Sprintf("ADVISOR_SET\nmodel=%s\nactive=true\nupdates=%d", normalizeToken(arg), cmdCtx.State.AdvisorUpdates), advisorSetIntents(arg, true, cmdCtx.State.AdvisorUpdates)...), nil
 }
 
 // BtwCommand tracks side-question usage in a deterministic way.
@@ -5037,7 +5417,7 @@ func (c *BtwCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 	}
 	cmdCtx.State.BtwUseCount++
 	cmdCtx.State.LastBtwQuestion = question
-	return Result{Handled: true, Message: fmt.Sprintf("BTW_RESULT\nquestion=%s\ncount=%d\nstatus=queued", normalizeToken(question), cmdCtx.State.BtwUseCount)}, nil
+	return resultWithIntents(fmt.Sprintf("BTW_RESULT\nquestion=%s\ncount=%d\nstatus=queued", normalizeToken(question), cmdCtx.State.BtwUseCount), btwIntents(question, cmdCtx.State.BtwUseCount)...), nil
 }
 
 // ChromeCommand controls deterministic Claude-in-Chrome state.
@@ -5059,7 +5439,7 @@ func (c *ChromeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("CHROME_STATUS\ndefault_enabled=%t\nextension_installed=%t\nconnected=%t\nactions=%d", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)}, nil
+		return resultWithIntents(fmt.Sprintf("CHROME_STATUS\ndefault_enabled=%t\nextension_installed=%t\nconnected=%t\nactions=%d", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions), chromeStatusIntents(cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -5070,20 +5450,20 @@ func (c *ChromeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		}
 		cmdCtx.State.ChromeExtension = true
 		cmdCtx.State.ChromeActions++
-		return Result{Handled: true, Message: fmt.Sprintf("CHROME_EXTENSION\ninstalled=true\nactions=%d", cmdCtx.State.ChromeActions)}, nil
+		return resultWithIntents(fmt.Sprintf("CHROME_EXTENSION\ninstalled=true\nactions=%d", cmdCtx.State.ChromeActions), chromeActionIntents("Chrome extension", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)...), nil
 	case "reconnect":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.ChromeConnected = cmdCtx.State.ChromeExtension
 		cmdCtx.State.ChromeActions++
-		return Result{Handled: true, Message: fmt.Sprintf("CHROME_RECONNECT\nconnected=%t\nextension_installed=%t\nactions=%d", cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeActions)}, nil
+		return resultWithIntents(fmt.Sprintf("CHROME_RECONNECT\nconnected=%t\nextension_installed=%t\nactions=%d", cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeActions), chromeActionIntents("Chrome reconnect", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)...), nil
 	case "manage-permissions":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.ChromeActions++
-		return Result{Handled: true, Message: fmt.Sprintf("CHROME_PERMISSIONS\nopened=true\nactions=%d", cmdCtx.State.ChromeActions)}, nil
+		return resultWithIntents(fmt.Sprintf("CHROME_PERMISSIONS\nopened=true\nactions=%d", cmdCtx.State.ChromeActions), chromeActionIntents("Chrome permissions", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)...), nil
 	case "toggle-default":
 		if len(inv.Args) > 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5102,7 +5482,7 @@ func (c *ChromeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			cmdCtx.State.ChromeDefault = !cmdCtx.State.ChromeDefault
 		}
 		cmdCtx.State.ChromeActions++
-		return Result{Handled: true, Message: fmt.Sprintf("CHROME_DEFAULT\nenabled=%t\nactions=%d", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeActions)}, nil
+		return resultWithIntents(fmt.Sprintf("CHROME_DEFAULT\nenabled=%t\nactions=%d", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeActions), chromeActionIntents("Chrome default", cmdCtx.State.ChromeDefault, cmdCtx.State.ChromeExtension, cmdCtx.State.ChromeConnected, cmdCtx.State.ChromeActions)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5122,7 +5502,7 @@ func (c *ColorCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 0 {
-		return Result{Handled: true, Message: fmt.Sprintf("COLOR_STATUS\ncolor=%s\nset_count=%d", normalizeToken(cmdCtx.State.SessionColor), cmdCtx.State.ColorSetCount)}, nil
+		return resultWithIntents(fmt.Sprintf("COLOR_STATUS\ncolor=%s\nset_count=%d", normalizeToken(cmdCtx.State.SessionColor), cmdCtx.State.ColorSetCount), colorStatusIntents(cmdCtx.State.SessionColor, cmdCtx.State.ColorSetCount)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5134,14 +5514,14 @@ func (c *ColorCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	if arg == "default" || arg == "reset" || arg == "none" || arg == "gray" || arg == "grey" {
 		cmdCtx.State.SessionColor = ""
 		cmdCtx.State.ColorSetCount++
-		return Result{Handled: true, Message: fmt.Sprintf("COLOR_RESET\ncolor=-\nset_count=%d", cmdCtx.State.ColorSetCount)}, nil
+		return resultWithIntents(fmt.Sprintf("COLOR_RESET\ncolor=-\nset_count=%d", cmdCtx.State.ColorSetCount), colorSetIntents("", cmdCtx.State.ColorSetCount)...), nil
 	}
 	if !isSupportedColor(arg) {
 		return Result{}, fmt.Errorf("invalid color %q", arg)
 	}
 	cmdCtx.State.SessionColor = arg
 	cmdCtx.State.ColorSetCount++
-	return Result{Handled: true, Message: fmt.Sprintf("COLOR_SET\ncolor=%s\nset_count=%d", normalizeToken(cmdCtx.State.SessionColor), cmdCtx.State.ColorSetCount)}, nil
+	return resultWithIntents(fmt.Sprintf("COLOR_SET\ncolor=%s\nset_count=%d", normalizeToken(cmdCtx.State.SessionColor), cmdCtx.State.ColorSetCount), colorSetIntents(cmdCtx.State.SessionColor, cmdCtx.State.ColorSetCount)...), nil
 }
 
 // DesktopCommand tracks desktop handoff requests.
@@ -5163,10 +5543,10 @@ func (c *DesktopCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 		}
 		cmdCtx.State.DesktopHandoffCount++
 		cmdCtx.State.LastDesktopTarget = "claude-desktop"
-		return Result{Handled: true, Message: fmt.Sprintf("DESKTOP_HANDOFF\ntarget=%s\ncount=%d", cmdCtx.State.LastDesktopTarget, cmdCtx.State.DesktopHandoffCount)}, nil
+		return resultWithIntents(fmt.Sprintf("DESKTOP_HANDOFF\ntarget=%s\ncount=%d", cmdCtx.State.LastDesktopTarget, cmdCtx.State.DesktopHandoffCount), desktopHandoffIntents(cmdCtx.State.LastDesktopTarget, cmdCtx.State.DesktopHandoffCount)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(inv.Args[0], "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("DESKTOP_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.DesktopHandoffCount, normalizeToken(cmdCtx.State.LastDesktopTarget))}, nil
+		return resultWithIntents(fmt.Sprintf("DESKTOP_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.DesktopHandoffCount, normalizeToken(cmdCtx.State.LastDesktopTarget)), desktopStatusIntents(cmdCtx.State.DesktopHandoffCount, cmdCtx.State.LastDesktopTarget)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: %s", c.Usage())
 }
@@ -5195,7 +5575,7 @@ func (c *MobileCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		}
 		cmdCtx.State.MobilePlatform = platform
 		cmdCtx.State.MobileQRCount++
-		return Result{Handled: true, Message: fmt.Sprintf("MOBILE_QR\nplatform=%s\ncount=%d", cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount)}, nil
+		return resultWithIntents(fmt.Sprintf("MOBILE_QR\nplatform=%s\ncount=%d", cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount), mobileQRIntents(cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5203,11 +5583,11 @@ func (c *MobileCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	arg := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch arg {
 	case "status":
-		return Result{Handled: true, Message: fmt.Sprintf("MOBILE_STATUS\nplatform=%s\ncount=%d", normalizeToken(cmdCtx.State.MobilePlatform), cmdCtx.State.MobileQRCount)}, nil
+		return resultWithIntents(fmt.Sprintf("MOBILE_STATUS\nplatform=%s\ncount=%d", normalizeToken(cmdCtx.State.MobilePlatform), cmdCtx.State.MobileQRCount), mobileStatusIntents(cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount)...), nil
 	case "ios", "android":
 		cmdCtx.State.MobilePlatform = arg
 		cmdCtx.State.MobileQRCount++
-		return Result{Handled: true, Message: fmt.Sprintf("MOBILE_QR\nplatform=%s\ncount=%d", cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount)}, nil
+		return resultWithIntents(fmt.Sprintf("MOBILE_QR\nplatform=%s\ncount=%d", cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount), mobileQRIntents(cmdCtx.State.MobilePlatform, cmdCtx.State.MobileQRCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5230,7 +5610,7 @@ func (c *FastCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("FAST_STATUS\nenabled=%t\ntoggles=%d", cmdCtx.State.FastMode, cmdCtx.State.FastToggleCount)}, nil
+		return resultWithIntents(fmt.Sprintf("FAST_STATUS\nenabled=%t\ntoggles=%d", cmdCtx.State.FastMode, cmdCtx.State.FastToggleCount), fastStatusIntents(cmdCtx.State.FastMode, cmdCtx.State.FastToggleCount)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5239,11 +5619,11 @@ func (c *FastCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation)
 	case "on":
 		cmdCtx.State.FastMode = true
 		cmdCtx.State.FastToggleCount++
-		return Result{Handled: true, Message: fmt.Sprintf("FAST_SET\nenabled=true\ntoggles=%d", cmdCtx.State.FastToggleCount)}, nil
+		return resultWithIntents(fmt.Sprintf("FAST_SET\nenabled=true\ntoggles=%d", cmdCtx.State.FastToggleCount), fastSetIntents(true, cmdCtx.State.FastToggleCount)...), nil
 	case "off":
 		cmdCtx.State.FastMode = false
 		cmdCtx.State.FastToggleCount++
-		return Result{Handled: true, Message: fmt.Sprintf("FAST_SET\nenabled=false\ntoggles=%d", cmdCtx.State.FastToggleCount)}, nil
+		return resultWithIntents(fmt.Sprintf("FAST_SET\nenabled=false\ntoggles=%d", cmdCtx.State.FastToggleCount), fastSetIntents(false, cmdCtx.State.FastToggleCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5270,7 +5650,7 @@ func (c *EffortCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if strings.TrimSpace(value) == "" {
 			value = "auto"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("EFFORT_STATUS\nvalue=%s\nupdates=%d", normalizeToken(value), cmdCtx.State.EffortSetCount)}, nil
+		return resultWithIntents(fmt.Sprintf("EFFORT_STATUS\nvalue=%s\nupdates=%d", normalizeToken(value), cmdCtx.State.EffortSetCount), effortStatusIntents(value, cmdCtx.State.EffortSetCount)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5282,11 +5662,11 @@ func (c *EffortCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	if arg == "auto" || arg == "unset" {
 		cmdCtx.State.EffortLevel = ""
 		cmdCtx.State.EffortSetCount++
-		return Result{Handled: true, Message: fmt.Sprintf("EFFORT_SET\nvalue=auto\nupdates=%d", cmdCtx.State.EffortSetCount)}, nil
+		return resultWithIntents(fmt.Sprintf("EFFORT_SET\nvalue=auto\nupdates=%d", cmdCtx.State.EffortSetCount), effortSetIntents("auto", cmdCtx.State.EffortSetCount)...), nil
 	}
 	cmdCtx.State.EffortLevel = arg
 	cmdCtx.State.EffortSetCount++
-	return Result{Handled: true, Message: fmt.Sprintf("EFFORT_SET\nvalue=%s\nupdates=%d", normalizeToken(arg), cmdCtx.State.EffortSetCount)}, nil
+	return resultWithIntents(fmt.Sprintf("EFFORT_SET\nvalue=%s\nupdates=%d", normalizeToken(arg), cmdCtx.State.EffortSetCount), effortSetIntents(arg, cmdCtx.State.EffortSetCount)...), nil
 }
 
 // PluginCommand manages deterministic plugin inventory and enabled state.
@@ -5343,7 +5723,7 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			fmt.Sprintf("diagnostic_groups=%d", len(result.Diagnostics)),
 			fmt.Sprintf("conflicts=%d", len(conflicts)),
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), pluginStatusIntents(cmdCtx.State, len(result.Diagnostics), len(conflicts))...), nil
 	case "doctor":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5363,7 +5743,7 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 			fmt.Sprintf("quick_fix=%s", normalizeToken(quickFix)),
 		}
 		lines = append(lines, fmt.Sprintf("doctor_runs=%d", cmdCtx.State.PluginDoctorCount))
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), pluginDiagnosticsIntents(cmdCtx.State, len(result.Diagnostics), len(conflicts), quickFix)...), nil
 	case "diagnostics":
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5399,7 +5779,8 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		syncPluginRuntimeState(cmdCtx.State, updated)
 		cmdCtx.State.PluginReloadPending = true
 		cmdCtx.State.PluginMutations++
-		return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_INSTALL\nname=%s\ninstalled=%d\nenabled=%d\npending_reload=true\nmutations=%d", normalizeToken(name), len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), cmdCtx.State.PluginMutations)}, nil
+		message := fmt.Sprintf("PLUGIN_INSTALL\nname=%s\ninstalled=%d\nenabled=%d\npending_reload=true\nmutations=%d", normalizeToken(name), len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), cmdCtx.State.PluginMutations)
+		return resultWithIntents(message, pluginMutationIntents("Plugin installed", name, cmdCtx.State.PluginMutations)...), nil
 	case "update":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5418,7 +5799,8 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		syncPluginRuntimeState(cmdCtx.State, updated)
 		cmdCtx.State.PluginReloadPending = true
 		cmdCtx.State.PluginMutations++
-		return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_UPDATE\nname=%s\ninstalled=%d\nenabled=%d\npending_reload=true\nmutations=%d", normalizeToken(name), len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), cmdCtx.State.PluginMutations)}, nil
+		message := fmt.Sprintf("PLUGIN_UPDATE\nname=%s\ninstalled=%d\nenabled=%d\npending_reload=true\nmutations=%d", normalizeToken(name), len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), cmdCtx.State.PluginMutations)
+		return resultWithIntents(message, pluginMutationIntents("Plugin updated", name, cmdCtx.State.PluginMutations)...), nil
 	case "remove", "uninstall":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5439,7 +5821,8 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		syncPluginRuntimeState(cmdCtx.State, updated)
 		cmdCtx.State.PluginReloadPending = true
 		cmdCtx.State.PluginMutations++
-		return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_REMOVE\nname=%s\nremoved_installed=%t\nremoved_enabled=%t\npending_reload=true\nmutations=%d", normalizeToken(name), installedBefore, enabledBefore, cmdCtx.State.PluginMutations)}, nil
+		message := fmt.Sprintf("PLUGIN_REMOVE\nname=%s\nremoved_installed=%t\nremoved_enabled=%t\npending_reload=true\nmutations=%d", normalizeToken(name), installedBefore, enabledBefore, cmdCtx.State.PluginMutations)
+		return resultWithIntents(message, pluginMutationIntents("Plugin removed", name, cmdCtx.State.PluginMutations)...), nil
 	case "enable":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5458,7 +5841,8 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		syncPluginRuntimeState(cmdCtx.State, updated)
 		cmdCtx.State.PluginReloadPending = true
 		cmdCtx.State.PluginMutations++
-		return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_ENABLE\nname=%s\nenabled=%t\npending_reload=true\nmutations=%d", normalizeToken(name), true, cmdCtx.State.PluginMutations)}, nil
+		message := fmt.Sprintf("PLUGIN_ENABLE\nname=%s\nenabled=%t\npending_reload=true\nmutations=%d", normalizeToken(name), true, cmdCtx.State.PluginMutations)
+		return resultWithIntents(message, pluginMutationIntents("Plugin enabled", name, cmdCtx.State.PluginMutations)...), nil
 	case "disable":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5478,7 +5862,8 @@ func (c *PluginCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		syncPluginRuntimeState(cmdCtx.State, updated)
 		cmdCtx.State.PluginReloadPending = true
 		cmdCtx.State.PluginMutations++
-		return Result{Handled: true, Message: fmt.Sprintf("PLUGIN_DISABLE\nname=%s\nremoved=%t\npending_reload=true\nmutations=%d", normalizeToken(name), removed, cmdCtx.State.PluginMutations)}, nil
+		message := fmt.Sprintf("PLUGIN_DISABLE\nname=%s\nremoved=%t\npending_reload=true\nmutations=%d", normalizeToken(name), removed, cmdCtx.State.PluginMutations)
+		return resultWithIntents(message, pluginMutationIntents("Plugin disabled", name, cmdCtx.State.PluginMutations)...), nil
 	case "marketplace":
 		return c.handleMarketplace(cmdCtx.State, inv.Args[1:])
 	default:
@@ -5518,7 +5903,7 @@ func (c *ReloadPluginsCommand) Execute(_ context.Context, cmdCtx Context, inv In
 	pendingBefore := cmdCtx.State.PluginReloadPending
 	cmdCtx.State.PluginReloadPending = false
 	cmdCtx.State.PluginReloadCount++
-	return Result{Handled: true, Message: fmt.Sprintf("RELOAD_PLUGINS_RESULT\npending_before=%t\ninstalled=%d\nenabled=%d\nmarketplaces=%d\nreload_count=%d", pendingBefore, len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), len(cmdCtx.State.PluginMarketplaces), cmdCtx.State.PluginReloadCount)}, nil
+	return resultWithIntents(fmt.Sprintf("RELOAD_PLUGINS_RESULT\npending_before=%t\ninstalled=%d\nenabled=%d\nmarketplaces=%d\nreload_count=%d", pendingBefore, len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), len(cmdCtx.State.PluginMarketplaces), cmdCtx.State.PluginReloadCount), reloadPluginsIntents(pendingBefore, len(cmdCtx.State.PluginsInstalled), len(cmdCtx.State.PluginsEnabled), len(cmdCtx.State.PluginMarketplaces), cmdCtx.State.PluginReloadCount)...), nil
 }
 
 // ExportCommand tracks deterministic export destination data.
@@ -5550,7 +5935,7 @@ func (c *ExportCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	cmdCtx.State.ExportsCount++
 	cmdCtx.State.LastExportPath = filename
 	cmdCtx.State.LastExportFormat = "txt"
-	return Result{Handled: true, Message: fmt.Sprintf("EXPORT_RESULT\npath=%s\nformat=txt\ncount=%d", normalizeToken(cmdCtx.State.LastExportPath), cmdCtx.State.ExportsCount)}, nil
+	return resultWithIntents(fmt.Sprintf("EXPORT_RESULT\npath=%s\nformat=txt\ncount=%d", normalizeToken(cmdCtx.State.LastExportPath), cmdCtx.State.ExportsCount), exportResultIntents(cmdCtx.State.LastExportPath, cmdCtx.State.ExportsCount)...), nil
 }
 
 // ExtraUsageCommand models extra-usage toggles and request flow.
@@ -5569,7 +5954,7 @@ func (c *ExtraUsageCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("EXTRA_USAGE_STATUS\nenabled=%t\nrequests=%d", cmdCtx.State.ExtraUsageEnabled, cmdCtx.State.ExtraUsageRequests)}, nil
+		return resultWithIntents(fmt.Sprintf("EXTRA_USAGE_STATUS\nenabled=%t\nrequests=%d", cmdCtx.State.ExtraUsageEnabled, cmdCtx.State.ExtraUsageRequests), extraUsageStatusIntents(cmdCtx.State.ExtraUsageEnabled, cmdCtx.State.ExtraUsageRequests)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5578,13 +5963,13 @@ func (c *ExtraUsageCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 	switch sub {
 	case "enable":
 		cmdCtx.State.ExtraUsageEnabled = true
-		return Result{Handled: true, Message: fmt.Sprintf("EXTRA_USAGE_SET\nenabled=true\nrequests=%d", cmdCtx.State.ExtraUsageRequests)}, nil
+		return resultWithIntents(fmt.Sprintf("EXTRA_USAGE_SET\nenabled=true\nrequests=%d", cmdCtx.State.ExtraUsageRequests), extraUsageSetIntents(true, cmdCtx.State.ExtraUsageRequests)...), nil
 	case "disable":
 		cmdCtx.State.ExtraUsageEnabled = false
-		return Result{Handled: true, Message: fmt.Sprintf("EXTRA_USAGE_SET\nenabled=false\nrequests=%d", cmdCtx.State.ExtraUsageRequests)}, nil
+		return resultWithIntents(fmt.Sprintf("EXTRA_USAGE_SET\nenabled=false\nrequests=%d", cmdCtx.State.ExtraUsageRequests), extraUsageSetIntents(false, cmdCtx.State.ExtraUsageRequests)...), nil
 	case "request":
 		cmdCtx.State.ExtraUsageRequests++
-		return Result{Handled: true, Message: fmt.Sprintf("EXTRA_USAGE_REQUEST\nrequests=%d\nenabled=%t", cmdCtx.State.ExtraUsageRequests, cmdCtx.State.ExtraUsageEnabled)}, nil
+		return resultWithIntents(fmt.Sprintf("EXTRA_USAGE_REQUEST\nrequests=%d\nenabled=%t", cmdCtx.State.ExtraUsageRequests, cmdCtx.State.ExtraUsageEnabled), extraUsageRequestIntents(cmdCtx.State.ExtraUsageEnabled, cmdCtx.State.ExtraUsageRequests)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5617,7 +6002,7 @@ func (c *RateLimitOptionsCommand) Execute(_ context.Context, cmdCtx Context, inv
 		for i, option := range options {
 			lines = append(lines, fmt.Sprintf("option.%d=%s", i+1, option))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), rateLimitOptionsIntents(options, cmdCtx.State.RateLimitPrompts, cmdCtx.State.LastRateLimitAction)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5627,7 +6012,7 @@ func (c *RateLimitOptionsCommand) Execute(_ context.Context, cmdCtx Context, inv
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
 	cmdCtx.State.LastRateLimitAction = action
-	return Result{Handled: true, Message: fmt.Sprintf("RATE_LIMIT_ACTION\naction=%s\nprompts=%d", action, cmdCtx.State.RateLimitPrompts)}, nil
+	return resultWithIntents(fmt.Sprintf("RATE_LIMIT_ACTION\naction=%s\nprompts=%d", action, cmdCtx.State.RateLimitPrompts), rateLimitActionIntents(action, cmdCtx.State.RateLimitPrompts)...), nil
 }
 
 // PRCommentsCommand tracks deterministic pull request comment fetch requests.
@@ -5648,7 +6033,7 @@ func (c *PRCommentsCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PR_COMMENTS_STATUS\nfetches=%d\nlast_ref=%s", cmdCtx.State.PRCommentsFetches, normalizeToken(cmdCtx.State.LastPRCommentsRef))}, nil
+		return resultWithIntents(fmt.Sprintf("PR_COMMENTS_STATUS\nfetches=%d\nlast_ref=%s", cmdCtx.State.PRCommentsFetches, normalizeToken(cmdCtx.State.LastPRCommentsRef)), prCommentsStatusIntents(cmdCtx.State.PRCommentsFetches, cmdCtx.State.LastPRCommentsRef)...), nil
 	}
 	if len(inv.Args) > 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5678,7 +6063,7 @@ func (c *PRCommentsCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 			lines = append(lines, fmt.Sprintf("thread.%d.comment.%d.body=%s", idx, commentIdx, normalizeToken(comment.Body)))
 		}
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), prCommentsSummaryIntents(ref, sourceName, cmdCtx.State.PRCommentsFetches, threads)...), nil
 }
 
 type threadedComment struct {
@@ -5853,7 +6238,7 @@ func (c *WebSetupCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 		if strings.TrimSpace(cmdCtx.State.RemoteSessionURL) == "" {
 			cmdCtx.State.RemoteSessionURL = "https://claude.ai/code"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("WEB_SETUP_CONNECT\nconnected=true\nurl=%s\ncount=%d", normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount)}, nil
+		return resultWithIntents(fmt.Sprintf("WEB_SETUP_CONNECT\nconnected=true\nurl=%s\ncount=%d", normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount), webSetupConnectIntents(true, cmdCtx.State.RemoteSessionURL, cmdCtx.State.WebSetupCount)...), nil
 	}
 	if len(inv.Args) != 1 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5861,11 +6246,11 @@ func (c *WebSetupCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
 	case "status":
-		return Result{Handled: true, Message: fmt.Sprintf("WEB_SETUP_STATUS\nconnected=%t\nurl=%s\ncount=%d", cmdCtx.State.WebSetupConnected, normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount)}, nil
+		return resultWithIntents(fmt.Sprintf("WEB_SETUP_STATUS\nconnected=%t\nurl=%s\ncount=%d", cmdCtx.State.WebSetupConnected, normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount), webSetupStatusIntents(cmdCtx.State.WebSetupConnected, cmdCtx.State.RemoteSessionURL, cmdCtx.State.WebSetupCount)...), nil
 	case "disconnect":
 		cmdCtx.State.WebSetupConnected = false
 		cmdCtx.State.WebSetupCount++
-		return Result{Handled: true, Message: fmt.Sprintf("WEB_SETUP_CONNECT\nconnected=false\nurl=%s\ncount=%d", normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount)}, nil
+		return resultWithIntents(fmt.Sprintf("WEB_SETUP_CONNECT\nconnected=false\nurl=%s\ncount=%d", normalizeToken(cmdCtx.State.RemoteSessionURL), cmdCtx.State.WebSetupCount), webSetupConnectIntents(false, cmdCtx.State.RemoteSessionURL, cmdCtx.State.WebSetupCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5889,7 +6274,7 @@ func (c *BridgeKickCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("BRIDGE_KICK_STATUS\ncount=%d\nlast_action=%s\nlast_code=%d", cmdCtx.State.BridgeKickCount, normalizeToken(cmdCtx.State.BridgeKickLastAction), cmdCtx.State.BridgeKickLastCode)}, nil
+		return resultWithIntents(fmt.Sprintf("BRIDGE_KICK_STATUS\ncount=%d\nlast_action=%s\nlast_code=%d", cmdCtx.State.BridgeKickCount, normalizeToken(cmdCtx.State.BridgeKickLastAction), cmdCtx.State.BridgeKickLastCode), bridgeKickStatusIntents(cmdCtx.State.BridgeKickCount, cmdCtx.State.BridgeKickLastAction, cmdCtx.State.BridgeKickLastCode)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -5904,7 +6289,7 @@ func (c *BridgeKickCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 		cmdCtx.State.BridgeKickCount++
 		cmdCtx.State.BridgeKickLastAction = sub
 		cmdCtx.State.BridgeKickLastCode = code
-		return Result{Handled: true, Message: fmt.Sprintf("BRIDGE_KICK_APPLY\naction=%s\ncode=%d\ncount=%d", sub, code, cmdCtx.State.BridgeKickCount)}, nil
+		return resultWithIntents(fmt.Sprintf("BRIDGE_KICK_APPLY\naction=%s\ncode=%d\ncount=%d", sub, code, cmdCtx.State.BridgeKickCount), bridgeKickApplyIntents(sub, code, cmdCtx.State.BridgeKickCount)...), nil
 	case "reconnect":
 		if len(inv.Args) != 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -5912,7 +6297,7 @@ func (c *BridgeKickCommand) Execute(_ context.Context, cmdCtx Context, inv Invoc
 		cmdCtx.State.BridgeKickCount++
 		cmdCtx.State.BridgeKickLastAction = "reconnect"
 		cmdCtx.State.BridgeKickLastCode = 0
-		return Result{Handled: true, Message: fmt.Sprintf("BRIDGE_KICK_APPLY\naction=reconnect\ncode=0\ncount=%d", cmdCtx.State.BridgeKickCount)}, nil
+		return resultWithIntents(fmt.Sprintf("BRIDGE_KICK_APPLY\naction=reconnect\ncode=0\ncount=%d", cmdCtx.State.BridgeKickCount), bridgeKickApplyIntents("reconnect", 0, cmdCtx.State.BridgeKickCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -5939,7 +6324,7 @@ func (c *BriefCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	}
 	switch mode {
 	case "status":
-		return Result{Handled: true, Message: fmt.Sprintf("BRIEF_STATUS\nenabled=%t\ntoggles=%d", cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount)}, nil
+		return resultWithIntents(fmt.Sprintf("BRIEF_STATUS\nenabled=%t\ntoggles=%d", cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount), briefStatusIntents(cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount)...), nil
 	case "toggle":
 		cmdCtx.State.BriefOnly = !cmdCtx.State.BriefOnly
 		cmdCtx.State.BriefToggleCount++
@@ -5956,7 +6341,7 @@ func (c *BriefCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
-	return Result{Handled: true, Message: fmt.Sprintf("BRIEF_SET\nenabled=%t\ntoggles=%d", cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount)}, nil
+	return resultWithIntents(fmt.Sprintf("BRIEF_SET\nenabled=%t\ntoggles=%d", cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount), briefSetIntents(cmdCtx.State.BriefOnly, cmdCtx.State.BriefToggleCount)...), nil
 }
 
 // CommitCommand records deterministic local commit intent.
@@ -6004,11 +6389,11 @@ func (c *CommitCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocat
 		if gitSummary.Err != "" {
 			lines = append(lines, fmt.Sprintf("status=%s", normalizeToken(gitSummary.Err)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "suggest") {
 		message := suggestCommitMessage(summary)
-		return Result{Handled: true, Message: fmt.Sprintf("COMMIT_SUGGEST\nsource=%s\nbranch=%s\nfiles=%d\nsuggested_message=%s", source, normalizeToken(branch), summary.Files, normalizeToken(message))}, nil
+		return resultWithIntents(fmt.Sprintf("COMMIT_SUGGEST\nsource=%s\nbranch=%s\nfiles=%d\nsuggested_message=%s", source, normalizeToken(branch), summary.Files, normalizeToken(message)), legacyOutputIntents(fmt.Sprintf("COMMIT_SUGGEST\nsource=%s\nbranch=%s\nfiles=%d\nsuggested_message=%s", source, normalizeToken(branch), summary.Files, normalizeToken(message)))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "check") {
 		ready := summary.Files > 0 && summary.Staged > 0
@@ -6018,7 +6403,7 @@ func (c *CommitCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocat
 		} else if summary.Staged == 0 {
 			reason = "not_staged"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("COMMIT_CHECK\nready=%t\nreason=%s\nfiles=%d\nstaged=%d\nunstaged=%d\nuntracked=%d", ready, reason, summary.Files, summary.Staged, summary.Unstaged, summary.Untracked)}, nil
+		return resultWithIntents(fmt.Sprintf("COMMIT_CHECK\nready=%t\nreason=%s\nfiles=%d\nstaged=%d\nunstaged=%d\nuntracked=%d", ready, reason, summary.Files, summary.Staged, summary.Unstaged, summary.Untracked), legacyOutputIntents(fmt.Sprintf("COMMIT_CHECK\nready=%t\nreason=%s\nfiles=%d\nstaged=%d\nunstaged=%d\nuntracked=%d", ready, reason, summary.Files, summary.Staged, summary.Unstaged, summary.Untracked))...), nil
 	}
 
 	message := strings.TrimSpace(strings.Join(inv.Args, " "))
@@ -6049,7 +6434,7 @@ func (c *CommitCommand) Execute(ctx context.Context, cmdCtx Context, inv Invocat
 		lines = append(lines, fmt.Sprintf("step.%d.status=%s", i+1, normalizeToken(step.Status)))
 		lines = append(lines, fmt.Sprintf("step.%d.action=%s", i+1, normalizeToken(step.Action)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 }
 
 // CommitPushPRCommand records deterministic commit+PR flow intent.
@@ -6094,7 +6479,7 @@ func (c *CommitPushPRCommand) Execute(ctx context.Context, cmdCtx Context, inv I
 		if gitSummary.Err != "" {
 			lines = append(lines, fmt.Sprintf("status=%s", normalizeToken(gitSummary.Err)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "doctor") {
 		branch := activeBranch(cmdCtx.State)
@@ -6104,7 +6489,7 @@ func (c *CommitPushPRCommand) Execute(ctx context.Context, cmdCtx Context, inv I
 		if tracked && summary.Staged > 0 {
 			quickFix = "/commit-push-pr --force"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("COMMIT_PUSH_PR_DOCTOR\nbranch=%s\ntracked=%t\nupstream=%s\nfiles=%d\nstaged=%d\nquick_fix=%s", normalizeToken(branch), tracked, normalizeToken(upstream), summary.Files, summary.Staged, normalizeToken(quickFix))}, nil
+		return resultWithIntents(fmt.Sprintf("COMMIT_PUSH_PR_DOCTOR\nbranch=%s\ntracked=%t\nupstream=%s\nfiles=%d\nstaged=%d\nquick_fix=%s", normalizeToken(branch), tracked, normalizeToken(upstream), summary.Files, summary.Staged, normalizeToken(quickFix)), legacyOutputIntents(fmt.Sprintf("COMMIT_PUSH_PR_DOCTOR\nbranch=%s\ntracked=%t\nupstream=%s\nfiles=%d\nstaged=%d\nquick_fix=%s", normalizeToken(branch), tracked, normalizeToken(upstream), summary.Files, summary.Staged, normalizeToken(quickFix)))...), nil
 	}
 	opts, err := parseCommitPushPROptions(inv.Args)
 	if err != nil {
@@ -6165,7 +6550,7 @@ func (c *CommitPushPRCommand) Execute(ctx context.Context, cmdCtx Context, inv I
 		fmt.Sprintf("step.6.open_pr=%s", prStep),
 		fmt.Sprintf("url=%s", normalizeToken(url)),
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...), nil
 }
 
 type diffSummary struct {
@@ -6306,7 +6691,7 @@ func (c *InitVerifiersCommand) Execute(_ context.Context, cmdCtx Context, inv In
 		return Result{}, fmt.Errorf("missing command runtime state")
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("INIT_VERIFIERS_STATUS\ncount=%d\nlast_name=%s", cmdCtx.State.InitVerifiersCount, normalizeToken(cmdCtx.State.LastVerifierName))}, nil
+		return resultWithIntents(fmt.Sprintf("INIT_VERIFIERS_STATUS\ncount=%d\nlast_name=%s", cmdCtx.State.InitVerifiersCount, normalizeToken(cmdCtx.State.LastVerifierName)), initVerifiersStatusIntents(cmdCtx.State.InitVerifiersCount, cmdCtx.State.LastVerifierName)...), nil
 	}
 	name := strings.TrimSpace(strings.Join(inv.Args, " "))
 	if name == "" {
@@ -6314,7 +6699,7 @@ func (c *InitVerifiersCommand) Execute(_ context.Context, cmdCtx Context, inv In
 	}
 	cmdCtx.State.InitVerifiersCount++
 	cmdCtx.State.LastVerifierName = name
-	return Result{Handled: true, Message: fmt.Sprintf("INIT_VERIFIERS_CREATED\nname=%s\ncount=%d", normalizeToken(name), cmdCtx.State.InitVerifiersCount)}, nil
+	return resultWithIntents(fmt.Sprintf("INIT_VERIFIERS_CREATED\nname=%s\ncount=%d", normalizeToken(name), cmdCtx.State.InitVerifiersCount), initVerifiersCreatedIntents(name, cmdCtx.State.InitVerifiersCount)...), nil
 }
 
 // InsightsCommand records deterministic analytics-report generation intent.
@@ -6335,7 +6720,7 @@ func (c *InsightsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 		inv.Args = []string{"report"}
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("INSIGHTS_STATUS\ncount=%d\nlast_scope=%s", cmdCtx.State.InsightsCount, normalizeToken(cmdCtx.State.LastInsightsScope))}, nil
+		return resultWithIntents(fmt.Sprintf("INSIGHTS_STATUS\ncount=%d\nlast_scope=%s", cmdCtx.State.InsightsCount, normalizeToken(cmdCtx.State.LastInsightsScope)), insightsStatusIntents(cmdCtx.State.InsightsCount, cmdCtx.State.LastInsightsScope)...), nil
 	}
 	if !strings.EqualFold(strings.TrimSpace(inv.Args[0]), "report") || len(inv.Args) > 2 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6349,7 +6734,7 @@ func (c *InsightsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 	}
 	cmdCtx.State.InsightsCount++
 	cmdCtx.State.LastInsightsScope = scope
-	return Result{Handled: true, Message: fmt.Sprintf("INSIGHTS_REPORT\nscope=%s\ncount=%d", normalizeToken(scope), cmdCtx.State.InsightsCount)}, nil
+	return resultWithIntents(fmt.Sprintf("INSIGHTS_REPORT\nscope=%s\ncount=%d", normalizeToken(scope), cmdCtx.State.InsightsCount), insightsReportIntents(scope, cmdCtx.State.InsightsCount)...), nil
 }
 
 // PassesCommand records deterministic referral-pass interactions.
@@ -6371,7 +6756,7 @@ func (c *PassesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PASSES_STATUS\nvisits=%d\nremaining=%d", cmdCtx.State.PassesVisitCount, cmdCtx.State.PassesRemaining)}, nil
+		return resultWithIntents(fmt.Sprintf("PASSES_STATUS\nvisits=%d\nremaining=%d", cmdCtx.State.PassesVisitCount, cmdCtx.State.PassesRemaining), passesStatusIntents(cmdCtx.State.PassesVisitCount, cmdCtx.State.PassesRemaining)...), nil
 	}
 	if !strings.EqualFold(strings.TrimSpace(inv.Args[0]), "claim") || len(inv.Args) > 2 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6389,7 +6774,7 @@ func (c *PassesCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	}
 	cmdCtx.State.PassesRemaining -= claimCount
 	cmdCtx.State.PassesVisitCount++
-	return Result{Handled: true, Message: fmt.Sprintf("PASSES_CLAIM\nclaimed=%d\nremaining=%d\nvisits=%d", claimCount, cmdCtx.State.PassesRemaining, cmdCtx.State.PassesVisitCount)}, nil
+	return resultWithIntents(fmt.Sprintf("PASSES_CLAIM\nclaimed=%d\nremaining=%d\nvisits=%d", claimCount, cmdCtx.State.PassesRemaining, cmdCtx.State.PassesVisitCount), passesClaimIntents(claimCount, cmdCtx.State.PassesRemaining, cmdCtx.State.PassesVisitCount)...), nil
 }
 
 // RenameCommand stores deterministic conversation title state.
@@ -6406,7 +6791,7 @@ func (c *RenameCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
 		updated := countHistoryTitleMatches(cmdCtx.State, cmdCtx.State.SessionTitle)
-		return Result{Handled: true, Message: fmt.Sprintf("RENAME_STATUS\ncount=%d\nname=%s\nhistory_matches=%d", cmdCtx.State.RenameCount, normalizeToken(cmdCtx.State.SessionTitle), updated)}, nil
+		return resultWithIntents(fmt.Sprintf("RENAME_STATUS\ncount=%d\nname=%s\nhistory_matches=%d", cmdCtx.State.RenameCount, normalizeToken(cmdCtx.State.SessionTitle), updated), renameStatusIntents(cmdCtx.State.RenameCount, cmdCtx.State.SessionTitle, updated)...), nil
 	}
 	name := strings.TrimSpace(strings.Join(inv.Args, " "))
 	if name == "" {
@@ -6415,7 +6800,7 @@ func (c *RenameCommand) Execute(_ context.Context, cmdCtx Context, inv Invocatio
 	cmdCtx.State.RenameCount++
 	cmdCtx.State.SessionTitle = name
 	updated := persistSessionTitleToHistory(cmdCtx.State, name)
-	return Result{Handled: true, Message: fmt.Sprintf("RENAME_SET\nname=%s\ncount=%d\nhistory_updated=%d", normalizeToken(name), cmdCtx.State.RenameCount, updated)}, nil
+	return resultWithIntents(fmt.Sprintf("RENAME_SET\nname=%s\ncount=%d\nhistory_updated=%d", normalizeToken(name), cmdCtx.State.RenameCount, updated), renameSetIntents(name, cmdCtx.State.RenameCount, updated)...), nil
 }
 
 func persistSessionTitleToHistory(state *RuntimeState, title string) int {
@@ -6478,10 +6863,10 @@ func (c *StickersCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.StickersCount++
-		return Result{Handled: true, Message: fmt.Sprintf("STICKERS_ORDER\ncount=%d\nurl=https://www.stickermule.com/claudecode", cmdCtx.State.StickersCount)}, nil
+		return resultWithIntents(fmt.Sprintf("STICKERS_ORDER\ncount=%d\nurl=https://www.stickermule.com/claudecode", cmdCtx.State.StickersCount), stickersOrderIntents(cmdCtx.State.StickersCount, "https://www.stickermule.com/claudecode")...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("STICKERS_STATUS\ncount=%d", cmdCtx.State.StickersCount)}, nil
+		return resultWithIntents(fmt.Sprintf("STICKERS_STATUS\ncount=%d", cmdCtx.State.StickersCount), stickersStatusIntents(cmdCtx.State.StickersCount)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: %s", c.Usage())
 }
@@ -6507,11 +6892,11 @@ func (c *ThinkbackCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
 	case "status":
-		return Result{Handled: true, Message: fmt.Sprintf("THINKBACK_STATUS\ncount=%d\nlast_action=%s", cmdCtx.State.ThinkbackCount, normalizeToken(cmdCtx.State.ThinkbackLastAction))}, nil
+		return resultWithIntents(fmt.Sprintf("THINKBACK_STATUS\ncount=%d\nlast_action=%s", cmdCtx.State.ThinkbackCount, normalizeToken(cmdCtx.State.ThinkbackLastAction)), thinkbackStatusIntents(cmdCtx.State.ThinkbackCount, cmdCtx.State.ThinkbackLastAction)...), nil
 	case "generate", "play":
 		cmdCtx.State.ThinkbackCount++
 		cmdCtx.State.ThinkbackLastAction = sub
-		return Result{Handled: true, Message: fmt.Sprintf("THINKBACK_ACTION\naction=%s\ncount=%d", sub, cmdCtx.State.ThinkbackCount)}, nil
+		return resultWithIntents(fmt.Sprintf("THINKBACK_ACTION\naction=%s\ncount=%d", sub, cmdCtx.State.ThinkbackCount), thinkbackActionIntents(sub, cmdCtx.State.ThinkbackCount)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -6534,10 +6919,10 @@ func (c *ThinkbackPlayCommand) Execute(_ context.Context, cmdCtx Context, inv In
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.ThinkbackPlayCount++
-		return Result{Handled: true, Message: fmt.Sprintf("THINKBACK_PLAY\ncount=%d", cmdCtx.State.ThinkbackPlayCount)}, nil
+		return resultWithIntents(fmt.Sprintf("THINKBACK_PLAY\ncount=%d", cmdCtx.State.ThinkbackPlayCount), thinkbackPlayRunIntents(cmdCtx.State.ThinkbackPlayCount)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("THINKBACK_PLAY_STATUS\ncount=%d", cmdCtx.State.ThinkbackPlayCount)}, nil
+		return resultWithIntents(fmt.Sprintf("THINKBACK_PLAY_STATUS\ncount=%d", cmdCtx.State.ThinkbackPlayCount), thinkbackPlayStatusIntents(cmdCtx.State.ThinkbackPlayCount)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: %s", c.Usage())
 }
@@ -6556,9 +6941,9 @@ func (c *TeleportCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 	}
 	if len(inv.Args) == 0 || (len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status")) {
 		if len(inv.Args) == 0 {
-			return Result{Handled: true, Message: fmt.Sprintf("TELEPORT_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.TeleportCount, normalizeToken(cmdCtx.State.TeleportLastTarget))}, nil
+			return resultWithIntents(fmt.Sprintf("TELEPORT_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.TeleportCount, normalizeToken(cmdCtx.State.TeleportLastTarget)), teleportStatusIntents(cmdCtx.State.TeleportCount, cmdCtx.State.TeleportLastTarget)...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("TELEPORT_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.TeleportCount, normalizeToken(cmdCtx.State.TeleportLastTarget))}, nil
+		return resultWithIntents(fmt.Sprintf("TELEPORT_STATUS\ncount=%d\nlast_target=%s", cmdCtx.State.TeleportCount, normalizeToken(cmdCtx.State.TeleportLastTarget)), teleportStatusIntents(cmdCtx.State.TeleportCount, cmdCtx.State.TeleportLastTarget)...), nil
 	}
 	target := strings.TrimSpace(strings.Join(inv.Args, " "))
 	if target == "" {
@@ -6566,7 +6951,7 @@ func (c *TeleportCommand) Execute(_ context.Context, cmdCtx Context, inv Invocat
 	}
 	cmdCtx.State.TeleportCount++
 	cmdCtx.State.TeleportLastTarget = target
-	return Result{Handled: true, Message: fmt.Sprintf("TELEPORT_SET\ntarget=%s\ncount=%d", normalizeToken(target), cmdCtx.State.TeleportCount)}, nil
+	return resultWithIntents(fmt.Sprintf("TELEPORT_SET\ntarget=%s\ncount=%d", normalizeToken(target), cmdCtx.State.TeleportCount), teleportSetIntents(target, cmdCtx.State.TeleportCount)...), nil
 }
 
 // SummaryCommand records deterministic summary refresh requests.
@@ -6586,10 +6971,10 @@ func (c *SummaryCommand) Execute(_ context.Context, cmdCtx Context, inv Invocati
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.SummaryCount++
-		return Result{Handled: true, Message: fmt.Sprintf("SUMMARY_REFRESH\ncount=%d", cmdCtx.State.SummaryCount)}, nil
+		return resultWithIntents(fmt.Sprintf("SUMMARY_REFRESH\ncount=%d", cmdCtx.State.SummaryCount), summaryRefreshIntents(cmdCtx.State.SummaryCount)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("SUMMARY_STATUS\ncount=%d", cmdCtx.State.SummaryCount)}, nil
+		return resultWithIntents(fmt.Sprintf("SUMMARY_STATUS\ncount=%d", cmdCtx.State.SummaryCount), summaryStatusIntents(cmdCtx.State.SummaryCount)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: %s", c.Usage())
 }
@@ -6618,10 +7003,10 @@ func (c *ResetLimitsCommand) Execute(_ context.Context, cmdCtx Context, inv Invo
 		cmdCtx.State.CostCacheWrite = 0
 		cmdCtx.State.RateLimitPrompts = 0
 		cmdCtx.State.ResetLimitsCount++
-		return Result{Handled: true, Message: fmt.Sprintf("RESET_LIMITS\ncount=%d", cmdCtx.State.ResetLimitsCount)}, nil
+		return resultWithIntents(fmt.Sprintf("RESET_LIMITS\ncount=%d", cmdCtx.State.ResetLimitsCount), resetLimitsApplyIntents(cmdCtx.State.ResetLimitsCount)...), nil
 	}
 	if len(inv.Args) == 1 && strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
-		return Result{Handled: true, Message: fmt.Sprintf("RESET_LIMITS_STATUS\ncount=%d", cmdCtx.State.ResetLimitsCount)}, nil
+		return resultWithIntents(fmt.Sprintf("RESET_LIMITS_STATUS\ncount=%d", cmdCtx.State.ResetLimitsCount), resetLimitsStatusIntents(cmdCtx.State.ResetLimitsCount)...), nil
 	}
 	return Result{}, fmt.Errorf("usage: %s", c.Usage())
 }
@@ -6651,7 +7036,8 @@ func (c *EnvCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 				count++
 			}
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("ENV_STATUS\nkeys=%d\nsets=%d", count, cmdCtx.State.EnvSetCount)}, nil
+		message := fmt.Sprintf("ENV_STATUS\nkeys=%d\nsets=%d", count, cmdCtx.State.EnvSetCount)
+		return resultWithIntents(message, envStatusIntents(count, cmdCtx.State.EnvSetCount)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -6669,7 +7055,8 @@ func (c *EnvCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		}
 		cmdCtx.State.ConfigValues["env."+key] = value
 		cmdCtx.State.EnvSetCount++
-		return Result{Handled: true, Message: fmt.Sprintf("ENV_SET\nkey=%s\nvalue=%s\nsets=%d", normalizeToken(key), normalizeToken(value), cmdCtx.State.EnvSetCount)}, nil
+		message := fmt.Sprintf("ENV_SET\nkey=%s\nvalue=%s\nsets=%d", normalizeToken(key), normalizeToken(value), cmdCtx.State.EnvSetCount)
+		return resultWithIntents(message, envSetIntents(key, value, cmdCtx.State.EnvSetCount)...), nil
 	case "get":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6680,9 +7067,11 @@ func (c *EnvCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) 
 		}
 		value, ok := cmdCtx.State.ConfigValues["env."+key]
 		if !ok {
-			return Result{Handled: true, Message: fmt.Sprintf("ENV_GET\nkey=%s\nfound=false", normalizeToken(key))}, nil
+			message := fmt.Sprintf("ENV_GET\nkey=%s\nfound=false", normalizeToken(key))
+			return resultWithIntents(message, envLookupIntents(key, false, "")...), nil
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("ENV_GET\nkey=%s\nfound=true\nvalue=%s", normalizeToken(key), normalizeToken(value))}, nil
+		message := fmt.Sprintf("ENV_GET\nkey=%s\nfound=true\nvalue=%s", normalizeToken(key), normalizeToken(value))
+		return resultWithIntents(message, envLookupIntents(key, true, value)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -6741,7 +7130,8 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		if len(inv.Args) > 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PROACTIVE_STATUS\nenabled=%t\nrules=%d\nlast_action=%s", cmdCtx.State.ProactiveEnabled, len(cmdCtx.State.ProactiveRules), normalizeToken(cmdCtx.State.ProactiveLastAction))}, nil
+		message := fmt.Sprintf("PROACTIVE_STATUS\nenabled=%t\nrules=%d\nlast_action=%s", cmdCtx.State.ProactiveEnabled, len(cmdCtx.State.ProactiveRules), normalizeToken(cmdCtx.State.ProactiveLastAction))
+		return resultWithIntents(message, proactiveStatusIntents(cmdCtx.State.ProactiveEnabled, cmdCtx.State.ProactiveRules, cmdCtx.State.ProactiveLastAction)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -6751,14 +7141,14 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		}
 		cmdCtx.State.ProactiveEnabled = true
 		cmdCtx.State.ProactiveLastAction = "on"
-		return Result{Handled: true, Message: "PROACTIVE_SET\nenabled=true"}, nil
+		return resultWithIntents("PROACTIVE_SET\nenabled=true", proactiveMutationIntents("Proactive enabled", detailRow("Enabled", "yes", "enabled", "Proactive automation enabled."))...), nil
 	case "off":
 		if len(inv.Args) != 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
 		cmdCtx.State.ProactiveEnabled = false
 		cmdCtx.State.ProactiveLastAction = "off"
-		return Result{Handled: true, Message: "PROACTIVE_SET\nenabled=false"}, nil
+		return resultWithIntents("PROACTIVE_SET\nenabled=false", proactiveMutationIntents("Proactive disabled", detailRow("Enabled", "no", "disabled", "Proactive automation disabled."))...), nil
 	case "rule":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6774,7 +7164,7 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 			for i, rule := range rules {
 				lines = append(lines, fmt.Sprintf("rule.%d=%s", i+1, normalizeToken(rule)))
 			}
-			return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+			return resultWithIntents(strings.Join(lines, "\n"), proactiveStatusIntents(cmdCtx.State.ProactiveEnabled, rules, cmdCtx.State.ProactiveLastAction)...), nil
 		case "add":
 			if len(inv.Args) < 3 {
 				return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6786,7 +7176,8 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 			before := len(cmdCtx.State.ProactiveRules)
 			cmdCtx.State.ProactiveRules = uniqueSortedStrings(append(cmdCtx.State.ProactiveRules, rule))
 			cmdCtx.State.ProactiveLastAction = "rule-add"
-			return Result{Handled: true, Message: fmt.Sprintf("PROACTIVE_RULE_ADD\nrule=%s\nadded=%t\ncount=%d", normalizeToken(rule), len(cmdCtx.State.ProactiveRules) > before, len(cmdCtx.State.ProactiveRules))}, nil
+			message := fmt.Sprintf("PROACTIVE_RULE_ADD\nrule=%s\nadded=%t\ncount=%d", normalizeToken(rule), len(cmdCtx.State.ProactiveRules) > before, len(cmdCtx.State.ProactiveRules))
+			return resultWithIntents(message, proactiveMutationIntents("Proactive rule added", detailRow("Rule", normalizeToken(rule), "rule", "Rule value."), detailRow("Added", boolState(len(cmdCtx.State.ProactiveRules) > before, "yes", "no"), "state", "Whether rule was newly added."), detailRow("Count", itoa(len(cmdCtx.State.ProactiveRules)), "count", "Total rules."))...), nil
 		case "remove":
 			if len(inv.Args) < 3 {
 				return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6798,7 +7189,8 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 			removed := containsString(cmdCtx.State.ProactiveRules, rule)
 			cmdCtx.State.ProactiveRules = removeStringValue(cmdCtx.State.ProactiveRules, rule)
 			cmdCtx.State.ProactiveLastAction = "rule-remove"
-			return Result{Handled: true, Message: fmt.Sprintf("PROACTIVE_RULE_REMOVE\nrule=%s\nremoved=%t\ncount=%d", normalizeToken(rule), removed, len(cmdCtx.State.ProactiveRules))}, nil
+			message := fmt.Sprintf("PROACTIVE_RULE_REMOVE\nrule=%s\nremoved=%t\ncount=%d", normalizeToken(rule), removed, len(cmdCtx.State.ProactiveRules))
+			return resultWithIntents(message, proactiveMutationIntents("Proactive rule removed", detailRow("Rule", normalizeToken(rule), "rule", "Rule value."), detailRow("Removed", boolState(removed, "yes", "no"), "state", "Whether rule was removed."), detailRow("Count", itoa(len(cmdCtx.State.ProactiveRules)), "count", "Remaining rules."))...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
@@ -6815,7 +7207,8 @@ func (c *ProactiveCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		if cmdCtx.State.ProactiveEnabled {
 			status = "queued"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("PROACTIVE_TRIGGER\nevent=%s\nenabled=%t\nstatus=%s", normalizeToken(event), cmdCtx.State.ProactiveEnabled, status)}, nil
+		message := fmt.Sprintf("PROACTIVE_TRIGGER\nevent=%s\nenabled=%t\nstatus=%s", normalizeToken(event), cmdCtx.State.ProactiveEnabled, status)
+		return resultWithIntents(message, proactiveMutationIntents("Proactive trigger", detailRow("Event", normalizeToken(event), "event", "Trigger event."), detailRow("Enabled", boolState(cmdCtx.State.ProactiveEnabled, "yes", "no"), "state", "Whether proactive mode is enabled."), detailRow("Status", normalizeToken(status), normalizeToken(status), "Trigger handling result."))...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -6846,7 +7239,8 @@ func (c *AssistantCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		if mode == "-" {
 			mode = "chat"
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("ASSISTANT_STATUS\nmode=%s\nsession_id=%s\nlast_action=%s", mode, normalizeToken(cmdCtx.State.AssistantSessionID), normalizeToken(cmdCtx.State.AssistantLastAction))}, nil
+		message := fmt.Sprintf("ASSISTANT_STATUS\nmode=%s\nsession_id=%s\nlast_action=%s", mode, normalizeToken(cmdCtx.State.AssistantSessionID), normalizeToken(cmdCtx.State.AssistantLastAction))
+		return resultWithIntents(message, assistantStatusIntents(mode, cmdCtx.State.AssistantSessionID, cmdCtx.State.AssistantLastAction)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -6859,7 +7253,8 @@ func (c *AssistantCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		case "chat", "plan", "review":
 			cmdCtx.State.AssistantMode = mode
 			cmdCtx.State.AssistantLastAction = "mode"
-			return Result{Handled: true, Message: fmt.Sprintf("ASSISTANT_MODE\nmode=%s", mode)}, nil
+			message := fmt.Sprintf("ASSISTANT_MODE\nmode=%s", mode)
+			return resultWithIntents(message, assistantMutationIntents("Assistant mode", detailRow("Mode", normalizeToken(mode), "mode", "Assistant mode."))...), nil
 		default:
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
 		}
@@ -6872,7 +7267,8 @@ func (c *AssistantCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 				cmdCtx.State.AssistantSessionID = "assistant-1"
 			}
 			cmdCtx.State.AssistantLastAction = "session"
-			return Result{Handled: true, Message: fmt.Sprintf("ASSISTANT_SESSION\nsession_id=%s\ncreated=false", normalizeToken(cmdCtx.State.AssistantSessionID))}, nil
+			message := fmt.Sprintf("ASSISTANT_SESSION\nsession_id=%s\ncreated=false", normalizeToken(cmdCtx.State.AssistantSessionID))
+			return resultWithIntents(message, assistantMutationIntents("Assistant session", detailRow("Session", normalizeToken(cmdCtx.State.AssistantSessionID), "session", "Current assistant session id."), detailRow("Created", "no", "state", "Whether a new session was created."))...), nil
 		}
 		sessionID := strings.TrimSpace(inv.Args[1])
 		if sessionID == "" {
@@ -6881,7 +7277,8 @@ func (c *AssistantCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		created := strings.TrimSpace(cmdCtx.State.AssistantSessionID) == ""
 		cmdCtx.State.AssistantSessionID = sessionID
 		cmdCtx.State.AssistantLastAction = "session"
-		return Result{Handled: true, Message: fmt.Sprintf("ASSISTANT_SESSION\nsession_id=%s\ncreated=%t", normalizeToken(sessionID), created)}, nil
+		message := fmt.Sprintf("ASSISTANT_SESSION\nsession_id=%s\ncreated=%t", normalizeToken(sessionID), created)
+		return resultWithIntents(message, assistantMutationIntents("Assistant session", detailRow("Session", normalizeToken(sessionID), "session", "Requested session id."), detailRow("Created", boolState(created, "yes", "no"), "state", "Whether session was created."))...), nil
 	case "reset":
 		if len(inv.Args) != 1 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6889,7 +7286,7 @@ func (c *AssistantCommand) Execute(_ context.Context, cmdCtx Context, inv Invoca
 		cmdCtx.State.AssistantMode = ""
 		cmdCtx.State.AssistantSessionID = ""
 		cmdCtx.State.AssistantLastAction = "reset"
-		return Result{Handled: true, Message: "ASSISTANT_RESET\nmode=chat\nsession_id=-"}, nil
+		return resultWithIntents("ASSISTANT_RESET\nmode=chat\nsession_id=-", assistantMutationIntents("Assistant reset", detailRow("Mode", "chat", "mode", "Reset to chat mode."), detailRow("Session", "-", "session", "Session cleared."))...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -6920,7 +7317,8 @@ func (c *ShareCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 				active++
 			}
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("SHARE_STATUS\ncount=%d\nactive=%d\nrevoked=%d\nlast_action=%s", len(cmdCtx.State.ShareLinks), active, len(cmdCtx.State.ShareLinks)-active, normalizeToken(cmdCtx.State.ShareLastAction))}, nil
+		message := fmt.Sprintf("SHARE_STATUS\ncount=%d\nactive=%d\nrevoked=%d\nlast_action=%s", len(cmdCtx.State.ShareLinks), active, len(cmdCtx.State.ShareLinks)-active, normalizeToken(cmdCtx.State.ShareLastAction))
+		return resultWithIntents(message, shareStatusIntents(cmdCtx.State.ShareLinks, cmdCtx.State.ShareLastAction)...), nil
 	}
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
 	switch sub {
@@ -6939,7 +7337,7 @@ func (c *ShareCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 			lines = append(lines, fmt.Sprintf("share.%d.revoked=%t", idx, link.Revoked))
 			lines = append(lines, fmt.Sprintf("share.%d.url=%s", idx, normalizeToken(link.URL)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), shareListIntents(links)...), nil
 	case "create":
 		if len(inv.Args) > 3 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6964,7 +7362,8 @@ func (c *ShareCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		url := fmt.Sprintf("https://share.example.invalid/%s", id)
 		cmdCtx.State.ShareLinks = append(cmdCtx.State.ShareLinks, ShareLink{ID: id, Scope: scope, Visibility: visibility, URL: url})
 		cmdCtx.State.ShareLastAction = "create"
-		return Result{Handled: true, Message: fmt.Sprintf("SHARE_CREATE\nid=%s\nscope=%s\nvisibility=%s\nrevoked=false\nurl=%s", normalizeToken(id), normalizeToken(scope), normalizeToken(visibility), normalizeToken(url))}, nil
+		message := fmt.Sprintf("SHARE_CREATE\nid=%s\nscope=%s\nvisibility=%s\nrevoked=false\nurl=%s", normalizeToken(id), normalizeToken(scope), normalizeToken(visibility), normalizeToken(url))
+		return resultWithIntents(message, shareMutationIntents("Share created", detailRow("ID", normalizeToken(id), "share", "Share link id."), detailRow("Scope", normalizeToken(scope), "scope", "Share scope."), detailRow("Visibility", normalizeToken(visibility), "visibility", "Link visibility."), detailRow("URL", normalizeToken(url), "url", "Share URL."))...), nil
 	case "revoke":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -6979,7 +7378,8 @@ func (c *ShareCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation
 		}
 		cmdCtx.State.ShareLinks[idx].Revoked = true
 		cmdCtx.State.ShareLastAction = "revoke"
-		return Result{Handled: true, Message: fmt.Sprintf("SHARE_REVOKE\nid=%s\nrevoked=true\nurl=%s", normalizeToken(id), normalizeToken(cmdCtx.State.ShareLinks[idx].URL))}, nil
+		message := fmt.Sprintf("SHARE_REVOKE\nid=%s\nrevoked=true\nurl=%s", normalizeToken(id), normalizeToken(cmdCtx.State.ShareLinks[idx].URL))
+		return resultWithIntents(message, shareMutationIntents("Share revoked", detailRow("ID", normalizeToken(id), "share", "Share link id."), detailRow("Revoked", "yes", "revoked", "Revocation state."), detailRow("URL", normalizeToken(cmdCtx.State.ShareLinks[idx].URL), "url", "Share URL."))...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -7021,7 +7421,7 @@ func (c *OAuthRefreshCommand) Execute(_ context.Context, cmdCtx Context, inv Inv
 			lines = append(lines, fmt.Sprintf("provider.%d.expires_in=%d", idx, state.ExpiresIn))
 			lines = append(lines, fmt.Sprintf("provider.%d.error=%s", idx, normalizeToken(state.Error)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), oauthRefreshStatusIntents(cmdCtx.State.OAuthRefreshStates, cmdCtx.State.OAuthRefreshLastAction)...), nil
 	}
 	if len(inv.Args) < 2 {
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -7043,7 +7443,7 @@ func (c *OAuthRefreshCommand) Execute(_ context.Context, cmdCtx Context, inv Inv
 		state := OAuthRefreshState{Provider: provider, Refreshed: true, TokenPrefix: tokenPrefix + "...", ExpiresIn: 3600, Error: ""}
 		cmdCtx.State.OAuthRefreshStates[provider] = state
 		cmdCtx.State.OAuthRefreshLastAction = "refresh"
-		return Result{Handled: true, Message: fmt.Sprintf("OAUTH_REFRESH_RESULT\nprovider=%s\nrefreshed=true\nexpires_in=3600\ntoken_prefix=%s\nerror=-", normalizeToken(provider), normalizeToken(state.TokenPrefix))}, nil
+		return resultWithIntents(fmt.Sprintf("OAUTH_REFRESH_RESULT\nprovider=%s\nrefreshed=true\nexpires_in=3600\ntoken_prefix=%s\nerror=-", normalizeToken(provider), normalizeToken(state.TokenPrefix)), oauthRefreshResultIntents(provider, true, 3600, state.TokenPrefix, "")...), nil
 	case "error":
 		if len(inv.Args) < 3 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -7055,7 +7455,7 @@ func (c *OAuthRefreshCommand) Execute(_ context.Context, cmdCtx Context, inv Inv
 		state := OAuthRefreshState{Provider: provider, Refreshed: false, TokenPrefix: "-", ExpiresIn: 0, Error: reason}
 		cmdCtx.State.OAuthRefreshStates[provider] = state
 		cmdCtx.State.OAuthRefreshLastAction = "error"
-		return Result{Handled: true, Message: fmt.Sprintf("OAUTH_REFRESH_RESULT\nprovider=%s\nrefreshed=false\nexpires_in=0\ntoken_prefix=-\nerror=%s", normalizeToken(provider), normalizeToken(reason))}, nil
+		return resultWithIntents(fmt.Sprintf("OAUTH_REFRESH_RESULT\nprovider=%s\nrefreshed=false\nexpires_in=0\ntoken_prefix=-\nerror=%s", normalizeToken(provider), normalizeToken(reason)), oauthRefreshResultIntents(provider, false, 0, "", reason)...), nil
 	case "clear":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: %s", c.Usage())
@@ -7063,7 +7463,741 @@ func (c *OAuthRefreshCommand) Execute(_ context.Context, cmdCtx Context, inv Inv
 		_, existed := cmdCtx.State.OAuthRefreshStates[provider]
 		delete(cmdCtx.State.OAuthRefreshStates, provider)
 		cmdCtx.State.OAuthRefreshLastAction = "clear"
-		return Result{Handled: true, Message: fmt.Sprintf("OAUTH_REFRESH_CLEAR\nprovider=%s\nremoved=%t", normalizeToken(provider), existed)}, nil
+		return resultWithIntents(fmt.Sprintf("OAUTH_REFRESH_CLEAR\nprovider=%s\nremoved=%t", normalizeToken(provider), existed), oauthRefreshClearIntents(provider, existed)...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// BridgeCommand tracks deterministic bridge-mode runtime state.
+type BridgeCommand struct{}
+
+func NewBridgeCommand() *BridgeCommand       { return &BridgeCommand{} }
+func (c *BridgeCommand) Name() string        { return "bridge" }
+func (c *BridgeCommand) Aliases() []string   { return nil }
+func (c *BridgeCommand) Description() string { return "Toggle deterministic bridge mode" }
+func (c *BridgeCommand) Usage() string       { return "/bridge [status|on|off|toggle]" }
+func (c *BridgeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(
+			fmt.Sprintf("BRIDGE_STATUS\nenabled=%t\ntransitions=%d", cmdCtx.State.BridgeEnabled, cmdCtx.State.BridgeTransitions),
+			summaryCardIntent("Bridge mode", "Bridge runtime routing state.", field("enabled", fmt.Sprintf("%t", cmdCtx.State.BridgeEnabled)), field("transitions", fmt.Sprintf("%d", cmdCtx.State.BridgeTransitions))),
+			actionHintsIntent("Actions", hint("Enable", "/bridge on"), hint("Disable", "/bridge off"), hint("Toggle", "/bridge toggle")),
+		), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "on":
+		if !cmdCtx.State.BridgeEnabled {
+			cmdCtx.State.BridgeTransitions++
+		}
+		cmdCtx.State.BridgeEnabled = true
+	case "off":
+		if cmdCtx.State.BridgeEnabled {
+			cmdCtx.State.BridgeTransitions++
+		}
+		cmdCtx.State.BridgeEnabled = false
+	case "toggle":
+		cmdCtx.State.BridgeEnabled = !cmdCtx.State.BridgeEnabled
+		cmdCtx.State.BridgeTransitions++
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	return resultWithIntents(
+		fmt.Sprintf("BRIDGE_SET\nenabled=%t\ntransitions=%d", cmdCtx.State.BridgeEnabled, cmdCtx.State.BridgeTransitions),
+		summaryCardIntent("Bridge updated", "Bridge mode mutation applied.", field("enabled", fmt.Sprintf("%t", cmdCtx.State.BridgeEnabled)), field("transitions", fmt.Sprintf("%d", cmdCtx.State.BridgeTransitions))),
+	), nil
+}
+
+// AntTraceCommand tracks deterministic ant-trace markers.
+type AntTraceCommand struct{}
+
+func NewAntTraceCommand() *AntTraceCommand     { return &AntTraceCommand{} }
+func (c *AntTraceCommand) Name() string        { return "ant-trace" }
+func (c *AntTraceCommand) Aliases() []string   { return nil }
+func (c *AntTraceCommand) Description() string { return "Track deterministic ant trace checkpoints" }
+func (c *AntTraceCommand) Usage() string       { return "/ant-trace [status|on|off|mark <label>|list|clear]" }
+func (c *AntTraceCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("ANT_TRACE_STATUS\nenabled=%t\ncount=%d\nmarks=%d", cmdCtx.State.AntTraceEnabled, cmdCtx.State.AntTraceCount, len(cmdCtx.State.AntTraceMarks)), antTraceStatusIntents(cmdCtx.State.AntTraceEnabled, cmdCtx.State.AntTraceCount, len(cmdCtx.State.AntTraceMarks))...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "on", "off":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.AntTraceEnabled = sub == "on"
+		cmdCtx.State.AntTraceCount++
+		return resultWithIntents(fmt.Sprintf("ANT_TRACE_SET\nenabled=%t\ncount=%d", cmdCtx.State.AntTraceEnabled, cmdCtx.State.AntTraceCount), antTraceSetIntents(cmdCtx.State.AntTraceEnabled, cmdCtx.State.AntTraceCount)...), nil
+	case "mark":
+		if len(inv.Args) < 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		label := strings.TrimSpace(strings.Join(inv.Args[1:], " "))
+		if label == "" {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.AntTraceMarks = append(cmdCtx.State.AntTraceMarks, label)
+		cmdCtx.State.AntTraceCount++
+		return resultWithIntents(fmt.Sprintf("ANT_TRACE_MARK\nlabel=%s\nmarks=%d\ncount=%d", normalizeToken(label), len(cmdCtx.State.AntTraceMarks), cmdCtx.State.AntTraceCount), antTraceMarkIntents(label, len(cmdCtx.State.AntTraceMarks), cmdCtx.State.AntTraceCount)...), nil
+	case "list":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		lines := []string{"ANT_TRACE_LIST", fmt.Sprintf("count=%d", len(cmdCtx.State.AntTraceMarks))}
+		for i, mark := range cmdCtx.State.AntTraceMarks {
+			lines = append(lines, fmt.Sprintf("mark.%d=%s", i+1, normalizeToken(mark)))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), antTraceListIntents(cmdCtx.State.AntTraceMarks)...), nil
+	case "clear":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.AntTraceMarks = nil
+		cmdCtx.State.AntTraceCount++
+		return resultWithIntents(fmt.Sprintf("ANT_TRACE_CLEAR\ncount=%d", cmdCtx.State.AntTraceCount), antTraceClearIntents(cmdCtx.State.AntTraceCount)...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// AutofixPRCommand tracks deterministic autofix PR workflow state.
+type AutofixPRCommand struct{}
+
+func NewAutofixPRCommand() *AutofixPRCommand    { return &AutofixPRCommand{} }
+func (c *AutofixPRCommand) Name() string        { return "autofix-pr" }
+func (c *AutofixPRCommand) Aliases() []string   { return nil }
+func (c *AutofixPRCommand) Description() string { return "Queue deterministic autofix PR actions" }
+func (c *AutofixPRCommand) Usage() string       { return "/autofix-pr [status|run [ref]|plan [ref]|cancel]" }
+func (c *AutofixPRCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("AUTOFIX_PR_STATUS\ncount=%d\nlast_action=%s\nlast_ref=%s", cmdCtx.State.AutofixPRCount, normalizeToken(cmdCtx.State.AutofixPRLastAction), normalizeToken(cmdCtx.State.AutofixPRLastRef)), autofixPRStatusIntents(cmdCtx.State.AutofixPRCount, cmdCtx.State.AutofixPRLastAction, cmdCtx.State.AutofixPRLastRef)...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "run", "plan":
+		if len(inv.Args) > 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		ref := "current"
+		if len(inv.Args) == 2 {
+			ref = strings.TrimSpace(inv.Args[1])
+			if ref == "" {
+				return Result{}, fmt.Errorf("usage: %s", c.Usage())
+			}
+		}
+		cmdCtx.State.AutofixPRCount++
+		cmdCtx.State.AutofixPRLastAction = sub
+		cmdCtx.State.AutofixPRLastRef = ref
+		return resultWithIntents(fmt.Sprintf("AUTOFIX_PR_%s\nref=%s\ncount=%d", strings.ToUpper(sub), normalizeToken(ref), cmdCtx.State.AutofixPRCount), autofixPRActionIntents(sub, ref, cmdCtx.State.AutofixPRCount)...), nil
+	case "cancel":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.AutofixPRCount++
+		cmdCtx.State.AutofixPRLastAction = "cancel"
+		return resultWithIntents(fmt.Sprintf("AUTOFIX_PR_CANCEL\ncount=%d", cmdCtx.State.AutofixPRCount), autofixPRCancelIntents(cmdCtx.State.AutofixPRCount)...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// BackfillSessionsCommand tracks deterministic session backfill runs.
+type BackfillSessionsCommand struct{}
+
+func NewBackfillSessionsCommand() *BackfillSessionsCommand { return &BackfillSessionsCommand{} }
+func (c *BackfillSessionsCommand) Name() string            { return "backfill-sessions" }
+func (c *BackfillSessionsCommand) Aliases() []string       { return nil }
+func (c *BackfillSessionsCommand) Description() string {
+	return "Backfill deterministic session metadata"
+}
+func (c *BackfillSessionsCommand) Usage() string {
+	return "/backfill-sessions [status|run [count]|dry-run [count]]"
+}
+func (c *BackfillSessionsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("BACKFILL_STATUS\nruns=%d\nlast_count=%d\nlast_action=%s", cmdCtx.State.BackfillRuns, cmdCtx.State.BackfillLastCount, normalizeToken(cmdCtx.State.BackfillLastAction)), backfillStatusIntents(cmdCtx.State.BackfillRuns, cmdCtx.State.BackfillLastCount, cmdCtx.State.BackfillLastAction)...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	if sub != "run" && sub != "dry-run" {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	if len(inv.Args) > 2 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	count := 10
+	if len(inv.Args) == 2 {
+		parsed, err := parseNonNegativeInt(inv.Args[1])
+		if err != nil {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		count = parsed
+	}
+	cmdCtx.State.BackfillRuns++
+	cmdCtx.State.BackfillLastCount = count
+	cmdCtx.State.BackfillLastAction = sub
+	return resultWithIntents(fmt.Sprintf("BACKFILL_RUN\naction=%s\ncount=%d\nruns=%d", normalizeToken(sub), count, cmdCtx.State.BackfillRuns), backfillRunIntents(sub, count, cmdCtx.State.BackfillRuns)...), nil
+}
+
+// BreakCacheCommand tracks deterministic cache invalidation scopes.
+type BreakCacheCommand struct{}
+
+func NewBreakCacheCommand() *BreakCacheCommand { return &BreakCacheCommand{} }
+func (c *BreakCacheCommand) Name() string      { return "break-cache" }
+func (c *BreakCacheCommand) Aliases() []string { return nil }
+func (c *BreakCacheCommand) Description() string {
+	return "Invalidate deterministic local cache scopes"
+}
+func (c *BreakCacheCommand) Usage() string { return "/break-cache [status|all|models|history|tools]" }
+func (c *BreakCacheCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if cmdCtx.State.CacheBreakScopes == nil {
+		cmdCtx.State.CacheBreakScopes = map[string]int{}
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		lines := []string{"BREAK_CACHE_STATUS", fmt.Sprintf("count=%d", cmdCtx.State.CacheBreakCount), fmt.Sprintf("last_scope=%s", normalizeToken(cmdCtx.State.CacheBreakLastScope))}
+		scopes := []string{"all", "models", "history", "tools"}
+		for _, scope := range scopes {
+			lines = append(lines, fmt.Sprintf("scope.%s=%d", scope, cmdCtx.State.CacheBreakScopes[scope]))
+		}
+		return resultWithIntents(strings.Join(lines, "\n"), breakCacheStatusIntents(cmdCtx.State.CacheBreakCount, cmdCtx.State.CacheBreakLastScope, cmdCtx.State.CacheBreakScopes)...), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	scope := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch scope {
+	case "all", "models", "history", "tools":
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	cmdCtx.State.CacheBreakCount++
+	cmdCtx.State.CacheBreakLastScope = scope
+	cmdCtx.State.CacheBreakScopes[scope]++
+	return resultWithIntents(fmt.Sprintf("BREAK_CACHE_APPLY\nscope=%s\ncount=%d", scope, cmdCtx.State.CacheBreakCount), breakCacheApplyIntents(scope, cmdCtx.State.CacheBreakCount)...), nil
+}
+
+// BughunterCommand tracks deterministic bug reproduction runs.
+type BughunterCommand struct{}
+
+func NewBughunterCommand() *BughunterCommand    { return &BughunterCommand{} }
+func (c *BughunterCommand) Name() string        { return "bughunter" }
+func (c *BughunterCommand) Aliases() []string   { return nil }
+func (c *BughunterCommand) Description() string { return "Run deterministic bughunter diagnostics" }
+func (c *BughunterCommand) Usage() string       { return "/bughunter [status|run [scope]]" }
+func (c *BughunterCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("BUGHUNTER_STATUS\ncount=%d\nlast_scope=%s", cmdCtx.State.BughunterCount, normalizeToken(cmdCtx.State.BughunterLastScope)), bughunterStatusIntents(cmdCtx.State.BughunterCount, cmdCtx.State.BughunterLastScope)...), nil
+	}
+	if strings.ToLower(strings.TrimSpace(inv.Args[0])) != "run" || len(inv.Args) > 2 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	scope := "workspace"
+	if len(inv.Args) == 2 {
+		scope = strings.TrimSpace(inv.Args[1])
+		if scope == "" {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+	}
+	cmdCtx.State.BughunterCount++
+	cmdCtx.State.BughunterLastScope = scope
+	return resultWithIntents(fmt.Sprintf("BUGHUNTER_RUN\nscope=%s\ncount=%d", normalizeToken(scope), cmdCtx.State.BughunterCount), bughunterRunIntents(scope, cmdCtx.State.BughunterCount)...), nil
+}
+
+// CtxVizCommand tracks deterministic context visualization refreshes.
+type CtxVizCommand struct{}
+
+func NewCtxVizCommand() *CtxVizCommand     { return &CtxVizCommand{} }
+func (c *CtxVizCommand) Name() string      { return "ctx-viz" }
+func (c *CtxVizCommand) Aliases() []string { return nil }
+func (c *CtxVizCommand) Description() string {
+	return "Render deterministic context visualization state"
+}
+func (c *CtxVizCommand) Usage() string { return "/ctx-viz [status|render [focus]|clear]" }
+func (c *CtxVizCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("CTX_VIZ_STATUS\ncount=%d\nlast_action=%s", cmdCtx.State.ContextVizCount, normalizeToken(cmdCtx.State.ContextVizLastAction)), ctxVizStatusIntents(cmdCtx.State.ContextVizCount, cmdCtx.State.ContextVizLastAction)...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "render":
+		if len(inv.Args) > 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		focus := "workspace"
+		if len(inv.Args) == 2 {
+			focus = strings.TrimSpace(inv.Args[1])
+			if focus == "" {
+				return Result{}, fmt.Errorf("usage: %s", c.Usage())
+			}
+		}
+		cmdCtx.State.ContextVizCount++
+		cmdCtx.State.ContextVizLastAction = "render"
+		return resultWithIntents(fmt.Sprintf("CTX_VIZ_RENDER\nfocus=%s\ncount=%d", normalizeToken(focus), cmdCtx.State.ContextVizCount), ctxVizRenderIntents(focus, cmdCtx.State.ContextVizCount)...), nil
+	case "clear":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.ContextVizCount++
+		cmdCtx.State.ContextVizLastAction = "clear"
+		return resultWithIntents(fmt.Sprintf("CTX_VIZ_CLEAR\ncount=%d", cmdCtx.State.ContextVizCount), ctxVizClearIntents(cmdCtx.State.ContextVizCount)...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// DebugToolCallCommand tracks deterministic tool-call diagnostics.
+type DebugToolCallCommand struct{}
+
+func NewDebugToolCallCommand() *DebugToolCallCommand { return &DebugToolCallCommand{} }
+func (c *DebugToolCallCommand) Name() string         { return "debug-tool-call" }
+func (c *DebugToolCallCommand) Aliases() []string    { return nil }
+func (c *DebugToolCallCommand) Description() string {
+	return "Inspect deterministic tool-call debug state"
+}
+func (c *DebugToolCallCommand) Usage() string { return "/debug-tool-call [status|log <tool>|clear]" }
+func (c *DebugToolCallCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("DEBUG_TOOL_CALL_STATUS\ncount=%d\nlast_tool=%s", cmdCtx.State.DebugToolCallCount, normalizeToken(cmdCtx.State.DebugToolCallLastTool)), debugToolCallStatusIntents(cmdCtx.State.DebugToolCallCount, cmdCtx.State.DebugToolCallLastTool)...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "log":
+		if len(inv.Args) != 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		tool := strings.TrimSpace(inv.Args[1])
+		if tool == "" {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.DebugToolCallCount++
+		cmdCtx.State.DebugToolCallLastTool = tool
+		return resultWithIntents(fmt.Sprintf("DEBUG_TOOL_CALL_LOG\ntool=%s\ncount=%d", normalizeToken(tool), cmdCtx.State.DebugToolCallCount), debugToolCallLogIntents(tool, cmdCtx.State.DebugToolCallCount)...), nil
+	case "clear":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.DebugToolCallCount++
+		cmdCtx.State.DebugToolCallLastTool = ""
+		return resultWithIntents(fmt.Sprintf("DEBUG_TOOL_CALL_CLEAR\ncount=%d", cmdCtx.State.DebugToolCallCount), debugToolCallClearIntents(cmdCtx.State.DebugToolCallCount)...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// GoodClaudeCommand toggles deterministic "good claude" mode.
+type GoodClaudeCommand struct{}
+
+func NewGoodClaudeCommand() *GoodClaudeCommand { return &GoodClaudeCommand{} }
+func (c *GoodClaudeCommand) Name() string      { return "good-claude" }
+func (c *GoodClaudeCommand) Aliases() []string { return nil }
+func (c *GoodClaudeCommand) Description() string {
+	return "Toggle deterministic good-claude helper mode"
+}
+func (c *GoodClaudeCommand) Usage() string { return "/good-claude [status|on|off|ask <question>]" }
+func (c *GoodClaudeCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("GOOD_CLAUDE_STATUS\nenabled=%t\nask_count=%d", cmdCtx.State.GoodClaudeEnabled, cmdCtx.State.GoodClaudeAskCount), legacyOutputIntents(fmt.Sprintf("GOOD_CLAUDE_STATUS\nenabled=%t\nask_count=%d", cmdCtx.State.GoodClaudeEnabled, cmdCtx.State.GoodClaudeAskCount))...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "on", "off":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.GoodClaudeEnabled = sub == "on"
+		return resultWithIntents(fmt.Sprintf("GOOD_CLAUDE_SET\nenabled=%t", cmdCtx.State.GoodClaudeEnabled), legacyOutputIntents(fmt.Sprintf("GOOD_CLAUDE_SET\nenabled=%t", cmdCtx.State.GoodClaudeEnabled))...), nil
+	case "ask":
+		if len(inv.Args) < 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		question := strings.TrimSpace(strings.Join(inv.Args[1:], " "))
+		if question == "" {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.GoodClaudeAskCount++
+		return resultWithIntents(fmt.Sprintf("GOOD_CLAUDE_ASK\nquestion=%s\ncount=%d", normalizeToken(question), cmdCtx.State.GoodClaudeAskCount), legacyOutputIntents(fmt.Sprintf("GOOD_CLAUDE_ASK\nquestion=%s\ncount=%d", normalizeToken(question), cmdCtx.State.GoodClaudeAskCount))...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// HeapdumpCommand records deterministic heapdump captures.
+type HeapdumpCommand struct{}
+
+func NewHeapdumpCommand() *HeapdumpCommand     { return &HeapdumpCommand{} }
+func (c *HeapdumpCommand) Name() string        { return "heapdump" }
+func (c *HeapdumpCommand) Aliases() []string   { return nil }
+func (c *HeapdumpCommand) Description() string { return "Capture deterministic heapdump markers" }
+func (c *HeapdumpCommand) Usage() string       { return "/heapdump [status|capture [reason]|clear]" }
+func (c *HeapdumpCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("HEAPDUMP_STATUS\ncount=%d\nlast_reason=%s", cmdCtx.State.HeapdumpCount, normalizeToken(cmdCtx.State.HeapdumpLastReason)), legacyOutputIntents(fmt.Sprintf("HEAPDUMP_STATUS\ncount=%d\nlast_reason=%s", cmdCtx.State.HeapdumpCount, normalizeToken(cmdCtx.State.HeapdumpLastReason)))...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "capture":
+		if len(inv.Args) > 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		reason := "manual"
+		if len(inv.Args) == 2 {
+			reason = strings.TrimSpace(inv.Args[1])
+			if reason == "" {
+				return Result{}, fmt.Errorf("usage: %s", c.Usage())
+			}
+		}
+		cmdCtx.State.HeapdumpCount++
+		cmdCtx.State.HeapdumpLastReason = reason
+		return resultWithIntents(fmt.Sprintf("HEAPDUMP_CAPTURE\nreason=%s\ncount=%d", normalizeToken(reason), cmdCtx.State.HeapdumpCount), legacyOutputIntents(fmt.Sprintf("HEAPDUMP_CAPTURE\nreason=%s\ncount=%d", normalizeToken(reason), cmdCtx.State.HeapdumpCount))...), nil
+	case "clear":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.HeapdumpLastReason = ""
+		return resultWithIntents("HEAPDUMP_CLEAR\nlast_reason=-", legacyOutputIntents("HEAPDUMP_CLEAR\nlast_reason=-")...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// InstallCommand tracks deterministic install flow state.
+type InstallCommand struct{}
+
+func NewInstallCommand() *InstallCommand      { return &InstallCommand{} }
+func (c *InstallCommand) Name() string        { return "install" }
+func (c *InstallCommand) Aliases() []string   { return nil }
+func (c *InstallCommand) Description() string { return "Run deterministic install/setup steps" }
+func (c *InstallCommand) Usage() string       { return "/install [status|plugins|setup|doctor]" }
+func (c *InstallCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("INSTALL_STATUS\ncount=%d\nlast_action=%s", cmdCtx.State.InstallCount, normalizeToken(cmdCtx.State.InstallLastAction)), legacyOutputIntents(fmt.Sprintf("INSTALL_STATUS\ncount=%d\nlast_action=%s", cmdCtx.State.InstallCount, normalizeToken(cmdCtx.State.InstallLastAction)))...), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "plugins", "setup", "doctor":
+		cmdCtx.State.InstallCount++
+		cmdCtx.State.InstallLastAction = sub
+		return resultWithIntents(fmt.Sprintf("INSTALL_RUN\naction=%s\ncount=%d", normalizeToken(sub), cmdCtx.State.InstallCount), legacyOutputIntents(fmt.Sprintf("INSTALL_RUN\naction=%s\ncount=%d", normalizeToken(sub), cmdCtx.State.InstallCount))...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// MockLimitsCommand tracks deterministic rate-limit mocking state.
+type MockLimitsCommand struct{}
+
+func NewMockLimitsCommand() *MockLimitsCommand   { return &MockLimitsCommand{} }
+func (c *MockLimitsCommand) Name() string        { return "mock-limits" }
+func (c *MockLimitsCommand) Aliases() []string   { return nil }
+func (c *MockLimitsCommand) Description() string { return "Toggle deterministic mock limit behavior" }
+func (c *MockLimitsCommand) Usage() string       { return "/mock-limits [status|on [count]|off]" }
+func (c *MockLimitsCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("MOCK_LIMITS_STATUS\nenabled=%t\nvalue=%d\nchanges=%d", cmdCtx.State.MockLimitsEnabled, cmdCtx.State.MockLimitsValue, cmdCtx.State.MockLimitsChanges), legacyOutputIntents(fmt.Sprintf("MOCK_LIMITS_STATUS\nenabled=%t\nvalue=%d\nchanges=%d", cmdCtx.State.MockLimitsEnabled, cmdCtx.State.MockLimitsValue, cmdCtx.State.MockLimitsChanges))...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "on":
+		if len(inv.Args) > 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		value := cmdCtx.State.MockLimitsValue
+		if value == 0 {
+			value = 1
+		}
+		if len(inv.Args) == 2 {
+			parsed, err := parseNonNegativeInt(inv.Args[1])
+			if err != nil {
+				return Result{}, fmt.Errorf("usage: %s", c.Usage())
+			}
+			value = parsed
+		}
+		cmdCtx.State.MockLimitsEnabled = true
+		cmdCtx.State.MockLimitsValue = value
+		cmdCtx.State.MockLimitsChanges++
+		return resultWithIntents(fmt.Sprintf("MOCK_LIMITS_SET\nenabled=true\nvalue=%d\nchanges=%d", value, cmdCtx.State.MockLimitsChanges), legacyOutputIntents(fmt.Sprintf("MOCK_LIMITS_SET\nenabled=true\nvalue=%d\nchanges=%d", value, cmdCtx.State.MockLimitsChanges))...), nil
+	case "off":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.MockLimitsEnabled = false
+		cmdCtx.State.MockLimitsChanges++
+		return resultWithIntents(fmt.Sprintf("MOCK_LIMITS_SET\nenabled=false\nvalue=%d\nchanges=%d", cmdCtx.State.MockLimitsValue, cmdCtx.State.MockLimitsChanges), legacyOutputIntents(fmt.Sprintf("MOCK_LIMITS_SET\nenabled=false\nvalue=%d\nchanges=%d", cmdCtx.State.MockLimitsValue, cmdCtx.State.MockLimitsChanges))...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// OnboardingCommand tracks deterministic onboarding status for parity.
+type OnboardingCommand struct{}
+
+func NewOnboardingCommand() *OnboardingCommand   { return &OnboardingCommand{} }
+func (c *OnboardingCommand) Name() string        { return "onboarding" }
+func (c *OnboardingCommand) Aliases() []string   { return nil }
+func (c *OnboardingCommand) Description() string { return "Inspect deterministic onboarding state" }
+func (c *OnboardingCommand) Usage() string       { return "/onboarding [status|run|reset]" }
+func (c *OnboardingCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("ONBOARDING_STATUS\ncompleted=%t\nruns=%d", cmdCtx.State.OnboardingCompleted, cmdCtx.State.OnboardingRuns), legacyOutputIntents(fmt.Sprintf("ONBOARDING_STATUS\ncompleted=%t\nruns=%d", cmdCtx.State.OnboardingCompleted, cmdCtx.State.OnboardingRuns))...), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "run":
+		cmdCtx.State.OnboardingRuns++
+		cmdCtx.State.OnboardingCompleted = true
+		return resultWithIntents(fmt.Sprintf("ONBOARDING_RUN\ncompleted=true\nruns=%d", cmdCtx.State.OnboardingRuns), legacyOutputIntents(fmt.Sprintf("ONBOARDING_RUN\ncompleted=true\nruns=%d", cmdCtx.State.OnboardingRuns))...), nil
+	case "reset":
+		cmdCtx.State.OnboardingCompleted = false
+		cmdCtx.State.OnboardingRuns++
+		return resultWithIntents(fmt.Sprintf("ONBOARDING_RESET\ncompleted=false\nruns=%d", cmdCtx.State.OnboardingRuns), legacyOutputIntents(fmt.Sprintf("ONBOARDING_RESET\ncompleted=false\nruns=%d", cmdCtx.State.OnboardingRuns))...), nil
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+}
+
+// PerfIssueCommand tracks deterministic performance issue filing state.
+type PerfIssueCommand struct{}
+
+func NewPerfIssueCommand() *PerfIssueCommand    { return &PerfIssueCommand{} }
+func (c *PerfIssueCommand) Name() string        { return "perf-issue" }
+func (c *PerfIssueCommand) Aliases() []string   { return nil }
+func (c *PerfIssueCommand) Description() string { return "File deterministic performance issue notes" }
+func (c *PerfIssueCommand) Usage() string       { return "/perf-issue [status|open <title>]" }
+func (c *PerfIssueCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("PERF_ISSUE_STATUS\ncount=%d\nlast_title=%s", cmdCtx.State.PerfIssueCount, normalizeToken(cmdCtx.State.PerfIssueLastTitle)), legacyOutputIntents(fmt.Sprintf("PERF_ISSUE_STATUS\ncount=%d\nlast_title=%s", cmdCtx.State.PerfIssueCount, normalizeToken(cmdCtx.State.PerfIssueLastTitle)))...), nil
+	}
+	if len(inv.Args) < 2 || !strings.EqualFold(strings.TrimSpace(inv.Args[0]), "open") {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	title := strings.TrimSpace(strings.Join(inv.Args[1:], " "))
+	if title == "" {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	cmdCtx.State.PerfIssueCount++
+	cmdCtx.State.PerfIssueLastTitle = title
+	return resultWithIntents(fmt.Sprintf("PERF_ISSUE_OPEN\ntitle=%s\ncount=%d", normalizeToken(title), cmdCtx.State.PerfIssueCount), legacyOutputIntents(fmt.Sprintf("PERF_ISSUE_OPEN\ntitle=%s\ncount=%d", normalizeToken(title), cmdCtx.State.PerfIssueCount))...), nil
+}
+
+// SandboxToggleCommand toggles deterministic sandbox mode quickly.
+type SandboxToggleCommand struct{}
+
+func NewSandboxToggleCommand() *SandboxToggleCommand { return &SandboxToggleCommand{} }
+func (c *SandboxToggleCommand) Name() string         { return "sandbox-toggle" }
+func (c *SandboxToggleCommand) Aliases() []string    { return nil }
+func (c *SandboxToggleCommand) Description() string  { return "Toggle deterministic sandbox mode" }
+func (c *SandboxToggleCommand) Usage() string        { return "/sandbox-toggle [status|on|off|toggle]" }
+func (c *SandboxToggleCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if strings.TrimSpace(cmdCtx.State.SandboxMode) == "" {
+		cmdCtx.State.SandboxMode = "off"
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("SANDBOX_TOGGLE_STATUS\nmode=%s", normalizeToken(cmdCtx.State.SandboxMode)), legacyOutputIntents(fmt.Sprintf("SANDBOX_TOGGLE_STATUS\nmode=%s", normalizeToken(cmdCtx.State.SandboxMode)))...), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "on":
+		cmdCtx.State.SandboxMode = "workspace-write"
+	case "off":
+		cmdCtx.State.SandboxMode = "off"
+	case "toggle":
+		if cmdCtx.State.SandboxMode == "off" {
+			cmdCtx.State.SandboxMode = "workspace-write"
+		} else {
+			cmdCtx.State.SandboxMode = "off"
+		}
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	return resultWithIntents(fmt.Sprintf("SANDBOX_TOGGLE_SET\nmode=%s", normalizeToken(cmdCtx.State.SandboxMode)), legacyOutputIntents(fmt.Sprintf("SANDBOX_TOGGLE_SET\nmode=%s", normalizeToken(cmdCtx.State.SandboxMode)))...), nil
+}
+
+// RemoteSetupCommand mirrors remote setup command family for parity.
+type RemoteSetupCommand struct{}
+
+func NewRemoteSetupCommand() *RemoteSetupCommand { return &RemoteSetupCommand{} }
+func (c *RemoteSetupCommand) Name() string       { return "remote-setup" }
+func (c *RemoteSetupCommand) Aliases() []string  { return nil }
+func (c *RemoteSetupCommand) Description() string {
+	return "Configure deterministic remote setup connection"
+}
+func (c *RemoteSetupCommand) Usage() string { return "/remote-setup [status|connect|disconnect]" }
+func (c *RemoteSetupCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("REMOTE_SETUP_STATUS\nconnected=%t\ncount=%d\nurl=%s", cmdCtx.State.WebSetupConnected, cmdCtx.State.WebSetupCount, normalizeToken(cmdCtx.State.RemoteSessionURL)), legacyOutputIntents(fmt.Sprintf("REMOTE_SETUP_STATUS\nconnected=%t\ncount=%d\nurl=%s", cmdCtx.State.WebSetupConnected, cmdCtx.State.WebSetupCount, normalizeToken(cmdCtx.State.RemoteSessionURL)))...), nil
+	}
+	if len(inv.Args) != 1 {
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "connect":
+		cmdCtx.State.WebSetupConnected = true
+		cmdCtx.State.WebSetupCount++
+		if strings.TrimSpace(cmdCtx.State.RemoteSessionURL) == "" {
+			cmdCtx.State.RemoteSessionURL = "https://claude.ai/code"
+		}
+	case "disconnect":
+		cmdCtx.State.WebSetupConnected = false
+		cmdCtx.State.WebSetupCount++
+	default:
+		return Result{}, fmt.Errorf("usage: %s", c.Usage())
+	}
+	return resultWithIntents(fmt.Sprintf("REMOTE_SETUP_APPLY\naction=%s\nconnected=%t\ncount=%d", sub, cmdCtx.State.WebSetupConnected, cmdCtx.State.WebSetupCount), legacyOutputIntents(fmt.Sprintf("REMOTE_SETUP_APPLY\naction=%s\nconnected=%t\ncount=%d", sub, cmdCtx.State.WebSetupConnected, cmdCtx.State.WebSetupCount))...), nil
+}
+
+// UltraplanCommand tracks deterministic ultraplan runs.
+type UltraplanCommand struct{}
+
+func NewUltraplanCommand() *UltraplanCommand    { return &UltraplanCommand{} }
+func (c *UltraplanCommand) Name() string        { return "ultraplan" }
+func (c *UltraplanCommand) Aliases() []string   { return nil }
+func (c *UltraplanCommand) Description() string { return "Run deterministic ultraplan planner" }
+func (c *UltraplanCommand) Usage() string       { return "/ultraplan [status|run [target]|clear]" }
+func (c *UltraplanCommand) Execute(_ context.Context, cmdCtx Context, inv Invocation) (Result, error) {
+	if cmdCtx.State == nil {
+		return Result{}, fmt.Errorf("missing command runtime state")
+	}
+	if len(inv.Args) == 0 || strings.EqualFold(strings.TrimSpace(inv.Args[0]), "status") {
+		if len(inv.Args) > 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		return resultWithIntents(fmt.Sprintf("ULTRAPLAN_STATUS\ncount=%d\nlast_action=%s\nlast_target=%s", cmdCtx.State.UltraplanCount, normalizeToken(cmdCtx.State.UltraplanLastAction), normalizeToken(cmdCtx.State.UltraplanLastTarget)), legacyOutputIntents(fmt.Sprintf("ULTRAPLAN_STATUS\ncount=%d\nlast_action=%s\nlast_target=%s", cmdCtx.State.UltraplanCount, normalizeToken(cmdCtx.State.UltraplanLastAction), normalizeToken(cmdCtx.State.UltraplanLastTarget)))...), nil
+	}
+	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
+	switch sub {
+	case "run":
+		if len(inv.Args) > 2 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		target := "current"
+		if len(inv.Args) == 2 {
+			target = strings.TrimSpace(inv.Args[1])
+			if target == "" {
+				return Result{}, fmt.Errorf("usage: %s", c.Usage())
+			}
+		}
+		cmdCtx.State.UltraplanCount++
+		cmdCtx.State.UltraplanLastAction = "run"
+		cmdCtx.State.UltraplanLastTarget = target
+		return resultWithIntents(fmt.Sprintf("ULTRAPLAN_RUN\ntarget=%s\ncount=%d", normalizeToken(target), cmdCtx.State.UltraplanCount), legacyOutputIntents(fmt.Sprintf("ULTRAPLAN_RUN\ntarget=%s\ncount=%d", normalizeToken(target), cmdCtx.State.UltraplanCount))...), nil
+	case "clear":
+		if len(inv.Args) != 1 {
+			return Result{}, fmt.Errorf("usage: %s", c.Usage())
+		}
+		cmdCtx.State.UltraplanCount++
+		cmdCtx.State.UltraplanLastAction = "clear"
+		cmdCtx.State.UltraplanLastTarget = ""
+		return resultWithIntents(fmt.Sprintf("ULTRAPLAN_CLEAR\ncount=%d", cmdCtx.State.UltraplanCount), legacyOutputIntents(fmt.Sprintf("ULTRAPLAN_CLEAR\ncount=%d", cmdCtx.State.UltraplanCount))...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: %s", c.Usage())
 	}
@@ -7104,7 +8238,7 @@ func renderPluginList(state *RuntimeState, serviceResult pluginspkg.ServiceListR
 		lines = append(lines, fmt.Sprintf("conflict.%d.name=%s", idx, normalizeToken(conflict.Name)))
 		lines = append(lines, fmt.Sprintf("conflict.%d.winner=%s", idx, normalizeToken(conflict.WinnerSource)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...)
 }
 
 func renderPluginMarketplaces(state *RuntimeState) Result {
@@ -7112,7 +8246,7 @@ func renderPluginMarketplaces(state *RuntimeState) Result {
 	for i, value := range state.PluginMarketplaces {
 		lines = append(lines, fmt.Sprintf("marketplace.%d=%s", i+1, normalizeToken(value)))
 	}
-	return Result{Handled: true, Message: strings.Join(lines, "\n")}
+	return resultWithIntents(strings.Join(lines, "\n"), legacyOutputIntents(strings.Join(lines, "\n"))...)
 }
 
 func removeStringValue(values []string, target string) []string {

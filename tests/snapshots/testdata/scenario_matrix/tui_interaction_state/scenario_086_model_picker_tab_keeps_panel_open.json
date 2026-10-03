@@ -1,0 +1,1 @@
+{"name":"model_picker_tab_keeps_panel_open","width":180,"height":30,"actions":["type:/model ","tab"],"want_contains":["model picker: /model","input mode: model-picker","hints: model picker"]}

@@ -1,0 +1,1 @@
+{"name":"timeline_esc_exits_search","width":180,"height":30,"actions":["ctrl_f","type:status","esc"],"want_contains":["input mode: chat"],"want_absent":["mode:timeline"]}

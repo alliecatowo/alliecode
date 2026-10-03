@@ -120,6 +120,11 @@ const (
 
 // AgentRuntimeSnapshot carries loop runtime counters useful for statusline/status views.
 type AgentRuntimeSnapshot struct {
+	ProviderName   string          `json:"provider,omitempty"`
+	Model          string          `json:"model,omitempty"`
+	ModelRef       string          `json:"model_ref,omitempty"`
+	LoggedIn       bool            `json:"logged_in,omitempty"`
+	ProviderReady  bool            `json:"provider_ready,omitempty"`
 	Turns          int             `json:"turns,omitempty"`
 	TurnIndex      int             `json:"turn_index,omitempty"`
 	ToolInflight   int             `json:"tool_inflight,omitempty"`

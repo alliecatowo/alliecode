@@ -1,0 +1,1 @@
+{"name":"status_then_issue_panel_chain","width":180,"height":30,"actions":["submit:/status","type:/issue","enter"],"want_contains":["input mode: command-panel","drawer: issue panel: /issue"],"want_absent":["STATUS_REPORT","ISSUE_STATUS","ISSUE_LIST"]}

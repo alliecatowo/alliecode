@@ -7,7 +7,7 @@ import (
 )
 
 func TestEmitTurnPhaseUpdatesRuntimeSnapshot(t *testing.T) {
-	a := New(Config{})
+	a := New(Config{ProviderName: "anthropic", Model: "claude-opus-4-20250514", WorkingDir: "/tmp/runtime-phase"})
 	a.emitTurnPhase(3, types.AgentTurnPhaseRetry, types.AgentTurnPhaseProviderStream, "retry_provider_error", false, "provider_error")
 
 	rt := a.RuntimeSnapshot()
@@ -16,6 +16,9 @@ func TestEmitTurnPhaseUpdatesRuntimeSnapshot(t *testing.T) {
 	}
 	if rt.Phase != types.AgentTurnPhaseRetry {
 		t.Fatalf("phase = %q, want retry", rt.Phase)
+	}
+	if rt.ProviderName != "anthropic" || rt.Model != "claude-opus-4-20250514" || rt.ModelRef != "anthropic/claude-opus-4-20250514" {
+		t.Fatalf("unexpected runtime selection snapshot: %+v", rt)
 	}
 }
 

@@ -47,3 +47,37 @@ func TestTaskOutputIncludesRuntime(t *testing.T) {
 		t.Fatalf("expected runtime in task_output response: %s", res.Content)
 	}
 }
+
+func TestTaskToolsIncludeContractMetadata(t *testing.T) {
+	oldMgr := agentTaskManager
+	agentTaskManager = nil
+	t.Cleanup(func() { agentTaskManager = oldMgr })
+	taskAdapterMu.Lock()
+	taskAdapterRecords = map[string]taskAdapterRecord{}
+	taskAdapterMu.Unlock()
+	taskAdapterUpdate("contract-task", "running", "", "")
+
+	for _, tc := range []struct {
+		name string
+		tool interface {
+			Execute(context.Context, types.ToolInput, types.ToolContext) (types.ToolResult, error)
+		}
+		input string
+	}{
+		{name: "task_get", tool: &TaskGetTool{}, input: `{"task_id":"contract-task"}`},
+		{name: "task_list", tool: &TaskListTool{}, input: `{}`},
+		{name: "task_output", tool: &TaskOutputTool{}, input: `{"task_id":"contract-task"}`},
+	} {
+		res, err := tc.tool.Execute(context.Background(), []byte(tc.input), types.ToolContext{})
+		if err != nil || res.IsError {
+			t.Fatalf("%s failed: err=%v content=%q", tc.name, err, res.Content)
+		}
+		var out map[string]any
+		if err := json.Unmarshal([]byte(res.Content), &out); err != nil {
+			t.Fatalf("%s invalid JSON: %v", tc.name, err)
+		}
+		if out["contract"] == nil {
+			t.Fatalf("%s missing contract metadata", tc.name)
+		}
+	}
+}

@@ -1,0 +1,1 @@
+{"name":"shifted_model_picker_cycle_then_right_apply","width":180,"height":30,"actions":["type:/model ","tab","shift_tab","right"],"want_contains":["Model set to","input mode: chat"],"want_absent":["model picker: /model"]}

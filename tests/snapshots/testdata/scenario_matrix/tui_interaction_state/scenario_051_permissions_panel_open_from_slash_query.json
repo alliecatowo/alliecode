@@ -1,0 +1,1 @@
+{"name":"permissions_panel_open_from_slash_query","width":180,"height":30,"actions":["type:/perm","enter"],"want_contains":["hint: usage: /permissions","input mode: command-panel","┃ /permissions"],"want_absent":["commands: /perm"]}

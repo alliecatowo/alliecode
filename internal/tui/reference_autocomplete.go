@@ -33,9 +33,6 @@ func currentReferenceToken(input string) (referenceToken, bool) {
 	}
 
 	query := input[start:cursor]
-	if strings.Contains(query, "#") {
-		return referenceToken{}, false
-	}
 	return referenceToken{Start: start - 1, End: cursor, Query: query}, true
 }
 
@@ -52,10 +49,22 @@ func buildReferenceInsertion(input string, token referenceToken, suggestion refe
 	if insertEnd >= len(next) {
 		return next + " "
 	}
-	if !isInlineSpace(next[insertEnd]) {
+	if shouldInsertSpaceAfterReference(next[insertEnd]) {
 		return next[:insertEnd] + " " + next[insertEnd:]
 	}
 	return next
+}
+
+func shouldInsertSpaceAfterReference(next byte) bool {
+	if isInlineSpace(next) {
+		return false
+	}
+	switch next {
+	case ',', '.', ';', ':', '!', '?', ')', ']', '}':
+		return false
+	default:
+		return true
+	}
 }
 
 func isInlineSpace(b byte) bool {
@@ -74,7 +83,7 @@ func isReferenceTokenChar(b byte) bool {
 		return true
 	}
 	switch b {
-	case '/', '\\', '.', '_', '-', '~', ':':
+	case '/', '\\', '.', '_', '-', '~', ':', '#':
 		return true
 	default:
 		return false

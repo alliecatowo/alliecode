@@ -34,7 +34,7 @@ type SpinnerModel struct {
 func NewSpinner(message string) SpinnerModel {
 	s := spinner.New()
 	s.Spinner = allieSignatureSpinner
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("219")).Bold(true)
 	return SpinnerModel{
 		spinner: s,
 		message: message,

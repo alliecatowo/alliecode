@@ -1,0 +1,1 @@
+{"name":"runtime_provider_arg_overridden_by_tuple","kind":"runtime_model_set","provider_choice":"anthropic","initial_provider_name":"anthropic","provider_arg":"anthropic","logged_in":true,"auth_provider":"anthropic","model_arg":"openai/gpt-4o","want_model":"gpt-4o","want_provider_name":"openai","want_model_ref":"openai/gpt-4o","want_provider_ready":false,"want_logged_in":false}

@@ -1,0 +1,1 @@
+{"name":"history_ctrl_o_cycles_back_quick_open","width":180,"height":28,"actions":["ctrl_r","ctrl_o"],"want_contains":["mode:quick-open","hint: enter applies the selected action immediately"],"want_absent":["mode:history-search"]}

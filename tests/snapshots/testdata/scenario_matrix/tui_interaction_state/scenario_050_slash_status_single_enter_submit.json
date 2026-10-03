@@ -1,0 +1,1 @@
+{"name":"slash_status_single_enter_submit","width":160,"height":28,"actions":["type:/status","enter"],"want_contains":["input mode: chat"],"want_absent":["commands: /status","hint: /status"]}

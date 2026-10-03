@@ -1,0 +1,1 @@
+{"name":"login_status_then_model_picker_chain","width":180,"height":30,"actions":["submit:/login status","type:/model","enter"],"want_contains":["input mode: model-picker","model picker: /model","hints: model picker"],"want_absent":["LOGIN_STATUS","LOGIN_REPORT","MODEL_REPORT"]}

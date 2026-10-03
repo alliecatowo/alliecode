@@ -11,12 +11,16 @@ func TestRenderStatusHintsForInteractiveModes(t *testing.T) {
 	app := New(Config{})
 	app.width = 120
 	app.state = stateSearch
-	if !strings.Contains(app.renderStatusHints(), "search active") {
+	app.searchMode = searchModeTimeline
+	app.syncInputMode()
+	hints := stripANSIForTest(app.renderStatusHints())
+	if !strings.Contains(hints, "search active") {
 		t.Fatalf("expected search hint marker")
 	}
 	app.state = stateIdle
 	app.slashAutocomplete.items = []commands.Suggestion{{Name: "model"}}
-	if !strings.Contains(app.renderStatusHints(), "command palette") {
+	app.syncInputMode()
+	if !strings.Contains(stripANSIForTest(app.renderStatusHints()), "command /model") {
 		t.Fatalf("expected command palette hint marker")
 	}
 }
@@ -26,8 +30,10 @@ func TestRenderStatusRuntimePanesIncludesRuntimeAndContext(t *testing.T) {
 	app.width = 120
 	app.searchTimelineQuery = "errors"
 	app.state = stateSearch
-	view := app.renderStatusRuntimePanes()
-	if !strings.Contains(view, "runtime: state=search") {
+	app.searchMode = searchModeTimeline
+	app.syncInputMode()
+	view := stripANSIForTest(app.renderStatusRuntimePanes())
+	if !strings.Contains(view, "runtime: search") {
 		t.Fatalf("expected runtime pane to include state, got %q", view)
 	}
 	if !strings.Contains(view, "context:") {
@@ -35,5 +41,15 @@ func TestRenderStatusRuntimePanesIncludesRuntimeAndContext(t *testing.T) {
 	}
 	if !strings.Contains(view, "searches:") {
 		t.Fatalf("expected search memory pane, got %q", view)
+	}
+}
+
+func TestRenderStatusHintsShowsLoginGuidanceWhenProviderNotReady(t *testing.T) {
+	app := New(Config{InitialState: commands.RuntimeState{ProviderName: "anthropic", Model: "claude-opus-4-20250514", LoggedIn: true, AuthProvider: "openai"}})
+	app.width = 120
+	app.syncInputMode()
+
+	if !strings.Contains(app.renderStatusHints(), "/login provider anthropic") {
+		t.Fatalf("expected login guidance in status hints, got %q", app.renderStatusHints())
 	}
 }

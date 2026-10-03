@@ -1,0 +1,1 @@
+{"name":"quick_open_tab_advances_selection_second","width":180,"height":30,"actions":["ctrl_o","tab"],"want_contains":["mode:quick-open","selected: 2/10","input mode: quick-open"]}

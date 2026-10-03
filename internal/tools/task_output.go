@@ -90,7 +90,7 @@ func (t *TaskOutputTool) Execute(ctx context.Context, input types.ToolInput, too
 		if err != nil {
 			if timeoutMs > 0 && waitCtx.Err() == context.DeadlineExceeded {
 				runtime := taskRuntimeSummary{Source: "adapter", Blocked: true, PollMs: pollMs, PollUsedMs: int(poll.Milliseconds()), TimeoutMs: timeoutMs, DurationMs: time.Since(started).Milliseconds(), RequestedID: in.TaskID, WaitedMs: time.Since(started).Milliseconds(), WaitLoops: waitLoops}
-				b, _ := json.Marshal(taskOutputEnvelope{RetrievalStatus: "timeout", OutputStatus: "running", Task: nil, Runtime: runtime})
+				b, _ := json.Marshal(taskOutputEnvelope{RetrievalStatus: "timeout", OutputStatus: "running", Task: nil, Runtime: runtime, Contract: defaultTaskContractMetadata()})
 				return types.ToolResult{Content: string(b)}, nil
 			}
 			return types.ToolResult{Content: fmt.Sprintf("task wait error: %v", err), IsError: true}, nil
@@ -100,7 +100,7 @@ func (t *TaskOutputTool) Execute(ctx context.Context, input types.ToolInput, too
 		task, ok = taskAdapterGet(ctx, in.TaskID)
 		if !ok {
 			runtime := taskRuntimeSummary{Source: "adapter", Blocked: false, PollMs: pollMs, PollUsedMs: int(poll.Milliseconds()), TimeoutMs: timeoutMs, DurationMs: time.Since(started).Milliseconds(), RequestedID: in.TaskID}
-			b, _ := json.Marshal(taskOutputEnvelope{RetrievalStatus: "not_found", OutputStatus: "empty", Task: nil, Runtime: runtime})
+			b, _ := json.Marshal(taskOutputEnvelope{RetrievalStatus: "not_found", OutputStatus: "empty", Task: nil, Runtime: runtime, Contract: defaultTaskContractMetadata()})
 			return types.ToolResult{Content: string(b)}, nil
 		}
 	}
@@ -127,7 +127,7 @@ func (t *TaskOutputTool) Execute(ctx context.Context, input types.ToolInput, too
 		waitLoops = int(durationMs / poll.Milliseconds())
 	}
 	runtime := taskRuntimeSummary{Source: "adapter", Blocked: block, PollMs: pollMs, PollUsedMs: int(poll.Milliseconds()), TimeoutMs: timeoutMs, DurationMs: durationMs, RequestedID: in.TaskID, Found: true, Terminal: taskState == taskStatusCompleted || taskState == taskStatusFailed || taskState == taskStatusCanceled, WaitedMs: durationMs, WaitLoops: waitLoops}
-	b, err := json.Marshal(taskOutputEnvelope{RetrievalStatus: retrieval, OutputStatus: outputStatus, Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime})
+	b, err := json.Marshal(taskOutputEnvelope{RetrievalStatus: retrieval, OutputStatus: outputStatus, Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

@@ -1,0 +1,1 @@
+{"name":"slash_escape_returns_chat_preserves_input","width":180,"height":30,"actions":["type:/status","esc"],"want_contains":["/status","input mode: chat"],"want_absent":["commands: /status"]}

@@ -32,13 +32,9 @@ ac models                   # list available models
 brew install alliecatowo/tap/alliecode
 ```
 
-### From binary
+### With Go
 
 ```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/alliecatowo/alliecode/main/install.sh | sh
-
-# Or with Go
 go install github.com/alliecatowo/alliecode/cmd/ac@latest
 ```
 

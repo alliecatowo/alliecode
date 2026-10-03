@@ -1,0 +1,1 @@
+{"name":"search_divider_visible","width":120,"height":26,"action":"ctrl_o","want_contains":["search: (type to filter)","-------------------","mode:quick-open"],"want_absent":[]}

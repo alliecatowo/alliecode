@@ -16,7 +16,9 @@ import (
 // RuntimeState is mutable slash-command state owned by the app/session.
 type RuntimeState struct {
 	Model                   string
+	ModelRef                string
 	LoggedIn                bool
+	AuthProvider            string
 	AuthAccount             string
 	LoginCount              int
 	LogoutCount             int
@@ -170,6 +172,10 @@ type RuntimeState struct {
 	SessionLastErrorClass   string
 	ProjectPaths            []string
 	Skills                  []string
+	SkillsSources           map[string]string
+	SkillsOrigins           map[string]string
+	SkillsEnabled           map[string]bool
+	SkillsConflictCount     int
 	SkillsViewCount         int
 	SkillsSyncCount         int
 	SkillsDoctorCount       int
@@ -260,6 +266,42 @@ type RuntimeState struct {
 	ShareLastAction         string
 	OAuthRefreshStates      map[string]OAuthRefreshState
 	OAuthRefreshLastAction  string
+	BridgeEnabled           bool
+	BridgeTransitions       int
+	AntTraceEnabled         bool
+	AntTraceMarks           []string
+	AntTraceCount           int
+	AutofixPRCount          int
+	AutofixPRLastAction     string
+	AutofixPRLastRef        string
+	BackfillRuns            int
+	BackfillLastCount       int
+	BackfillLastAction      string
+	CacheBreakCount         int
+	CacheBreakLastScope     string
+	CacheBreakScopes        map[string]int
+	BughunterCount          int
+	BughunterLastScope      string
+	ContextVizCount         int
+	ContextVizLastAction    string
+	DebugToolCallCount      int
+	DebugToolCallLastTool   string
+	GoodClaudeEnabled       bool
+	GoodClaudeAskCount      int
+	HeapdumpCount           int
+	HeapdumpLastReason      string
+	InstallCount            int
+	InstallLastAction       string
+	MockLimitsEnabled       bool
+	MockLimitsValue         int
+	MockLimitsChanges       int
+	OnboardingCompleted     bool
+	OnboardingRuns          int
+	PerfIssueCount          int
+	PerfIssueLastTitle      string
+	UltraplanCount          int
+	UltraplanLastAction     string
+	UltraplanLastTarget     string
 	Runtime                 types.AgentRuntimeSnapshot
 }
 
@@ -335,8 +377,9 @@ type Context struct {
 
 // Result is the output returned from executing a slash command.
 type Result struct {
-	Message string
-	Handled bool
+	Message       string
+	Handled       bool
+	RenderIntents []types.RenderIntent
 }
 
 // Command is implemented by slash command handlers.
@@ -703,5 +746,22 @@ func DefaultRegistry() *Registry {
 	_ = r.Register(NewAssistantCommand())
 	_ = r.Register(NewShareCommand())
 	_ = r.Register(NewOAuthRefreshCommand())
+	_ = r.Register(NewBridgeCommand())
+	_ = r.Register(NewAntTraceCommand())
+	_ = r.Register(NewAutofixPRCommand())
+	_ = r.Register(NewBackfillSessionsCommand())
+	_ = r.Register(NewBreakCacheCommand())
+	_ = r.Register(NewBughunterCommand())
+	_ = r.Register(NewCtxVizCommand())
+	_ = r.Register(NewDebugToolCallCommand())
+	_ = r.Register(NewGoodClaudeCommand())
+	_ = r.Register(NewHeapdumpCommand())
+	_ = r.Register(NewInstallCommand())
+	_ = r.Register(NewMockLimitsCommand())
+	_ = r.Register(NewOnboardingCommand())
+	_ = r.Register(NewPerfIssueCommand())
+	_ = r.Register(NewSandboxToggleCommand())
+	_ = r.Register(NewRemoteSetupCommand())
+	_ = r.Register(NewUltraplanCommand())
 	return r
 }

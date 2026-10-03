@@ -1,0 +1,1 @@
+{"name":"quick_open_ctrl_f_pivots_timeline_context","width":180,"height":30,"actions":["ctrl_o","ctrl_f"],"want_contains":["mode:timeline","context: search mode timeline selection=","input mode: search"],"want_absent":["mode:quick-open"]}

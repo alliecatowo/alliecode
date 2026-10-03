@@ -1,0 +1,34 @@
+{
+  "name": "compact_statusline_continuity_after_logout_and_repair",
+  "initial_provider_name": "anthropic",
+  "initial_model": "claude-opus-4-20250514",
+  "initial_model_ref": "anthropic/claude-opus-4-20250514",
+  "initial_logged_in": true,
+  "initial_auth_provider": "anthropic",
+  "steps": [
+    "/logout",
+    "/statusline status",
+    "/login provider anthropic",
+    "/statusline status"
+  ],
+  "want_provider_name": "anthropic",
+  "want_model": "claude-opus-4-20250514",
+  "want_model_ref": "anthropic/claude-opus-4-20250514",
+  "want_auth_provider": "anthropic",
+  "want_provider_ready": true,
+  "want_logged_in": true,
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true",
+    "last_stop_reason=-"
+  ]
+}

@@ -1,0 +1,1 @@
+{"name":"runtime_anthropic_alias_opus_logged_out_unready","kind":"runtime_model_set","provider_choice":"anthropic","initial_provider_name":"anthropic","logged_in":false,"auth_provider":"","model_arg":"opus","want_model":"claude-opus-4-20250514","want_provider_name":"anthropic","want_model_ref":"anthropic/claude-opus-4-20250514","want_provider_ready":false,"want_logged_in":false}

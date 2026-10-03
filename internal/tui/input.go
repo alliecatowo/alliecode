@@ -22,6 +22,7 @@ type InputModel struct {
 	draft    string
 	focused  bool
 	lastHint string
+	hintText string
 }
 
 // NewInput creates a new input area ready for user text entry.
@@ -87,6 +88,11 @@ func (m *InputModel) SetValue(text string) {
 	m.lastHint = inferInputHint(text)
 }
 
+// SetHintOverride replaces inferred hint text with an explicit mode hint.
+func (m *InputModel) SetHintOverride(hint string) {
+	m.hintText = strings.TrimSpace(hint)
+}
+
 // CursorEnd moves cursor to end of input.
 func (m *InputModel) CursorEnd() {
 	m.textarea.CursorEnd()
@@ -104,7 +110,7 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case keyMatches(msg, "ctrl+j"):
+		case keyMatches(msg, "ctrl+j") || keyMatches(msg, "shift+enter"):
 			m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
 			m.lastHint = inferInputHint(m.textarea.Value())
 			return m, nil
@@ -122,8 +128,15 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 		case keyMatches(msg, "ctrl+e"):
 			m.textarea.CursorEnd()
 			return m, nil
+		case keyMatches(msg, "esc"):
+			if m.histIdx >= 0 {
+				m.histIdx = -1
+				m.textarea.SetValue(m.draft)
+				m.lastHint = inferInputHint(m.textarea.Value())
+				return m, nil
+			}
 		case keyMatches(msg, "enter"):
-			// Shift+Enter inserts a newline (handled by textarea).
+			// Shift+Enter and Ctrl+J insert newline before this branch.
 			// Plain Enter submits.
 			if keyMatches(msg, "alt+enter") {
 				break // let textarea handle alt+enter as newline
@@ -165,6 +178,19 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 				}
 				return m, nil
 			}
+		case keyMatches(msg, "shift+tab"):
+			if len(m.history) == 0 {
+				return m, nil
+			}
+			if m.histIdx == -1 {
+				m.draft = m.textarea.Value()
+				m.histIdx = len(m.history) - 1
+			} else if m.histIdx > 0 {
+				m.histIdx--
+			}
+			m.textarea.SetValue(m.history[m.histIdx])
+			m.lastHint = inferInputHint(m.textarea.Value())
+			return m, nil
 		}
 	}
 
@@ -176,24 +202,30 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 }
 
 func (m InputModel) Hint() string {
+	if m.hintText != "" {
+		return m.hintText
+	}
 	return m.lastHint
 }
 
 func inferInputHint(text string) string {
 	trimmed := strings.TrimSpace(text)
 	if strings.HasPrefix(trimmed, "/") {
-		if strings.Count(trimmed, " ") == 0 {
-			return "slash command mode"
+		if trimmed == "/" {
+			return "slash command picker"
 		}
-		return "slash arguments"
+		if strings.Count(trimmed, " ") == 0 {
+			return "slash command mode (tab/down to pick)"
+		}
+		return "slash arguments (enter sends)"
 	}
 	if strings.Contains(trimmed, "@") {
-		return "reference mode"
+		return "reference mode (@ opens picker)"
 	}
 	if trimmed == "" {
-		return "chat"
+		return "chat (enter sends)"
 	}
-	return "message"
+	return "message (ctrl+j newline)"
 }
 
 func deleteTrailingWord(text string) string {

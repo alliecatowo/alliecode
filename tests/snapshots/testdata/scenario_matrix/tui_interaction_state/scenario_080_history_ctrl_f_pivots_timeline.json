@@ -1,0 +1,1 @@
+{"name":"history_ctrl_f_pivots_timeline","width":180,"height":30,"actions":["ctrl_r","ctrl_f"],"want_contains":["mode:timeline","input mode: search","context: search mode timeline selection="],"want_absent":["mode:history-search"]}

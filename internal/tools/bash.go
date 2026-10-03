@@ -124,7 +124,8 @@ func (t *BashTool) Execute(ctx context.Context, input types.ToolInput, toolCtx t
 		return types.ToolResult{Content: "command is required", IsError: true}, nil
 	}
 
-	preflight := evaluateBashPreflight(command, toolCtx.WorkingDir, in.SandboxPolicy)
+	workspaceRoot := normalizeToolWorkingDir(toolCtx.WorkingDir)
+	preflight := evaluateBashPreflight(command, workspaceRoot, in.SandboxPolicy)
 	if preflight.Behavior == "deny" || preflight.Behavior == "ask" {
 		return types.ToolResult{Content: renderPreflightResultMessage(preflight), IsError: true}, nil
 	}
@@ -154,7 +155,7 @@ func (t *BashTool) Execute(ctx context.Context, input types.ToolInput, toolCtx t
 		PolicyRuleID:   preflight.RuleID,
 		PolicyReason:   preflight.Reason,
 	}
-	meta := formatShellExecutionBlock(t.Name(), provider.Type(), toolCtx.WorkingDir, timeout, time.Since(started), command, res.Content, res.IsError, audit)
+	meta := formatShellExecutionBlock(t.Name(), provider.Type(), workspaceRoot, timeout, time.Since(started), command, res.Content, res.IsError, audit)
 	if strings.TrimSpace(res.Content) == "" {
 		res.Content = meta
 	} else {
@@ -288,7 +289,8 @@ func (t *BashTool) CheckPermissions(input types.ToolInput, toolCtx types.ToolCon
 		return types.PermissionDenied
 	}
 	baseDecision := evaluateToolPermissionByFamily(toolFamilyShell, "bash", input, toolCtx, types.PermissionAsk)
-	preflightDecision := evaluateBashPreflight(command, toolCtx.WorkingDir, in.SandboxPolicy)
+	workspaceRoot := normalizeToolWorkingDir(toolCtx.WorkingDir)
+	preflightDecision := evaluateBashPreflight(command, workspaceRoot, in.SandboxPolicy)
 	if preflightDecision.Behavior == "deny" {
 		return types.PermissionDenied
 	}
@@ -770,21 +772,26 @@ func detectAdvancedObfuscationRisks(command string) []bashRisk {
 func hasEscapedOperatorOutsideQuotes(command string) bool {
 	inSingle := false
 	inDouble := false
-	escaped := false
 
 	for i := 0; i < len(command); i++ {
 		ch := command[i]
 
-		if escaped {
-			escaped = false
+		if ch == '\\' && !inSingle && !inDouble {
+			j := i
+			for j < len(command) && command[j] == '\\' {
+				j++
+			}
+			if j < len(command) && strings.ContainsRune(";|&<>", rune(command[j])) {
+				return true
+			}
+			i = j - 1
 			continue
 		}
 
 		if ch == '\\' && !inSingle {
-			if !inDouble && i+1 < len(command) && strings.ContainsRune(";|&<>", rune(command[i+1])) {
-				return true
+			if i+1 < len(command) {
+				i++
 			}
-			escaped = true
 			continue
 		}
 

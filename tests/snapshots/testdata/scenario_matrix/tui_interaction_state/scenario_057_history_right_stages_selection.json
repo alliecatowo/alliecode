@@ -1,0 +1,1 @@
+{"name":"history_right_stages_selection","width":180,"height":30,"actions":["submit:open logs","ctrl_r","type:log","right"],"want_contains":["┃ open logs","input mode: chat"],"want_absent":["mode:history-search"]}

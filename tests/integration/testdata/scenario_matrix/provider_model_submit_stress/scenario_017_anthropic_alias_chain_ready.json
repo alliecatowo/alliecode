@@ -1,0 +1,44 @@
+{
+  "name": "anthropic_alias_chain_ready",
+  "initial_provider_name": "anthropic",
+  "initial_model": "claude-sonnet-4-20250514",
+  "initial_model_ref": "anthropic/claude-sonnet-4-20250514",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider anthropic",
+    "/model haiku",
+    "/model opus",
+    "/status"
+  ],
+  "checkpoints": [
+    {
+      "after_step_index": 1,
+      "want_provider_name": "anthropic",
+      "want_model": "claude-haiku-3-5-20241022",
+      "want_model_ref": "anthropic/claude-haiku-3-5-20241022",
+      "want_auth_provider": "anthropic",
+      "want_provider_ready": true,
+      "want_logged_in": true
+    }
+  ],
+  "want_provider_name": "anthropic",
+  "want_model": "claude-opus-4-20250514",
+  "want_model_ref": "anthropic/claude-opus-4-20250514",
+  "want_auth_provider": "anthropic",
+  "want_provider_ready": true,
+  "want_logged_in": true,
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

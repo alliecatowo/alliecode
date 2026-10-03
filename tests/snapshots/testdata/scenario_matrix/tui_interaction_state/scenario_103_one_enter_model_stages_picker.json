@@ -1,0 +1,1 @@
+{"name":"one_enter_model_stages_picker","width":180,"height":30,"actions":["type:/model","enter"],"want_contains":["input mode: model-picker","model picker: /model"],"want_absent":["MODEL_REPORT"]}

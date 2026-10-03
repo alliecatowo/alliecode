@@ -383,6 +383,14 @@ type DenialQuery struct {
 	Limit           int
 }
 
+type DenialSummary struct {
+	Total        int            `json:"total"`
+	ByTool       map[string]int `json:"by_tool,omitempty"`
+	ByReasonCode map[string]int `json:"by_reason_code,omitempty"`
+	RecentAtUnix int64          `json:"recent_unix,omitempty"`
+	RecentTool   string         `json:"recent_tool,omitempty"`
+}
+
 func NewDenialsLedger(path string) *DenialsLedger {
 	return &DenialsLedger{path: path}
 }
@@ -452,6 +460,52 @@ func (l *DenialsLedger) Query(query DenialQuery) ([]DenialEntry, error) {
 		filtered = filtered[:query.Limit]
 	}
 	return filtered, nil
+}
+
+func (l *DenialsLedger) Summary(query DenialQuery) (DenialSummary, error) {
+	entries, err := l.Query(query)
+	if err != nil {
+		return DenialSummary{}, err
+	}
+	out := DenialSummary{ByTool: map[string]int{}, ByReasonCode: map[string]int{}}
+	for _, entry := range entries {
+		out.Total++
+		tool := strings.TrimSpace(entry.Tool)
+		if tool != "" {
+			out.ByTool[tool]++
+		}
+		reasonCode := classifyDenialReasonCode(entry.Reason)
+		out.ByReasonCode[reasonCode]++
+		if entry.Timestamp.UnixNano() > out.RecentAtUnix {
+			out.RecentAtUnix = entry.Timestamp.UnixNano()
+			out.RecentTool = tool
+		}
+	}
+	if len(out.ByTool) == 0 {
+		out.ByTool = nil
+	}
+	if len(out.ByReasonCode) == 0 {
+		out.ByReasonCode = nil
+	}
+	return out, nil
+}
+
+func classifyDenialReasonCode(reason string) string {
+	r := strings.ToLower(strings.TrimSpace(reason))
+	switch {
+	case strings.Contains(r, "destructive"):
+		return "destructive"
+	case strings.Contains(r, "auth"):
+		return "auth"
+	case strings.Contains(r, "sensitive"):
+		return "sensitive"
+	case strings.Contains(r, "outside"):
+		return "outside_workspace"
+	case r == "":
+		return "unspecified"
+	default:
+		return "other"
+	}
 }
 
 func normalizeRule(rule Rule) Rule {

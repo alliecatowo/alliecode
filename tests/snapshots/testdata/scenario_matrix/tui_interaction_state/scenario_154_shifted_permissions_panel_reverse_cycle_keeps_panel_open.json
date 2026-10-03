@@ -1,0 +1,1 @@
+{"name":"shifted_permissions_panel_reverse_cycle_keeps_panel_open","width":180,"height":30,"actions":["type:/perm","enter","tab","shift_tab"],"want_contains":["command panel /permissions","hints: command panel","input mode: command-panel"],"want_absent":["PERMISSIONS_MODE","PERMISSIONS_MODES"]}
