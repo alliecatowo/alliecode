@@ -1,1 +1,1 @@
-{"name":"permissions_auto_snapshot","width":90,"height":24,"action":"submit_command","command":"/permissions auto","extract":["PERMISSIONS_SET","mode:auto"],"want_joined":"  PERMISSIONS_SET\n model:unknown turns:0 mode:auto render:0ms tools:0 perm:0   budget:$0.0000 tok:0 sid:n/a"}
+{"name":"permissions_auto_snapshot","width":90,"height":24,"action":"submit_command","command":"/permissions auto","extract":["Mode: auto","auto  input chat"],"want_joined":"  Mode: auto\n -/unknown  auto  input chat  provider:-  mode:auto              tok 0  cost $0.0000  n/a"}

@@ -31,6 +31,55 @@ func TestPermissionPromptDescriptionToolTypes(t *testing.T) {
 	}
 }
 
+func TestPermissionPromptContextExtractsToolSpecificDetails(t *testing.T) {
+	tests := []struct {
+		name     string
+		toolName string
+		input    string
+		contains []string
+	}{
+		{
+			name:     "bash details",
+			toolName: "bash",
+			input:    `{"command":"go test ./...","workdir":"/repo","timeoutMs":120000}`,
+			contains: []string{"command: go test ./...", "workdir: /repo", "timeout: 120000"},
+		},
+		{
+			name:     "file details",
+			toolName: "read",
+			input:    `{"file_path":"internal/tui/app.go","offset":"25","limit":10,"include":"*.go"}`,
+			contains: []string{"path: internal/tui/app.go", "range: from line 25 (10 lines)", "include: *.go"},
+		},
+		{
+			name:     "webfetch details",
+			toolName: "webfetch",
+			input:    `{"url":"https://example.com","format":"markdown","timeout":45}`,
+			contains: []string{"url: https://example.com", "format: markdown", "timeout: 45"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := permissionPromptContextFromInput(tc.toolName, json.RawMessage(tc.input))
+			if strings.TrimSpace(ctx.summary) == "" {
+				t.Fatalf("expected non-empty summary")
+			}
+			for _, want := range tc.contains {
+				found := false
+				for _, row := range ctx.details {
+					if strings.Contains(row, want) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("expected details to include %q, got %#v", want, ctx.details)
+				}
+			}
+		})
+	}
+}
+
 func TestPermissionModelSelectionTransitionsAndConfirm(t *testing.T) {
 	model := NewPermission("bash", "execute shell command: go test ./...")
 
@@ -54,6 +103,7 @@ func TestPermissionModelSelectionTransitionsAndConfirm(t *testing.T) {
 
 func TestPermissionModelViewIncludesToolHintsAndSelectedAction(t *testing.T) {
 	model := NewPermission("webfetch", "fetch content from: https://example.com")
+	model.SetToolDetails("webfetch", []string{"url: https://example.com", "format: markdown"})
 	model.SetQueueIndex(2, 3)
 	view := model.View()
 
@@ -75,6 +125,9 @@ func TestPermissionModelViewIncludesToolHintsAndSelectedAction(t *testing.T) {
 	if !strings.Contains(view, "queue: 2/3") {
 		t.Fatalf("expected queue position in prompt status, got %q", view)
 	}
+	if !strings.Contains(view, "network request details:") || !strings.Contains(view, "format: markdown") {
+		t.Fatalf("expected tool detail panel in prompt view, got %q", view)
+	}
 }
 
 func TestPermissionModelHomeEndSelectionShortcuts(t *testing.T) {
@@ -92,7 +145,7 @@ func TestPermissionModelHomeEndSelectionShortcuts(t *testing.T) {
 func TestPermissionModelQueuePreviewRendersNextActions(t *testing.T) {
 	model := NewPermission("bash", "execute shell command: go test ./...")
 	model.SetQueueIndex(1, 3)
-	model.SetQueuePreview([]string{"read: access local files at: internal/tui/app.go", "webfetch: fetch content from: https://example.com"})
+	model.SetQueuePreview([]string{"read(turn 2)[PENDING]: access local files at: internal/tui/app.go", "webfetch(turn 2)[APPROVED]: fetch content from: https://example.com"})
 
 	view := model.View()
 	if !strings.Contains(view, "queue: 1/3 (2 waiting)") {
@@ -101,10 +154,10 @@ func TestPermissionModelQueuePreviewRendersNextActions(t *testing.T) {
 	if !strings.Contains(view, "next in queue:") {
 		t.Fatalf("expected queue heading in view, got %q", view)
 	}
-	if !strings.Contains(view, "- read: access local files") {
+	if !strings.Contains(view, "- read(turn 2)[PENDING]: access local files") {
 		t.Fatalf("expected first queue preview action in view, got %q", view)
 	}
-	if !strings.Contains(view, "webfetch: fetch content") {
+	if !strings.Contains(view, "webfetch(turn 2)[APPROVED]: fetch content") {
 		t.Fatalf("expected second queue preview action in view, got %q", view)
 	}
 }

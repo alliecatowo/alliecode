@@ -1,0 +1,1 @@
+{"name":"quick_open_enter_cycles_history_mode","width":180,"height":28,"actions":["ctrl_o","type:history","enter"],"want_contains":["mode:history-search","hint: enter applies the selected history prompt into input"],"want_absent":["mode:quick-open"]}

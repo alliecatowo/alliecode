@@ -26,7 +26,7 @@ func TestCLISmoke_CommandDispatchAndSessionPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dispatch /model error = %v", err)
 	}
-	if !modelRes.Handled || state.Model != "openai/gpt-4o-mini" {
+	if !modelRes.Handled || state.Model != "gpt-4o-mini" {
 		t.Fatalf("expected /model to update runtime state, got handled=%t model=%q", modelRes.Handled, state.Model)
 	}
 
@@ -56,8 +56,8 @@ func TestCLISmoke_CommandDispatchAndSessionPersistence(t *testing.T) {
 	if got := replayed.Messages[0].GetText(); got != "/model openai/gpt-4o-mini" {
 		t.Fatalf("first replayed message = %q, want %q", got, "/model openai/gpt-4o-mini")
 	}
-	if got := replayed.Messages[1].GetText(); got != "Model set to openai/gpt-4o-mini\nCapabilities: text,image,audio,tool_use,vision,attachments\nQuick fix: /provider status\nNext: run /status to confirm runtime readiness." {
-		t.Fatalf("second replayed message = %q, want %q", got, "Model set to openai/gpt-4o-mini\nCapabilities: text,image,audio,tool_use,vision,attachments\nQuick fix: /provider status\nNext: run /status to confirm runtime readiness.")
+	if got := replayed.Messages[1].GetText(); got != "Model set to gpt-4o-mini\nCapabilities: text,image,audio,tool_use,vision,attachments\nQuick fix: /provider status\nNext: run /status to confirm runtime readiness." {
+		t.Fatalf("second replayed message = %q, want %q", got, "Model set to gpt-4o-mini\nCapabilities: text,image,audio,tool_use,vision,attachments\nQuick fix: /provider status\nNext: run /status to confirm runtime readiness.")
 	}
 }
 

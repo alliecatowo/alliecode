@@ -1,0 +1,1 @@
+{"name":"model_picker_runtime_context_visible","width":180,"height":30,"actions":["type:/model "],"want_contains":["model picker: /model","runtime: idle  runtime: state=idle","context: model picker /model","provider:"],"want_absent":["commands: /"]}

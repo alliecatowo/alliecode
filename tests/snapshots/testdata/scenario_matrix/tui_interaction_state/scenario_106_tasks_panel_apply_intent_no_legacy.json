@@ -1,0 +1,1 @@
+{"name":"tasks_panel_apply_intent_no_legacy","width":180,"height":30,"actions":["submit:/tasks add stagej matrix row","type:/tasks","enter","enter"],"want_contains":["Task added","Task: stagej matrix row [state] - Affected task."],"want_absent":["TASKS_LIST","TASKS_ADD"]}

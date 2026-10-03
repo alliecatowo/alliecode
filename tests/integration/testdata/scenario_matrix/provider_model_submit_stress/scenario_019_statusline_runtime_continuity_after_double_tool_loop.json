@@ -1,0 +1,35 @@
+{
+  "name": "statusline_runtime_continuity_after_double_tool_loop",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/model gpt-4o",
+    "/statusline status",
+    "/statusline status"
+  ],
+  "want_provider_name": "openai",
+  "want_model": "gpt-4o",
+  "want_model_ref": "openai/gpt-4o",
+  "want_auth_provider": "openai",
+  "want_provider_ready": true,
+  "want_logged_in": true,
+  "want_status": [
+    "provider=openai",
+    "model=gpt-4o",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=openai",
+    "model=gpt-4o",
+    "model_ref=openai/gpt-4o",
+    "provider_ready=true",
+    "logged_in=true",
+    "tool_calls=0",
+    "permission_events=0"
+  ]
+}

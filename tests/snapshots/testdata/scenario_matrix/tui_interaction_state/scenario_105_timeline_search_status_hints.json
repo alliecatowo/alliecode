@@ -1,0 +1,1 @@
+{"name":"timeline_search_status_hints","width":120,"height":26,"action":"ctrl_f","want_contains":["hints: search active","input mode: search"],"want_absent":[]}

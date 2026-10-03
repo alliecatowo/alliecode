@@ -1,0 +1,1 @@
+{"name":"quick_open_slash_workflow_apply","width":180,"height":28,"actions":["ctrl_o","type:slash","enter"],"want_contains":["commands: /","hints: command palette","context: command /","┃ /"],"want_absent":["mode:quick-open"]}

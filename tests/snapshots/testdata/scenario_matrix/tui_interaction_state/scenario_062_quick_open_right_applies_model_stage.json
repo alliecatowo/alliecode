@@ -1,0 +1,1 @@
+{"name":"quick_open_right_applies_model_stage","width":180,"height":30,"actions":["ctrl_o","type:model","right"],"want_contains":["/model ","hint: /model"],"want_absent":["mode:quick-open"]}

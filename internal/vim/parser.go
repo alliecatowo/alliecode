@@ -32,6 +32,8 @@ func parseToken(token string) (Key, bool) {
 		return Key{Special: SpecialEnter}, true
 	case "<tab>":
 		return Key{Special: SpecialTab}, true
+	case "<s-tab>", "<shift-tab>":
+		return Key{Special: SpecialShiftTab}, true
 	case "<bs>", "<backspace>":
 		return Key{Special: SpecialBackspace}, true
 	case "<del>", "<delete>":
@@ -44,6 +46,10 @@ func parseToken(token string) (Key, bool) {
 		return Key{Special: SpecialUp}, true
 	case "<down>":
 		return Key{Special: SpecialDown}, true
+	case "<pageup>", "<pgup>":
+		return Key{Special: SpecialPageUp}, true
+	case "<pagedown>", "<pgdown>", "<pgdn>":
+		return Key{Special: SpecialPageDown}, true
 	case "<home>":
 		return Key{Special: SpecialHome}, true
 	case "<end>":

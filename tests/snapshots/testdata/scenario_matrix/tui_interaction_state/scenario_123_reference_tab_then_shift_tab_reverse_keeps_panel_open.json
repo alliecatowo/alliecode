@@ -1,0 +1,1 @@
+{"name":"reference_tab_then_shift_tab_reverse_keeps_panel_open","width":180,"height":30,"actions":["type:@READ","tab","shift_tab"],"want_contains":["references:","preview: @","hints: reference palette","input mode: reference"]}

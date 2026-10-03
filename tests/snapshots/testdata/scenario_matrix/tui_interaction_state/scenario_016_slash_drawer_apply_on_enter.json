@@ -1,0 +1,1 @@
+{"name":"slash_drawer_apply_on_enter","width":120,"height":28,"actions":["type:/model","enter"],"want_contains":["commands: /model","hint: /model [provider/model|model|list [provider|all]|doctor|repair [provider/model]]"]}

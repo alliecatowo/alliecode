@@ -1,0 +1,27 @@
+{
+  "name": "openai_to_anthropic_with_reauth",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/model anthropic/sonnet",
+    "/login provider anthropic",
+    "/model opus"
+  ],
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

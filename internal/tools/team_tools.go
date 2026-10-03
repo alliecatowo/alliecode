@@ -23,11 +23,30 @@ type teamCreateInput struct {
 	Members     []string `json:"members,omitempty"`
 }
 
+type teamContractMetadata struct {
+	Family          string `json:"family"`
+	SchemaVersion   string `json:"schema_version"`
+	StateBacked     bool   `json:"state_backed"`
+	HasSummary      bool   `json:"has_summary"`
+	PermissionAware bool   `json:"permission_aware"`
+}
+
+func defaultTeamContractMetadata() *teamContractMetadata {
+	return &teamContractMetadata{
+		Family:          "team",
+		SchemaVersion:   "v2",
+		StateBacked:     true,
+		HasSummary:      true,
+		PermissionAware: true,
+	}
+}
+
 type teamCreateOutput struct {
-	Success   bool       `json:"success"`
-	Team      teamRecord `json:"team"`
-	Activated bool       `json:"activated"`
-	Error     string     `json:"error,omitempty"`
+	Success   bool                  `json:"success"`
+	Team      teamRecord            `json:"team"`
+	Activated bool                  `json:"activated"`
+	Contract  *teamContractMetadata `json:"contract,omitempty"`
+	Error     string                `json:"error,omitempty"`
 }
 
 type teamDeleteInput struct {
@@ -37,12 +56,13 @@ type teamDeleteInput struct {
 }
 
 type teamDeleteOutput struct {
-	Success   bool   `json:"success"`
-	TeamName  string `json:"team_name,omitempty"`
-	Deleted   bool   `json:"deleted"`
-	Remaining int    `json:"remaining_teams"`
-	Status    string `json:"status,omitempty"`
-	Error     string `json:"error,omitempty"`
+	Success   bool                  `json:"success"`
+	TeamName  string                `json:"team_name,omitempty"`
+	Deleted   bool                  `json:"deleted"`
+	Remaining int                   `json:"remaining_teams"`
+	Status    string                `json:"status,omitempty"`
+	Contract  *teamContractMetadata `json:"contract,omitempty"`
+	Error     string                `json:"error,omitempty"`
 }
 
 type teamListOutput struct {
@@ -53,6 +73,7 @@ type teamListOutput struct {
 	Summary  *tasks.TeamStatusSummary `json:"summary,omitempty"`
 	Query    *tasks.TeamQuery         `json:"query,omitempty"`
 	QueryRun *tasks.TeamQuerySummary  `json:"query_summary,omitempty"`
+	Contract *teamContractMetadata    `json:"contract,omitempty"`
 	Error    string                   `json:"error,omitempty"`
 }
 
@@ -63,10 +84,11 @@ type teamStatusInput struct {
 }
 
 type teamStatusOutput struct {
-	Success bool                     `json:"success"`
-	Team    teamRecord               `json:"team"`
-	Summary *tasks.TeamStatusSummary `json:"summary,omitempty"`
-	Error   string                   `json:"error,omitempty"`
+	Success  bool                     `json:"success"`
+	Team     teamRecord               `json:"team"`
+	Summary  *tasks.TeamStatusSummary `json:"summary,omitempty"`
+	Contract *teamContractMetadata    `json:"contract,omitempty"`
+	Error    string                   `json:"error,omitempty"`
 }
 
 type teamUpdateInput struct {
@@ -76,10 +98,11 @@ type teamUpdateInput struct {
 }
 
 type teamUpdateOutput struct {
-	Success bool       `json:"success"`
-	Team    teamRecord `json:"team"`
-	Summary any        `json:"summary,omitempty"`
-	Error   string     `json:"error,omitempty"`
+	Success  bool                  `json:"success"`
+	Team     teamRecord            `json:"team"`
+	Summary  any                   `json:"summary,omitempty"`
+	Contract *teamContractMetadata `json:"contract,omitempty"`
+	Error    string                `json:"error,omitempty"`
 }
 
 type teamListInput struct {
@@ -130,7 +153,7 @@ func (t *TeamCreateTool) Execute(_ context.Context, input types.ToolInput, _ typ
 		return teamCreateResult(teamCreateOutput{Success: false, Error: err.Error()}, true)
 	}
 
-	return teamCreateResult(teamCreateOutput{Success: true, Team: rec, Activated: true}, false)
+	return teamCreateResult(teamCreateOutput{Success: true, Team: rec, Activated: true, Contract: defaultTeamContractMetadata()}, false)
 }
 
 func teamCreateResult(out teamCreateOutput, isError bool) (types.ToolResult, error) {
@@ -194,7 +217,7 @@ func (t *TeamDeleteTool) Execute(_ context.Context, input types.ToolInput, _ typ
 	if !ok {
 		return teamDeleteResult(teamDeleteOutput{Success: false, TeamName: name, Deleted: false, Remaining: len(orchestrationState.teamStore.List()), Error: "team not found"}, true)
 	}
-	return teamDeleteResult(teamDeleteOutput{Success: true, TeamName: name, Deleted: true, Remaining: len(orchestrationState.teamStore.List()), Status: string(team.Status)}, false)
+	return teamDeleteResult(teamDeleteOutput{Success: true, TeamName: name, Deleted: true, Remaining: len(orchestrationState.teamStore.List()), Status: string(team.Status), Contract: defaultTeamContractMetadata()}, false)
 }
 
 func teamDeleteResult(out teamDeleteOutput, isError bool) (types.ToolResult, error) {
@@ -252,7 +275,7 @@ func (t *TeamListTool) Execute(_ context.Context, input types.ToolInput, _ types
 	teams := orchestrationState.teamStore.Query(query)
 	summary := tasks.NewTeamStatusSummary(teams)
 	querySummary := orchestrationState.teamStore.QuerySummary(query)
-	out := teamListOutput{Success: true, Total: len(teams), Active: orchestrationState.teamStore.Active(), Teams: teams, Summary: &summary, Query: &query, QueryRun: &querySummary}
+	out := teamListOutput{Success: true, Total: len(teams), Active: orchestrationState.teamStore.Active(), Teams: teams, Summary: &summary, Query: &query, QueryRun: &querySummary, Contract: defaultTeamContractMetadata()}
 	b, err := json.Marshal(out)
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
@@ -311,7 +334,7 @@ func (t *TeamStatusTool) Execute(_ context.Context, input types.ToolInput, _ typ
 	}
 
 	summary, _ := orchestrationState.teamStore.StatusSummaryFor(name)
-	b, err := json.Marshal(teamStatusOutput{Success: true, Team: team, Summary: &summary})
+	b, err := json.Marshal(teamStatusOutput{Success: true, Team: team, Summary: &summary, Contract: defaultTeamContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}
@@ -380,7 +403,7 @@ func (t *TeamUpdateTool) Execute(_ context.Context, input types.ToolInput, _ typ
 	}
 
 	summary := orchestrationState.teamStore.QuerySummary(tasks.TeamQuery{})
-	b, err := json.Marshal(teamUpdateOutput{Success: true, Team: team, Summary: summary})
+	b, err := json.Marshal(teamUpdateOutput{Success: true, Team: team, Summary: summary, Contract: defaultTeamContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

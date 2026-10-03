@@ -13,4 +13,7 @@ func TestModelRepair(t *testing.T) {
 	if err != nil || !strings.Contains(res.Message, "MODEL_REPAIR") {
 		t.Fatalf("model repair failed: %v %q", err, res.Message)
 	}
+	if !strings.Contains(res.Message, "provider_ready=") {
+		t.Fatalf("expected provider readiness in repair output: %q", res.Message)
+	}
 }

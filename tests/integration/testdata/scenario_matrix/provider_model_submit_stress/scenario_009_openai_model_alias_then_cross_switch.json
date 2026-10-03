@@ -1,0 +1,27 @@
+{
+  "name": "openai_model_alias_then_cross_switch",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/model gpt-4o",
+    "/model anthropic/opus",
+    "/status"
+  ],
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=false",
+    "logged_in=false"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=false",
+    "logged_in=false"
+  ]
+}

@@ -1,0 +1,1 @@
+{"name":"issue_panel_apply_intent_no_legacy","width":180,"height":30,"actions":["submit:/issue create stagej matrix row","type:/issue","enter","enter"],"want_contains":["Issue"],"want_absent":["ISSUE_LIST","ISSUE_STATUS","ISSUE_CREATE"]}

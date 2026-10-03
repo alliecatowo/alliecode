@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/alliecatowo/alliecode/internal/commands"
@@ -13,17 +14,25 @@ import (
 )
 
 type startupProviderCase struct {
-	Name                string `json:"name"`
-	Kind                string `json:"kind"`
-	NetworkOnly         bool   `json:"network_only"`
-	ProviderChoice      string `json:"provider_choice"`
-	InitialProviderName string `json:"initial_provider_name"`
-	ModelArg            string `json:"model_arg"`
-	WantModel           string `json:"want_model"`
-	WantProviderName    string `json:"want_provider_name"`
-	DefaultProvider     string `json:"default_provider"`
-	ProviderAPIKey      string `json:"provider_api_key"`
-	WantHasCreds        bool   `json:"want_has_credentials"`
+	Name                   string `json:"name"`
+	Kind                   string `json:"kind"`
+	NetworkOnly            bool   `json:"network_only"`
+	ProviderChoice         string `json:"provider_choice"`
+	InitialProviderName    string `json:"initial_provider_name"`
+	LoggedIn               bool   `json:"logged_in"`
+	AuthProvider           string `json:"auth_provider"`
+	ProviderArg            string `json:"provider_arg"`
+	ModelArg               string `json:"model_arg"`
+	WantModel              string `json:"want_model"`
+	WantProviderName       string `json:"want_provider_name"`
+	WantModelRef           string `json:"want_model_ref"`
+	WantProviderReady      *bool  `json:"want_provider_ready"`
+	WantLoggedIn           *bool  `json:"want_logged_in"`
+	WantAuthProvider       string `json:"want_auth_provider"`
+	DefaultProvider        string `json:"default_provider"`
+	ProviderAPIKey         string `json:"provider_api_key"`
+	WantHasCreds           bool   `json:"want_has_credentials"`
+	OnboardingModelMessage string `json:"onboarding_model_message"`
 }
 
 func TestScenarioMatrix_StartupProviderSetup(t *testing.T) {
@@ -44,9 +53,15 @@ func TestScenarioMatrix_StartupProviderSetup(t *testing.T) {
 				cfg.HasCompletedOnboarding = true
 				cfg.OnboardingProviderChoice = tc.ProviderChoice
 
-				state := &commands.RuntimeState{ProviderName: tc.InitialProviderName}
+				state := &commands.RuntimeState{ProviderName: tc.InitialProviderName, LoggedIn: tc.LoggedIn, AuthProvider: tc.AuthProvider}
 				if state.ProviderName == "" {
 					state.ProviderName = cfg.OnboardingProviderChoice
+				}
+				if state.AuthProvider == "" && state.LoggedIn {
+					state.AuthProvider = state.ProviderName
+				}
+				if tc.ProviderArg != "" {
+					state.ProviderName = tc.ProviderArg
 				}
 
 				fx := fixtures.NewCLIInvocationFixture(state)
@@ -62,6 +77,26 @@ func TestScenarioMatrix_StartupProviderSetup(t *testing.T) {
 				}
 				if got := state.ProviderName; got != tc.WantProviderName {
 					t.Fatalf("state.ProviderName = %q, want %q", got, tc.WantProviderName)
+				}
+				if strings.TrimSpace(tc.WantModelRef) != "" {
+					if got := state.ModelRef; got != tc.WantModelRef {
+						t.Fatalf("state.ModelRef = %q, want %q", got, tc.WantModelRef)
+					}
+				}
+				if tc.WantProviderReady != nil {
+					if got := state.ProviderReady; got != *tc.WantProviderReady {
+						t.Fatalf("state.ProviderReady = %t, want %t", got, *tc.WantProviderReady)
+					}
+				}
+				if tc.WantLoggedIn != nil {
+					if got := state.LoggedIn; got != *tc.WantLoggedIn {
+						t.Fatalf("state.LoggedIn = %t, want %t", got, *tc.WantLoggedIn)
+					}
+				}
+				if strings.TrimSpace(tc.WantAuthProvider) != "" {
+					if got := state.AuthProvider; got != tc.WantAuthProvider {
+						t.Fatalf("state.AuthProvider = %q, want %q", got, tc.WantAuthProvider)
+					}
 				}
 			case "load_layered_default_provider":
 				home := t.TempDir()
@@ -85,6 +120,22 @@ func TestScenarioMatrix_StartupProviderSetup(t *testing.T) {
 				if got := cfg.HasDefaultProviderCredentials(); got != tc.WantHasCreds {
 					t.Fatalf("HasDefaultProviderCredentials() = %t, want %t", got, tc.WantHasCreds)
 				}
+
+			case "onboarding_model_availability_message":
+				cfg := config.NewDefaultConfig()
+				cfg.DefaultProvider = tc.DefaultProvider
+				if tc.ProviderAPIKey != "" {
+					cfg.Providers[tc.DefaultProvider] = &config.ProviderSettings{APIKey: tc.ProviderAPIKey}
+				}
+				providerName := strings.ToLower(strings.TrimSpace(tc.DefaultProvider))
+				msg := ""
+				if providerName != "" && providerName != "ollama" && !cfg.ProviderCredentialPresence(providerName).HasCredentials {
+					msg = "Model availability check: skipped live provider check for " + providerName + " (credentials missing). Recovery: add credentials, run /login provider " + providerName + ", then rerun model selection."
+				}
+				if strings.TrimSpace(tc.OnboardingModelMessage) != "" && !strings.Contains(msg, tc.OnboardingModelMessage) {
+					t.Fatalf("onboarding availability message = %q, want contains %q", msg, tc.OnboardingModelMessage)
+				}
+
 			default:
 				t.Fatalf("unknown scenario kind %q", tc.Kind)
 			}

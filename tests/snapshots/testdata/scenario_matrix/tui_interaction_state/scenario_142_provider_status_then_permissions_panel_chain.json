@@ -1,0 +1,1 @@
+{"name":"provider_status_then_permissions_panel_chain","width":180,"height":30,"actions":["submit:/provider status","type:/perm","enter"],"want_contains":["input mode: command-panel","command panel /permissions","/permissions"],"want_absent":["PROVIDER_STATUS","PERMISSIONS_MODE","PERMISSIONS_MODES"]}

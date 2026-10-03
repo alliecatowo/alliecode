@@ -22,19 +22,20 @@ func (a *App) ensurePermissionPromptVisible() {
 			a.activePermissionQueueKey = ""
 			a.activePermissionTurn = 0
 		}
-		if a.state == statePermissionPrompt {
+		if a.stateValue() == statePermissionPrompt {
 			a.setState(stateThinking)
 			a.spinner = NewSpinner("executing")
 		}
 		return
 	}
-	if a.state == statePermissionPrompt && a.permDialog.stage == permissionDialogPrompt {
+	if a.stateValue() == statePermissionPrompt && a.permDialog.stage == permissionDialogPrompt {
 		a.syncPermissionQueueMetadata()
 		return
 	}
 	request := a.permissionQueue[0]
 	a.permission = NewPermission(request.toolName, request.description)
-	a.permission.SetStatus(permissionPending)
+	a.permission.SetToolDetails(request.toolKind, request.toolDetails)
+	a.permission.SetStatus(request.status)
 	a.permission.SetQueueIndex(1, len(a.permissionQueue))
 	a.permDialog = a.permDialog.transition(permissionDialogShow)
 	a.setState(statePermissionPrompt)
@@ -99,10 +100,14 @@ func (a *App) syncPermissionQueueMetadata() {
 				continue
 			}
 			position = i + 1
+			a.permission.SetToolDetails(request.toolKind, request.toolDetails)
+			a.permission.SetStatus(request.status)
 			break
 		}
 		if request.toolUseID == a.activePermissionToolUseID {
 			position = i + 1
+			a.permission.SetToolDetails(request.toolKind, request.toolDetails)
+			a.permission.SetStatus(request.status)
 			break
 		}
 	}
@@ -125,6 +130,9 @@ func (a *App) syncPermissionQueueMetadata() {
 			marker = "[active]"
 		}
 		row := marker + " " + strings.TrimSpace(request.toolName)
+		if request.status != "" {
+			row += " [" + strings.ToUpper(string(request.status)) + "]"
+		}
 		if request.turn > 0 {
 			row += " turn " + itoa(request.turn)
 		}
@@ -140,7 +148,10 @@ func (a *App) syncPermissionQueueMetadata() {
 			label = "tool"
 		}
 		if request.turn > 0 {
-			label += "(turn " + itoa(request.turn) + ")"
+			label += " (turn " + itoa(request.turn) + ")"
+		}
+		if request.status != "" {
+			label += " [" + strings.ToUpper(string(request.status)) + "]"
 		}
 		preview := strings.TrimSpace(request.description)
 		if preview == "" {

@@ -1,0 +1,1 @@
+{"name":"runtime_openai_no_login_stays_unready","kind":"runtime_model_set","provider_choice":"openai","initial_provider_name":"openai","logged_in":false,"auth_provider":"","model_arg":"openai/gpt-4o-mini","want_model":"gpt-4o-mini","want_provider_name":"openai","want_model_ref":"openai/gpt-4o-mini","want_provider_ready":false,"want_logged_in":false}

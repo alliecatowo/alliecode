@@ -1,0 +1,1 @@
+{"name":"history_left_closes_without_staging","width":180,"height":30,"actions":["ctrl_r","type:log","left"],"want_contains":["input mode: chat"],"want_absent":["mode:history-search","┃ open logs"]}

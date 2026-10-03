@@ -1,0 +1,1 @@
+{"name":"quick_open_enter_cycles_timeline_mode","width":180,"height":28,"actions":["ctrl_o","enter"],"want_contains":["mode:timeline","hint: type to filter timeline rows"],"want_absent":["mode:quick-open"]}

@@ -1,1 +1,1 @@
-{"name":"timeline_search_repeat","width":80,"height":24,"action":"ctrl_f","extract":["mode:timeline"],"want_joined":"mode:timeline  matches:0  jump:ctrl+n/ctrl+p  esc:exit"}
+{"name":"timeline_search_repeat","width":80,"height":24,"action":"ctrl_f","extract":["mode:timeline"],"want_joined":"mode:timeline  matches:0  jump:ctrl+n/ctrl+p up/down tab shift+tab pgup/pgd..."}

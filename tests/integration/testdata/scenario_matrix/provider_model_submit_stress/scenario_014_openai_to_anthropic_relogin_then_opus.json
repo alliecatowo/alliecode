@@ -1,0 +1,51 @@
+{
+  "name": "openai_to_anthropic_relogin_then_opus",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/model anthropic/sonnet",
+    "/login provider anthropic",
+    "/model opus",
+    "/statusline status"
+  ],
+  "checkpoints": [
+    {
+      "after_step_index": 1,
+      "want_provider_name": "anthropic",
+      "want_model": "claude-sonnet-4-20250514",
+      "want_model_ref": "anthropic/claude-sonnet-4-20250514",
+      "want_provider_ready": false,
+      "want_logged_in": false
+    },
+    {
+      "after_step_index": 2,
+      "want_provider_name": "anthropic",
+      "want_auth_provider": "anthropic",
+      "want_provider_ready": true,
+      "want_logged_in": true
+    }
+  ],
+  "want_provider_name": "anthropic",
+  "want_model": "claude-opus-4-20250514",
+  "want_model_ref": "anthropic/claude-opus-4-20250514",
+  "want_auth_provider": "anthropic",
+  "want_provider_ready": true,
+  "want_logged_in": true,
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

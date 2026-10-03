@@ -12,6 +12,24 @@ import (
 	"github.com/alliecatowo/alliecode/internal/types"
 )
 
+type mcpContractMetadata struct {
+	Family          string `json:"family"`
+	SchemaVersion   string `json:"schema_version"`
+	StateBacked     bool   `json:"state_backed"`
+	HasStatus       bool   `json:"has_status"`
+	PermissionAware bool   `json:"permission_aware"`
+}
+
+func defaultMCPContractMetadata() *mcpContractMetadata {
+	return &mcpContractMetadata{
+		Family:          "mcp",
+		SchemaVersion:   "v2",
+		StateBacked:     true,
+		HasStatus:       true,
+		PermissionAware: true,
+	}
+}
+
 type MCPResourceListTool struct {
 	manager MCPManager
 }
@@ -21,24 +39,26 @@ type mcpResourceListInput struct {
 }
 
 type mcpResourceListOutput struct {
-	Resources      []mcp.Resource     `json:"resources"`
-	Total          int                `json:"total"`
-	ServerStatuses []mcp.ServerStatus `json:"server_statuses,omitempty"`
-	Summary        any                `json:"summary,omitempty"`
+	Resources      []mcp.Resource       `json:"resources"`
+	Total          int                  `json:"total"`
+	ServerStatuses []mcp.ServerStatus   `json:"server_statuses,omitempty"`
+	Summary        any                  `json:"summary,omitempty"`
+	Contract       *mcpContractMetadata `json:"contract,omitempty"`
 }
 
 type mcpToolError struct {
-	Code       string            `json:"code"`
-	ErrorCode  string            `json:"error_code,omitempty"`
-	Message    string            `json:"message"`
-	Category   mcp.ErrorCategory `json:"category,omitempty"`
-	Hint       string            `json:"hint,omitempty"`
-	Retryable  bool              `json:"retryable,omitempty"`
-	Operation  string            `json:"operation,omitempty"`
-	ServerName string            `json:"server_name,omitempty"`
-	ToolName   string            `json:"tool_name,omitempty"`
-	Transport  mcp.TransportType `json:"transport,omitempty"`
-	Status     *mcp.ServerStatus `json:"status,omitempty"`
+	Code       string               `json:"code"`
+	ErrorCode  string               `json:"error_code,omitempty"`
+	Message    string               `json:"message"`
+	Category   mcp.ErrorCategory    `json:"category,omitempty"`
+	Hint       string               `json:"hint,omitempty"`
+	Retryable  bool                 `json:"retryable,omitempty"`
+	Operation  string               `json:"operation,omitempty"`
+	ServerName string               `json:"server_name,omitempty"`
+	ToolName   string               `json:"tool_name,omitempty"`
+	Transport  mcp.TransportType    `json:"transport,omitempty"`
+	Status     *mcp.ServerStatus    `json:"status,omitempty"`
+	Contract   *mcpContractMetadata `json:"contract,omitempty"`
 }
 
 type mcpAuthStatusOutput struct {
@@ -47,6 +67,7 @@ type mcpAuthStatusOutput struct {
 	AuthStatus      mcp.AuthStatus            `json:"auth_status"`
 	ConnectionState mcp.ServerConnectionState `json:"connection_state"`
 	Status          *mcp.ServerStatus         `json:"status,omitempty"`
+	Contract        *mcpContractMetadata      `json:"contract,omitempty"`
 }
 
 func deterministicMCPToolError(err mcpToolError) types.ToolResult {
@@ -59,7 +80,7 @@ func deterministicMCPToolError(err mcpToolError) types.ToolResult {
 
 func newMCPToolError(code string, err error) mcpToolError {
 	classified := mcp.ClassifyError(err)
-	return mcpToolError{Code: code, ErrorCode: classified.Code, Message: classified.Message, Category: classified.Category, Hint: classified.Hint, Retryable: classified.Retryable}
+	return mcpToolError{Code: code, ErrorCode: classified.Code, Message: classified.Message, Category: classified.Category, Hint: classified.Hint, Retryable: classified.Retryable, Contract: defaultMCPContractMetadata()}
 }
 
 type mcpResourceSummary struct {
@@ -121,13 +142,13 @@ func (t *MCPResourceListTool) Execute(ctx context.Context, input types.ToolInput
 	_ = toolCtx
 	mgr := t.manager
 	if mgr == nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured"}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured", Contract: defaultMCPContractMetadata()}), nil
 	}
 
 	var in mcpResourceListInput
 	if len(input) > 0 {
 		if err := json.Unmarshal(input, &in); err != nil {
-			return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err)}), nil
+			return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err), Contract: defaultMCPContractMetadata()}), nil
 		}
 	}
 
@@ -159,7 +180,7 @@ func (t *MCPResourceListTool) Execute(ctx context.Context, input types.ToolInput
 		listed, err := mgr.ListResources(ctx)
 		if err != nil {
 			if errors.Is(err, mcp.ErrTransportUnsupported) {
-				return deterministicMCPToolError(mcpToolError{Code: "MCP_TRANSPORT_UNSUPPORTED", Message: "resource listing unsupported for at least one MCP server transport", Operation: "resource_list"}), nil
+				return deterministicMCPToolError(mcpToolError{Code: "MCP_TRANSPORT_UNSUPPORTED", Message: "resource listing unsupported for at least one MCP server transport", Operation: "resource_list", Contract: defaultMCPContractMetadata()}), nil
 			}
 			outErr := newMCPToolError("MCP_RESOURCE_LIST_FAILED", err)
 			outErr.Operation = "resource_list"
@@ -183,7 +204,7 @@ func (t *MCPResourceListTool) Execute(ctx context.Context, input types.ToolInput
 	}
 
 	summary := summarizeMCPResources(resources, serverStatuses)
-	b, err := json.Marshal(mcpResourceListOutput{Resources: resources, Total: len(resources), ServerStatuses: serverStatuses, Summary: summary})
+	b, err := json.Marshal(mcpResourceListOutput{Resources: resources, Total: len(resources), ServerStatuses: serverStatuses, Summary: summary, Contract: defaultMCPContractMetadata()})
 	if err != nil {
 		return deterministicMCPToolError(mcpToolError{Code: "MCP_SERIALIZATION_ERROR", Message: fmt.Sprintf("serialization error: %v", err)}), nil
 	}
@@ -218,6 +239,7 @@ type mcpResourceReadOutput struct {
 	ConnectionState mcp.ServerConnectionState `json:"connection_state"`
 	Content         mcp.ResourceContent       `json:"content"`
 	Status          mcp.ServerStatus          `json:"status"`
+	Contract        *mcpContractMetadata      `json:"contract,omitempty"`
 }
 
 type mcpToolInvokeInput struct {
@@ -235,6 +257,7 @@ type mcpToolInvokeOutput struct {
 	ConnectionState mcp.ServerConnectionState `json:"connection_state"`
 	Result          string                    `json:"result"`
 	Status          mcp.ServerStatus          `json:"status"`
+	Contract        *mcpContractMetadata      `json:"contract,omitempty"`
 }
 
 func (t *MCPResourceReadTool) Name() string { return "mcp_resource_read" }
@@ -258,12 +281,12 @@ func (t *MCPResourceReadTool) Execute(ctx context.Context, input types.ToolInput
 	_ = toolCtx
 	mgr := t.manager
 	if mgr == nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured"}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured", Contract: defaultMCPContractMetadata()}), nil
 	}
 
 	var in mcpResourceReadInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err)}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err), Contract: defaultMCPContractMetadata()}), nil
 	}
 	if strings.TrimSpace(in.ServerName) == "" {
 		return deterministicMCPToolError(mcpToolError{Code: "MCP_SERVER_REQUIRED", Message: "server_name is required"}), nil
@@ -297,6 +320,7 @@ func (t *MCPResourceReadTool) Execute(ctx context.Context, input types.ToolInput
 	}
 
 	b, err := json.Marshal(mcpResourceReadOutput{
+		Contract:        defaultMCPContractMetadata(),
 		ServerName:      in.ServerName,
 		Transport:       status.TransportType,
 		Authenticated:   mgr.Authenticated(in.ServerName),
@@ -332,8 +356,9 @@ type mcpAuthLocalInput struct {
 }
 
 type mcpAuthLocalOutput struct {
-	ServerName    string `json:"server_name"`
-	Authenticated bool   `json:"authenticated"`
+	ServerName    string               `json:"server_name"`
+	Authenticated bool                 `json:"authenticated"`
+	Contract      *mcpContractMetadata `json:"contract,omitempty"`
 }
 
 func (t *MCPAuthLocalTool) Name() string { return "mcp_auth_local" }
@@ -357,12 +382,12 @@ func (t *MCPAuthLocalTool) Execute(ctx context.Context, input types.ToolInput, t
 	_ = toolCtx
 	mgr := t.manager
 	if mgr == nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured"}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured", Contract: defaultMCPContractMetadata()}), nil
 	}
 
 	var in mcpAuthLocalInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err)}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err), Contract: defaultMCPContractMetadata()}), nil
 	}
 	if strings.TrimSpace(in.ServerName) == "" {
 		return deterministicMCPToolError(mcpToolError{Code: "MCP_SERVER_REQUIRED", Message: "server_name is required"}), nil
@@ -381,7 +406,7 @@ func (t *MCPAuthLocalTool) Execute(ctx context.Context, input types.ToolInput, t
 		return deterministicMCPToolError(outErr), nil
 	}
 
-	b, err := json.Marshal(mcpAuthLocalOutput{ServerName: in.ServerName, Authenticated: mgr.Authenticated(in.ServerName)})
+	b, err := json.Marshal(mcpAuthLocalOutput{ServerName: in.ServerName, Authenticated: mgr.Authenticated(in.ServerName), Contract: defaultMCPContractMetadata()})
 	if err != nil {
 		return deterministicMCPToolError(mcpToolError{Code: "MCP_SERIALIZATION_ERROR", Message: fmt.Sprintf("serialization error: %v", err), ServerName: in.ServerName}), nil
 	}
@@ -428,12 +453,12 @@ func (t *MCPAuthStatusTool) Execute(ctx context.Context, input types.ToolInput, 
 	_ = toolCtx
 	mgr := t.manager
 	if mgr == nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured"}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured", Contract: defaultMCPContractMetadata()}), nil
 	}
 
 	var in mcpAuthStatusInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err)}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err), Contract: defaultMCPContractMetadata()}), nil
 	}
 	serverName := strings.TrimSpace(in.ServerName)
 	if serverName == "" {
@@ -446,6 +471,7 @@ func (t *MCPAuthStatusTool) Execute(ctx context.Context, input types.ToolInput, 
 	}
 
 	b, err := json.Marshal(mcpAuthStatusOutput{
+		Contract:        defaultMCPContractMetadata(),
 		ServerName:      serverName,
 		Authenticated:   status.Authenticated,
 		AuthStatus:      status.AuthStatus,
@@ -495,12 +521,12 @@ func (t *MCPToolInvokeTool) Execute(ctx context.Context, input types.ToolInput, 
 	_ = toolCtx
 	mgr := t.manager
 	if mgr == nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured"}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_MANAGER_UNAVAILABLE", Message: "mcp manager is not configured", Contract: defaultMCPContractMetadata()}), nil
 	}
 
 	var in mcpToolInvokeInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err)}), nil
+		return deterministicMCPToolError(mcpToolError{Code: "MCP_INVALID_INPUT", Message: fmt.Sprintf("invalid input: %v", err), Contract: defaultMCPContractMetadata()}), nil
 	}
 	in.ServerName = strings.TrimSpace(in.ServerName)
 	in.ToolName = strings.TrimSpace(in.ToolName)
@@ -553,6 +579,7 @@ func (t *MCPToolInvokeTool) Execute(ctx context.Context, input types.ToolInput, 
 	}
 
 	b, err := json.Marshal(mcpToolInvokeOutput{
+		Contract:        defaultMCPContractMetadata(),
 		ServerName:      in.ServerName,
 		ToolName:        in.ToolName,
 		Transport:       refreshed.TransportType,

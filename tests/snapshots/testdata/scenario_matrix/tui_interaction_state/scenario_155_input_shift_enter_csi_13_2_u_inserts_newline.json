@@ -1,0 +1,1 @@
+{"name":"input_shift_enter_csi_13_2_u_inserts_newline","width":180,"height":30,"actions":["type:hello","shift_enter_csi_13_2_u"],"want_contains":["hello","input mode: chat"],"want_absent":["runtime selection is incomplete"]}

@@ -11,6 +11,16 @@ type taskEnvelope struct {
 	Summary   any                   `json:"summary,omitempty"`
 	Lifecycle *taskLifecycleSummary `json:"lifecycle,omitempty"`
 	Runtime   any                   `json:"runtime,omitempty"`
+	Contract  *taskContractMetadata `json:"contract,omitempty"`
+}
+
+type taskContractMetadata struct {
+	Family          string `json:"family"`
+	SchemaVersion   string `json:"schema_version"`
+	StateBacked     bool   `json:"state_backed"`
+	HasRuntime      bool   `json:"has_runtime"`
+	HasLifecycle    bool   `json:"has_lifecycle"`
+	PermissionAware bool   `json:"permission_aware"`
 }
 
 type taskListEnvelope struct {
@@ -21,6 +31,7 @@ type taskListEnvelope struct {
 	QueryRun  *tasks.TaskQuerySummary         `json:"query_summary,omitempty"`
 	Lifecycle map[string]taskLifecycleSummary `json:"lifecycle,omitempty"`
 	Audit     *taskListAuditSummary           `json:"audit,omitempty"`
+	Contract  *taskContractMetadata           `json:"contract,omitempty"`
 }
 
 type taskOutputEnvelope struct {
@@ -30,6 +41,7 @@ type taskOutputEnvelope struct {
 	Summary         any                   `json:"summary,omitempty"`
 	Lifecycle       *taskLifecycleSummary `json:"lifecycle,omitempty"`
 	Runtime         any                   `json:"runtime,omitempty"`
+	Contract        *taskContractMetadata `json:"contract,omitempty"`
 }
 
 type taskRuntimeSummary struct {
@@ -131,4 +143,15 @@ func taskStatusFromManagerStatus(status tasks.Status) string {
 		return taskStatusFailed
 	}
 	return taskStatusInProgress
+}
+
+func defaultTaskContractMetadata() *taskContractMetadata {
+	return &taskContractMetadata{
+		Family:          "task",
+		SchemaVersion:   "v2",
+		StateBacked:     true,
+		HasRuntime:      true,
+		HasLifecycle:    true,
+		PermissionAware: true,
+	}
 }

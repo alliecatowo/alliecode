@@ -67,6 +67,9 @@ func (e *Engine) HandleKey(k Key) State {
 	}
 
 	if k.Special != SpecialNone {
+		if k.Special == SpecialTab || k.Special == SpecialShiftTab {
+			return e.State()
+		}
 		e.handleNormalSpecial(k)
 		return e.State()
 	}
@@ -91,6 +94,10 @@ func (e *Engine) handleNormalSpecial(k Key) {
 		e.cursor = e.normalizeNormalCursor(Cursor{Row: e.cursor.Row - 1, Col: e.cursor.Col})
 	case SpecialDown:
 		e.cursor = e.normalizeNormalCursor(Cursor{Row: e.cursor.Row + 1, Col: e.cursor.Col})
+	case SpecialPageUp:
+		e.cursor = e.normalizeNormalCursor(Cursor{Row: e.cursor.Row - 10, Col: e.cursor.Col})
+	case SpecialPageDown:
+		e.cursor = e.normalizeNormalCursor(Cursor{Row: e.cursor.Row + 10, Col: e.cursor.Col})
 	case SpecialHome:
 		e.cursor = e.normalizeNormalCursor(Cursor{Row: e.cursor.Row, Col: 0})
 	case SpecialEnd:
@@ -124,6 +131,9 @@ func (e *Engine) handleEsc() {
 
 func (e *Engine) handleInsert(k Key) {
 	if k.Special != SpecialNone {
+		if k.Special == SpecialTab || k.Special == SpecialShiftTab {
+			return
+		}
 		switch k.Special {
 		case SpecialEnter:
 			e.pushUndo()
@@ -140,6 +150,10 @@ func (e *Engine) handleInsert(k Key) {
 			e.cursor = e.buf.clampCursor(Cursor{Row: e.cursor.Row - 1, Col: e.cursor.Col})
 		case SpecialDown:
 			e.cursor = e.buf.clampCursor(Cursor{Row: e.cursor.Row + 1, Col: e.cursor.Col})
+		case SpecialPageUp:
+			e.cursor = e.buf.clampCursor(Cursor{Row: e.cursor.Row - 10, Col: e.cursor.Col})
+		case SpecialPageDown:
+			e.cursor = e.buf.clampCursor(Cursor{Row: e.cursor.Row + 10, Col: e.cursor.Col})
 		case SpecialHome:
 			e.cursor = e.buf.clampCursor(Cursor{Row: e.cursor.Row, Col: 0})
 		case SpecialEnd:

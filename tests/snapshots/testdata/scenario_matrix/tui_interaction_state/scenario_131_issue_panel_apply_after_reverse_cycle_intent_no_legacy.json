@@ -1,0 +1,1 @@
+{"name":"issue_panel_apply_after_reverse_cycle_intent_no_legacy","width":180,"height":30,"actions":["submit:/issue create lane5 matrix item","type:/issue","enter","tab","shift_tab","enter"],"want_contains":["Issue"],"want_absent":["ISSUE_LIST","ISSUE_STATUS","ISSUE_CREATE"]}

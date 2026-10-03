@@ -1,0 +1,1 @@
+{"name":"model_picker_shift_tab_csi_1_2_z_keeps_panel_open","width":180,"height":30,"actions":["type:/model ","tab","shift_tab_csi_1_2_z"],"want_contains":["model picker: /model","input mode: model-picker","hints: model picker"]}

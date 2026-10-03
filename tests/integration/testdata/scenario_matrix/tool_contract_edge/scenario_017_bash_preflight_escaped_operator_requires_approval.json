@@ -1,0 +1,1 @@
+{"name":"bash_preflight_escaped_operator_requires_approval","kind":"bash","input":"printf hi \\\\| wc -c","want_is_error":true,"want_contains":["Command requires approval by bash preflight policy","[bash_preflight]","rule_id: escaped_operator_obfuscation"]}

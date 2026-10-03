@@ -28,10 +28,6 @@ func newBuddyState() buddyState {
 	return buddyState{companion: buddy.Companion{CompanionBones: roll.Bones, CompanionSoul: buddy.CompanionSoul{Name: "buddy"}}}
 }
 
-func buddyPanelHeight(width int) int {
-	return visualLineCount(renderBuddySprite(newBuddyState(), width, time.Now()), width) + 1
-}
-
 func renderBuddySprite(state buddyState, width int, now time.Time) string {
 	petting := now.Before(state.petBurstUntil)
 	speaking := strings.TrimSpace(state.bubble) != "" && now.Before(state.bubbleUntil)

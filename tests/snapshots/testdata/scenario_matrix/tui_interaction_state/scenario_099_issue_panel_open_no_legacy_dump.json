@@ -1,0 +1,1 @@
+{"name":"issue_panel_open_no_legacy_dump","width":180,"height":30,"actions":["submit:/issue create stagej intent regression","type:/issue","enter"],"want_contains":["drawer: issue panel: /issue","## Issues"],"want_absent":["ISSUE_STATUS","ISSUE_LIST","ISSUE_CREATE"]}

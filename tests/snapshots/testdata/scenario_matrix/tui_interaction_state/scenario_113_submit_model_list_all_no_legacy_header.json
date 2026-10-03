@@ -1,0 +1,1 @@
+{"name":"submit_model_list_all_no_legacy_header","width":180,"height":30,"actions":["submit:/model list all"],"want_contains":["Provider  | Model","openai"],"want_absent":["MODEL_LIST_ALL"]}

@@ -1,0 +1,1 @@
+{"name":"timeline_ctrl_o_pivots_quick_open","width":180,"height":30,"actions":["ctrl_f","ctrl_o"],"want_contains":["mode:quick-open","input mode: quick-open","context: search mode quick-open selection="],"want_absent":["mode:timeline"]}

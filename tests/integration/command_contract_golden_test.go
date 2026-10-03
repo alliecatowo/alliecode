@@ -163,21 +163,29 @@ func TestCommandContractGoldenOutputs(t *testing.T) {
 	}
 }
 
+// normalizeContractOutput strips lines that describe the live git checkout the
+// tests happen to run in (branch name, upstream, working tree counts). Those
+// differ per branch, detached CI checkouts and local worktrees, so they cannot
+// be pinned in goldens.
 func normalizeContractOutput(name, msg string) string {
-	if name != "commit_status" {
+	if name != "commit_status" && name != "commit_push_pr_status" {
 		return msg
 	}
 
+	volatile := []string{"branch=", "upstream=", "tracked=", "remote_ready=", "files=", "staged=", "unstaged=", "untracked="}
 	lines := strings.Split(msg, "\n")
 	filtered := make([]string, 0, len(lines))
 	for _, line := range lines {
-		if strings.HasPrefix(line, "files=") ||
-			strings.HasPrefix(line, "staged=") ||
-			strings.HasPrefix(line, "unstaged=") ||
-			strings.HasPrefix(line, "untracked=") {
-			continue
+		skip := false
+		for _, prefix := range volatile {
+			if strings.HasPrefix(line, prefix) {
+				skip = true
+				break
+			}
 		}
-		filtered = append(filtered, line)
+		if !skip {
+			filtered = append(filtered, line)
+		}
 	}
 
 	return strings.Join(filtered, "\n")

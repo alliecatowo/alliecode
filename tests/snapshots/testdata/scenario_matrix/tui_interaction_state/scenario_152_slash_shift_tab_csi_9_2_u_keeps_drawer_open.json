@@ -1,0 +1,1 @@
+{"name":"slash_shift_tab_csi_9_2_u_keeps_drawer_open","width":180,"height":30,"actions":["type:/","tab","shift_tab_csi_9_2_u"],"want_contains":["commands: /","hints: command palette","input mode: slash"]}

@@ -1,0 +1,1 @@
+{"name":"tasks_panel_open_no_legacy_dump","width":180,"height":30,"actions":["submit:/tasks add stagej intent test","type:/tasks","enter"],"want_contains":["drawer: tasks panel: /tasks","## Open tasks"],"want_absent":["TASKS_LIST","TASKS_ADD","TASKS_DONE"]}

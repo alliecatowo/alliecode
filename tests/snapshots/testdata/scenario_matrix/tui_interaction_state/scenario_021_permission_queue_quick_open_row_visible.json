@@ -1,0 +1,1 @@
+{"name":"permission_queue_quick_open_row_visible","width":180,"height":28,"actions":["ctrl_o","type:permission"],"want_contains":["mode:quick-open","search:quick-open","Permission queue - Inspect live permission approvals"]}

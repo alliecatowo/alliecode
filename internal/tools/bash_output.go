@@ -40,6 +40,7 @@ func truncateCommandOutput(output string, maxLines, maxChars int) string {
 }
 
 func formatShellExecutionBlock(toolName, providerName, workingDir string, timeout time.Duration, duration time.Duration, command string, output string, isError bool, audit *shellExecutionAudit) string {
+	workingDir = normalizeToolWorkingDir(workingDir)
 	status := "ok"
 	if isError {
 		status = "error"
@@ -51,6 +52,8 @@ func formatShellExecutionBlock(toolName, providerName, workingDir string, timeou
 		{Key: "timeout_ms", Value: strconv.FormatInt(timeout.Milliseconds(), 10)},
 		{Key: "duration_ms", Value: strconv.FormatInt(duration.Milliseconds(), 10)},
 		{Key: "working_dir", Value: workingDir},
+		{Key: "workspace_root", Value: workingDir},
+		{Key: "path_scope", Value: "workspace"},
 		{Key: "command_len", Value: strconv.Itoa(len(command))},
 		{Key: "output_bytes", Value: strconv.Itoa(len(output))},
 	}

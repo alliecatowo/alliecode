@@ -1,0 +1,1 @@
+{"name":"one_enter_permissions_panel_intent_open","width":180,"height":30,"actions":["type:/perm","enter"],"want_contains":["input mode: command-panel","/permissions"],"want_absent":["PERMISSIONS_MODE","PERMISSIONS_MODES"]}

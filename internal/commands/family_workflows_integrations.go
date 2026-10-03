@@ -25,7 +25,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		if provider == "-" {
 			provider = normalizeToken(cmdCtx.State.ProviderName)
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_STATUS\nprovider=%s\ncount=%d\nopen=%d\nclosed=%d\nlast_action=%s", provider, len(cmdCtx.State.Issues), openCount, len(cmdCtx.State.Issues)-openCount, normalizeToken(cmdCtx.State.IssueLastAction))}, nil
+		message := fmt.Sprintf("ISSUE_STATUS\nprovider=%s\ncount=%d\nopen=%d\nclosed=%d\nlast_action=%s", provider, len(cmdCtx.State.Issues), openCount, len(cmdCtx.State.Issues)-openCount, normalizeToken(cmdCtx.State.IssueLastAction))
+		return resultWithIntents(message, issueStatusIntents(cmdCtx.State)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -45,7 +46,7 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 			lines = append(lines, fmt.Sprintf("issue.%d.provider=%s", idx, normalizeToken(issue.Provider)))
 			lines = append(lines, fmt.Sprintf("issue.%d.assignee=%s", idx, normalizeToken(issue.Assignee)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), issueListIntents(issues)...), nil
 	case "provider":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>|label <id> <label>|unlabel <id> <label>]")
@@ -56,7 +57,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		}
 		cmdCtx.State.IssueProvider = provider
 		cmdCtx.State.IssueLastAction = "provider"
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_PROVIDER\nprovider=%s", normalizeToken(provider))}, nil
+		message := fmt.Sprintf("ISSUE_PROVIDER\nprovider=%s", normalizeToken(provider))
+		return resultWithIntents(message, issueMutationIntents("Issue provider", detailRow("Provider", normalizeToken(provider), "provider", "Default provider for issue operations."))...), nil
 	case "create":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>|label <id> <label>|unlabel <id> <label>]")
@@ -80,7 +82,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		issue := IssueRecord{ID: id, Title: title, Status: "open", Provider: provider}
 		cmdCtx.State.Issues = append(cmdCtx.State.Issues, issue)
 		cmdCtx.State.IssueLastAction = "create"
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_CREATE\nid=%s\nstatus=open\nprovider=%s\ntitle=%s\ncount=%d", normalizeToken(id), normalizeToken(provider), normalizeToken(title), len(cmdCtx.State.Issues))}, nil
+		message := fmt.Sprintf("ISSUE_CREATE\nid=%s\nstatus=open\nprovider=%s\ntitle=%s\ncount=%d", normalizeToken(id), normalizeToken(provider), normalizeToken(title), len(cmdCtx.State.Issues))
+		return resultWithIntents(message, issueMutationIntents("Issue created", detailRow("ID", normalizeToken(id), "open", "Created issue identifier."), detailRow("Provider", normalizeToken(provider), "provider", "Issue provider."), detailRow("Title", normalizeToken(title), "title", "Issue title."), detailRow("Total", itoa(len(cmdCtx.State.Issues)), "count", "Current issue count."))...), nil
 	case "open", "close":
 		if len(inv.Args) != 2 {
 			return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>|label <id> <label>|unlabel <id> <label>]")
@@ -100,7 +103,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		previous := cmdCtx.State.Issues[idx].Status
 		cmdCtx.State.Issues[idx].Status = nextStatus
 		cmdCtx.State.IssueLastAction = sub
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_SET_STATUS\nid=%s\nprevious=%s\nstatus=%s\nchanged=%t", normalizeToken(id), normalizeToken(previous), normalizeToken(nextStatus), !strings.EqualFold(previous, nextStatus))}, nil
+		message := fmt.Sprintf("ISSUE_SET_STATUS\nid=%s\nprevious=%s\nstatus=%s\nchanged=%t", normalizeToken(id), normalizeToken(previous), normalizeToken(nextStatus), !strings.EqualFold(previous, nextStatus))
+		return resultWithIntents(message, issueMutationIntents("Issue status", detailRow("ID", normalizeToken(id), normalizeToken(nextStatus), "Issue identifier."), detailRow("Previous", normalizeToken(previous), "previous", "Previous status."), detailRow("Status", normalizeToken(nextStatus), normalizeToken(nextStatus), "Updated status."))...), nil
 	case "assign":
 		if len(inv.Args) < 3 {
 			return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>]")
@@ -116,7 +120,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		}
 		cmdCtx.State.Issues[idx].Assignee = assignee
 		cmdCtx.State.IssueLastAction = "assign"
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_ASSIGN\nid=%s\nassignee=%s\nstatus=%s", normalizeToken(id), normalizeToken(assignee), normalizeToken(cmdCtx.State.Issues[idx].Status))}, nil
+		message := fmt.Sprintf("ISSUE_ASSIGN\nid=%s\nassignee=%s\nstatus=%s", normalizeToken(id), normalizeToken(assignee), normalizeToken(cmdCtx.State.Issues[idx].Status))
+		return resultWithIntents(message, issueMutationIntents("Issue assignee", detailRow("ID", normalizeToken(id), "issue", "Issue identifier."), detailRow("Assignee", normalizeToken(assignee), "assigned", "Assigned owner."), detailRow("Status", normalizeToken(cmdCtx.State.Issues[idx].Status), normalizeToken(cmdCtx.State.Issues[idx].Status), "Current issue status."))...), nil
 	case "label", "unlabel":
 		if len(inv.Args) < 3 {
 			return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>|label <id> <label>|unlabel <id> <label>]")
@@ -134,7 +139,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 			before := len(cmdCtx.State.Issues[idx].Labels)
 			cmdCtx.State.Issues[idx].Labels = uniqueSortedStrings(append(cmdCtx.State.Issues[idx].Labels, label))
 			cmdCtx.State.IssueLastAction = "label"
-			return Result{Handled: true, Message: fmt.Sprintf("ISSUE_LABEL\nid=%s\nlabel=%s\nadded=%t\ncount=%d", normalizeToken(id), normalizeToken(label), len(cmdCtx.State.Issues[idx].Labels) > before, len(cmdCtx.State.Issues[idx].Labels))}, nil
+			message := fmt.Sprintf("ISSUE_LABEL\nid=%s\nlabel=%s\nadded=%t\ncount=%d", normalizeToken(id), normalizeToken(label), len(cmdCtx.State.Issues[idx].Labels) > before, len(cmdCtx.State.Issues[idx].Labels))
+			return resultWithIntents(message, issueMutationIntents("Issue label", detailRow("ID", normalizeToken(id), "issue", "Issue identifier."), detailRow("Label", normalizeToken(label), "added", "Label value."), detailRow("Label count", itoa(len(cmdCtx.State.Issues[idx].Labels)), "count", "Total labels on issue."))...), nil
 		}
 		removed := false
 		next := make([]string, 0, len(cmdCtx.State.Issues[idx].Labels))
@@ -147,7 +153,8 @@ func executeIssueCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		}
 		cmdCtx.State.Issues[idx].Labels = uniqueSortedStrings(next)
 		cmdCtx.State.IssueLastAction = "unlabel"
-		return Result{Handled: true, Message: fmt.Sprintf("ISSUE_UNLABEL\nid=%s\nlabel=%s\nremoved=%t\ncount=%d", normalizeToken(id), normalizeToken(label), removed, len(cmdCtx.State.Issues[idx].Labels))}, nil
+		message := fmt.Sprintf("ISSUE_UNLABEL\nid=%s\nlabel=%s\nremoved=%t\ncount=%d", normalizeToken(id), normalizeToken(label), removed, len(cmdCtx.State.Issues[idx].Labels))
+		return resultWithIntents(message, issueMutationIntents("Issue unlabel", detailRow("ID", normalizeToken(id), "issue", "Issue identifier."), detailRow("Label", normalizeToken(label), boolState(removed, "removed", "missing"), "Label value."), detailRow("Label count", itoa(len(cmdCtx.State.Issues[idx].Labels)), "count", "Remaining labels on issue."))...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /issue [status|list|provider <name>|create <title>|open <id>|close <id>|assign <id> <assignee>|label <id> <label>|unlabel <id> <label>]")
 	}
@@ -171,7 +178,8 @@ func executeWorkflowsCommand(cmdCtx Context, inv Invocation) (Result, error) {
 				failed++
 			}
 		}
-		return Result{Handled: true, Message: fmt.Sprintf("WORKFLOWS_STATUS\ncount=%d\nrunning=%d\nfailed=%d\nlast_action=%s", len(cmdCtx.State.WorkflowRuns), running, failed, normalizeToken(cmdCtx.State.WorkflowLastAction))}, nil
+		message := fmt.Sprintf("WORKFLOWS_STATUS\ncount=%d\nrunning=%d\nfailed=%d\nlast_action=%s", len(cmdCtx.State.WorkflowRuns), running, failed, normalizeToken(cmdCtx.State.WorkflowLastAction))
+		return resultWithIntents(message, workflowsStatusIntents(cmdCtx.State.WorkflowRuns, cmdCtx.State.WorkflowLastAction)...), nil
 	}
 
 	sub := strings.ToLower(strings.TrimSpace(inv.Args[0]))
@@ -190,7 +198,7 @@ func executeWorkflowsCommand(cmdCtx Context, inv Invocation) (Result, error) {
 			lines = append(lines, fmt.Sprintf("workflow.%d.provider=%s", idx, normalizeToken(run.Provider)))
 			lines = append(lines, fmt.Sprintf("workflow.%d.last_run=%s", idx, normalizeToken(run.LastRun)))
 		}
-		return Result{Handled: true, Message: strings.Join(lines, "\n")}, nil
+		return resultWithIntents(strings.Join(lines, "\n"), workflowsListIntents(runs)...), nil
 	case "run", "complete", "fail", "cancel", "rerun":
 		if len(inv.Args) < 2 {
 			return Result{}, fmt.Errorf("usage: /workflows [status|list|run <name>|complete <name>|fail <name> [reason]|cancel <name>|rerun <name>]")
@@ -230,7 +238,8 @@ func executeWorkflowsCommand(cmdCtx Context, inv Invocation) (Result, error) {
 		cmdCtx.State.WorkflowRuns[idx].Status = nextStatus
 		cmdCtx.State.WorkflowRuns[idx].LastRun = time.Now().UTC().Format(time.RFC3339)
 		cmdCtx.State.WorkflowLastAction = sub
-		return Result{Handled: true, Message: fmt.Sprintf("WORKFLOWS_SET\nname=%s\nstatus=%s\nreason=%s\nprovider=%s", normalizeToken(name), normalizeToken(nextStatus), normalizeToken(reason), normalizeToken(cmdCtx.State.WorkflowRuns[idx].Provider))}, nil
+		message := fmt.Sprintf("WORKFLOWS_SET\nname=%s\nstatus=%s\nreason=%s\nprovider=%s", normalizeToken(name), normalizeToken(nextStatus), normalizeToken(reason), normalizeToken(cmdCtx.State.WorkflowRuns[idx].Provider))
+		return resultWithIntents(message, workflowsMutationIntents(name, nextStatus, reason, cmdCtx.State.WorkflowRuns[idx].Provider)...), nil
 	default:
 		return Result{}, fmt.Errorf("usage: /workflows [status|list|run <name>|complete <name>|fail <name> [reason]|cancel <name>|rerun <name>]")
 	}

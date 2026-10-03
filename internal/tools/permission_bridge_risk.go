@@ -38,6 +38,27 @@ func tightenPermissionForHighRisk(canonical string, input types.ToolInput, toolC
 		}
 	}
 
+	if canonical == "task_update" || canonical == "task_stop" || canonical == "team_delete" {
+		if toolCtx.IsNonInteractive {
+			decision = maxPermissionSeverity(decision, types.PermissionAsk)
+		}
+	}
+
+	if canonical == "mcp_auth_local" {
+		if toolCtx.IsNonInteractive {
+			decision = maxPermissionSeverity(decision, types.PermissionAsk)
+		}
+	}
+
+	if canonical == "mcp_tool_invoke" {
+		var payload struct {
+			ToolName string `json:"tool_name"`
+		}
+		if err := json.Unmarshal(input, &payload); err == nil && classifyMutationIntent(payload.ToolName) {
+			decision = maxPermissionSeverity(decision, types.PermissionAsk)
+		}
+	}
+
 	if canonical == "write" || canonical == "edit" {
 		path := extractFilePath(input)
 		if path != "" {
@@ -111,4 +132,17 @@ func maxPermissionSeverity(a, b types.ToolPermission) types.ToolPermission {
 		return b
 	}
 	return a
+}
+
+func classifyMutationIntent(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		return false
+	}
+	for _, token := range []string{"write", "edit", "delete", "remove", "update", "create", "invoke", "auth"} {
+		if strings.Contains(name, token) {
+			return true
+		}
+	}
+	return false
 }

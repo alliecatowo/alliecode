@@ -1,0 +1,1 @@
+{"name":"quick_open_controls_footer_present","width":120,"height":26,"action":"ctrl_o","want_contains":["enter/right apply","shift+tab/up prev","pgup/pgdown page"],"want_absent":[]}

@@ -1,0 +1,1 @@
+{"name":"reference_drawer_apply_on_enter","width":120,"height":28,"actions":["type:@testdata/scenario_matrix/tui_interaction_state/scenario_001","enter"],"want_contains":["@testdata/scenario_matrix/tui_interaction_state/scenario_001_timeline_search_snapshot.json "],"want_absent":["references:"]}

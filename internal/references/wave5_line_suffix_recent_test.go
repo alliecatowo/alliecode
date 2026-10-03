@@ -11,7 +11,7 @@ func TestWave5SuggestPreservesLineSuffixForRecentEntries(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "internal", "tui", "app.go"), "package tui\n")
 
 	r := NewResolver(root)
-	suggestions := r.Suggest("internal/tui/app.go:9", []string{"internal/tui/app.go"}, 4)
+	suggestions := r.Suggest("internal/tui/app.go:9", []string{"internal/tui/app.go"}, nil, nil, 4)
 	if len(suggestions) == 0 {
 		t.Fatalf("expected suggestions")
 	}

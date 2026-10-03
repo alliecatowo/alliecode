@@ -1,0 +1,48 @@
+{
+  "name": "openai_logout_login_chain_assertions",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/logout",
+    "/login provider openai",
+    "/status"
+  ],
+  "checkpoints": [
+    {
+      "after_step_index": 1,
+      "want_provider_name": "openai",
+      "want_provider_ready": false,
+      "want_logged_in": false
+    },
+    {
+      "after_step_index": 2,
+      "want_provider_name": "openai",
+      "want_auth_provider": "openai",
+      "want_provider_ready": true,
+      "want_logged_in": true
+    }
+  ],
+  "want_provider_name": "openai",
+  "want_model": "gpt-4o-mini",
+  "want_model_ref": "openai/gpt-4o-mini",
+  "want_auth_provider": "openai",
+  "want_provider_ready": true,
+  "want_logged_in": true,
+  "want_status": [
+    "provider=openai",
+    "model=gpt-4o-mini",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=openai",
+    "model=gpt-4o-mini",
+    "model_ref=openai/gpt-4o-mini",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

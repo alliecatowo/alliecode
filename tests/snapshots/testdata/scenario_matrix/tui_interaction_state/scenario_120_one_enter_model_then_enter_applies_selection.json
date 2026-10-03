@@ -1,0 +1,1 @@
+{"name":"one_enter_model_then_enter_applies_selection","width":180,"height":30,"actions":["type:/model","enter","enter"],"want_contains":["Model set to","input mode: chat"],"want_absent":["model picker: /model"]}

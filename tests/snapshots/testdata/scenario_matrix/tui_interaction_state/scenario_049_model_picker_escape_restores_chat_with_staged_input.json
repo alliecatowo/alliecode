@@ -1,0 +1,1 @@
+{"name":"model_picker_escape_restores_chat_with_staged_input","width":180,"height":30,"actions":["type:/model ","esc"],"want_contains":["hint: /model [provider/model|model|list [provider|all]|doctor|repair [provider/model]]","input mode: chat"],"want_absent":["model picker: /model","context: model /"]}

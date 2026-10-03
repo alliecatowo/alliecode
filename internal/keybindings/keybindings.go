@@ -15,6 +15,13 @@ const (
 	ModeAutocomplete Mode = "autocomplete"
 	ModePermission   Mode = "permission"
 	ModeVim          Mode = "vim"
+	ModeSlash        Mode = "slash"
+	ModeReference    Mode = "reference"
+	ModeQuickOpen    Mode = "quick_open"
+	ModeHistory      Mode = "history_search"
+	ModeTimeline     Mode = "timeline_search"
+	ModeModelPicker  Mode = "model_picker"
+	ModeCommandPanel Mode = "command_panel"
 
 	ModeNormal Mode = "normal"
 	ModeInsert Mode = "insert"
@@ -215,13 +222,14 @@ func normalizeCombo(combo string) string {
 	}
 	steps := strings.Fields(norm)
 	for i, step := range steps {
+		step = normalizeTerminalSequenceAlias(step)
 		parts := strings.Split(step, "+")
 		ctrl := false
 		alt := false
 		shift := false
 		key := ""
 		for _, part := range parts {
-			part = strings.TrimSpace(part)
+			part = normalizeTerminalSequenceAlias(strings.TrimSpace(part))
 			switch part {
 			case "ctrl", "control", "cmd", "command":
 				ctrl = true
@@ -229,14 +237,22 @@ func normalizeCombo(combo string) string {
 				alt = true
 			case "shift":
 				shift = true
+			case "s-tab", "backtab", "iso-left-tab":
+				shift = true
+				key = "tab"
+			case "s-enter":
+				shift = true
+				key = "enter"
 			case "esc":
 				key = "escape"
 			case "return":
 				key = "enter"
 			case "pgup":
 				key = "pageup"
-			case "pgdn", "pgdown":
+			case "pgdn", "pgdown", "next":
 				key = "pagedown"
+			case "prior":
+				key = "pageup"
 			default:
 				if part != "" {
 					key = part
@@ -259,6 +275,22 @@ func normalizeCombo(combo string) string {
 		steps[i] = strings.Join(ordered, "+")
 	}
 	return strings.Join(steps, " ")
+}
+
+func normalizeTerminalSequenceAlias(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "\x1b", "")
+	if s == "" {
+		return ""
+	}
+	switch s {
+	case "[z", "[1;2z", "[9;2u", "[27;2;9~", "[z", "1;2z", "9;2u", "27;2;9~", "back-tab", "kcbt", "btab":
+		return "shift+tab"
+	case "[13;2u", "[27;2;13~", "13;2u", "27;2;13~":
+		return "shift+enter"
+	default:
+		return s
+	}
 }
 
 func splitChord(combo string) []string {

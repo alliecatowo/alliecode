@@ -13,4 +13,7 @@ func TestProviderRepairDefaultsToOllama(t *testing.T) {
 	if err != nil || !strings.Contains(res.Message, "PROVIDER_REPAIR") {
 		t.Fatalf("provider repair failed: %v %q", err, res.Message)
 	}
+	if !strings.Contains(res.Message, "quick_fix_auth=") || !strings.Contains(res.Message, "quick_fix_model=") {
+		t.Fatalf("expected repair guidance fields, got %q", res.Message)
+	}
 }

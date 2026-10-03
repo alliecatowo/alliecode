@@ -2,6 +2,6 @@ LOGIN_STATUS
 logged_in=false
 provider=ollama
 account=-
-provider_ready=false
+provider_ready=true
 login_count=0
 logout_count=0

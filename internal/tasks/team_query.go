@@ -9,13 +9,16 @@ type TeamQuery struct {
 }
 
 type TeamQuerySummary struct {
-	Query      TeamQuery             `json:"query"`
-	Matched    int                   `json:"matched"`
-	Returned   int                   `json:"returned"`
-	Truncated  bool                  `json:"truncated"`
-	ByStatus   map[TeamStatus]int    `json:"by_status,omitempty"`
-	ByMember   map[string]int        `json:"by_member,omitempty"`
-	ByTeamName map[string]TeamStatus `json:"by_team_name,omitempty"`
+	Query        TeamQuery             `json:"query"`
+	Scanned      int                   `json:"scanned"`
+	Matched      int                   `json:"matched"`
+	Returned     int                   `json:"returned"`
+	FilteredOut  int                   `json:"filtered_out"`
+	Truncated    bool                  `json:"truncated"`
+	ByStatus     map[TeamStatus]int    `json:"by_status,omitempty"`
+	ByMember     map[string]int        `json:"by_member,omitempty"`
+	ByTeamName   map[string]TeamStatus `json:"by_team_name,omitempty"`
+	MemberFilter string                `json:"member_filter,omitempty"`
 }
 
 func ApplyTeamQuery(teams []Team, query TeamQuery) ([]Team, TeamQuerySummary) {
@@ -45,7 +48,17 @@ func ApplyTeamQuery(teams []Team, query TeamQuery) ([]Team, TeamQuerySummary) {
 		filtered = append(filtered, team)
 	}
 
-	summary := TeamQuerySummary{Query: query, Matched: len(filtered), Returned: len(filtered), ByStatus: map[TeamStatus]int{}, ByMember: map[string]int{}, ByTeamName: map[string]TeamStatus{}}
+	summary := TeamQuerySummary{
+		Query:        query,
+		Scanned:      len(teams),
+		Matched:      len(filtered),
+		Returned:     len(filtered),
+		FilteredOut:  len(teams) - len(filtered),
+		ByStatus:     map[TeamStatus]int{},
+		ByMember:     map[string]int{},
+		ByTeamName:   map[string]TeamStatus{},
+		MemberFilter: memberFilter,
+	}
 	for _, team := range filtered {
 		summary.ByStatus[team.Status]++
 		summary.ByTeamName[team.Name] = team.Status

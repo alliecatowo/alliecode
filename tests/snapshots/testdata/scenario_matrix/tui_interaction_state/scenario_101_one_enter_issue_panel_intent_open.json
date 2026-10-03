@@ -1,0 +1,1 @@
+{"name":"one_enter_issue_panel_intent_open","width":180,"height":30,"actions":["type:/issue","enter"],"want_contains":["input mode: command-panel","drawer: issue panel: /issue"],"want_absent":["ISSUE_LIST","ISSUE_STATUS"]}

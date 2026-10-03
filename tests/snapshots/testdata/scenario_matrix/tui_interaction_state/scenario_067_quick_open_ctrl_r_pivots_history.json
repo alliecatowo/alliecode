@@ -1,0 +1,1 @@
+{"name":"quick_open_ctrl_r_pivots_history","width":180,"height":30,"actions":["ctrl_o","ctrl_r"],"want_contains":["mode:history-search"],"want_absent":["mode:quick-open"]}

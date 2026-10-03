@@ -1,0 +1,1 @@
+{"name":"slash_tab_keeps_drawer_open","width":180,"height":30,"actions":["type:/","tab"],"want_contains":["commands: /","hints: command palette","input mode: slash"]}

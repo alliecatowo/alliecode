@@ -135,3 +135,24 @@ func hasDiagnosticWithRemediation(diags []Diagnostic, code string, sev Diagnosti
 	}
 	return false
 }
+
+func TestConfigDiagnostics_ProviderCredentialRecoveryGuidance(t *testing.T) {
+	cfg := NewDefaultConfig()
+	cfg.DefaultProvider = "openai"
+	t.Setenv("OPENAI_API_KEY", "")
+
+	diags := ConfigDiagnostics(cfg)
+	found := false
+	for _, diag := range diags {
+		if diag.Code != "provider_credentials_missing_openai" {
+			continue
+		}
+		found = true
+		if !strings.Contains(diag.Remediation, "/login provider openai") || !strings.Contains(diag.Remediation, "/provider status") {
+			t.Fatalf("expected actionable remediation, got %q", diag.Remediation)
+		}
+	}
+	if !found {
+		t.Fatalf("expected provider credential diagnostic in %+v", diags)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +18,7 @@ import (
 
 type scriptedProvider struct {
 	mu       sync.Mutex
+	name     string
 	scripts  []func(chan types.StreamEvent)
 	errs     []error
 	requests []types.ChatRequest
@@ -25,7 +27,12 @@ type scriptedProvider struct {
 	chatCall int
 }
 
-func (p *scriptedProvider) Name() string { return "scripted" }
+func (p *scriptedProvider) Name() string {
+	if strings.TrimSpace(p.name) == "" {
+		return "scripted"
+	}
+	return p.name
+}
 
 func (p *scriptedProvider) Chat(_ context.Context, req types.ChatRequest) (<-chan types.StreamEvent, error) {
 	p.mu.Lock()
@@ -406,6 +413,40 @@ func TestAgentRunLoopEmitsInputErrorStopReason(t *testing.T) {
 	}
 }
 
+func TestAgentExtendsTurnBudgetForToolFollowUpWhenConfiguredMaxTurnsIsOne(t *testing.T) {
+	tool := &fakeTool{name: "fake", result: "ok"}
+	provider := &scriptedProvider{scripts: []func(chan types.StreamEvent){
+		toolUseScript("fake", "tool-1", json.RawMessage(`{"x":1}`)),
+		textScript("done"),
+	}}
+
+	a := New(Config{Provider: provider, Tools: []types.Tool{tool}, MaxTurns: 1})
+	if err := a.Run(context.Background(), "hello"); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if provider.chatCall != 2 {
+		t.Fatalf("provider chat calls = %d, want 2", provider.chatCall)
+	}
+	if tool.executeCount != 1 {
+		t.Fatalf("tool execute count = %d, want 1", tool.executeCount)
+	}
+}
+
+func TestAgentWorkingDirDefaultsToAbsoluteProcessDir(t *testing.T) {
+	a := New(Config{})
+	workingDir := a.WorkingDir()
+	if strings.TrimSpace(workingDir) == "" {
+		t.Fatalf("working dir should not be empty")
+	}
+	if !filepath.IsAbs(workingDir) {
+		t.Fatalf("working dir = %q, want absolute path", workingDir)
+	}
+	runtime := a.RuntimeSnapshot()
+	if runtime.Turns != 0 {
+		t.Fatalf("expected zero turns on fresh runtime snapshot, got %+v", runtime)
+	}
+}
+
 func TestAgentConcurrentToolResultsRemainOrdered(t *testing.T) {
 	fast := &delayTool{name: "fast", delay: 5 * time.Millisecond, concurrencySafe: true, result: "fast-result"}
 	slow := &delayTool{name: "slow", delay: 25 * time.Millisecond, concurrencySafe: true, result: "slow-result"}
@@ -444,7 +485,7 @@ func TestDoChatFlushesToolBoundariesAcrossEventStyles(t *testing.T) {
 	}}
 
 	a := New(Config{Provider: provider, MaxTurns: 1})
-	msg, stopReason, err := a.doChat(context.Background(), types.ChatRequest{}, 1)
+	msg, stopReason, err := a.doChat(context.Background(), provider, types.ChatRequest{}, 1)
 	if err != nil {
 		t.Fatalf("doChat returned error: %v", err)
 	}
@@ -503,7 +544,7 @@ func TestDoChatAccumulatesCumulativeUsageWithoutDoubleCounting(t *testing.T) {
 	}}
 
 	a := New(Config{Provider: provider, MaxTurns: 1})
-	if _, _, err := a.doChat(context.Background(), types.ChatRequest{}, 1); err != nil {
+	if _, _, err := a.doChat(context.Background(), provider, types.ChatRequest{}, 1); err != nil {
 		t.Fatalf("doChat returned error: %v", err)
 	}
 	usage := a.Usage()
@@ -525,7 +566,7 @@ func TestDoChatAdjustsFirstCumulativeUsageAgainstPriorIncrementalEvents(t *testi
 	}}
 
 	a := New(Config{Provider: provider, MaxTurns: 1})
-	if _, _, err := a.doChat(context.Background(), types.ChatRequest{}, 1); err != nil {
+	if _, _, err := a.doChat(context.Background(), provider, types.ChatRequest{}, 1); err != nil {
 		t.Fatalf("doChat returned error: %v", err)
 	}
 	usage := a.Usage()
@@ -666,7 +707,7 @@ func TestDoChatMixedIncrementalAndCumulativeUsageDoesNotDoubleCount(t *testing.T
 	}}
 
 	a := New(Config{Provider: provider, MaxTurns: 1})
-	if _, _, err := a.doChat(context.Background(), types.ChatRequest{}, 1); err != nil {
+	if _, _, err := a.doChat(context.Background(), provider, types.ChatRequest{}, 1); err != nil {
 		t.Fatalf("doChat returned error: %v", err)
 	}
 	usage := a.Usage()
@@ -695,6 +736,108 @@ func TestMapProviderStopReasonExpandedTaxonomy(t *testing.T) {
 				t.Fatalf("mapProviderStopReason(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestAgentSetProviderModelSwitchesNextTurnProvider(t *testing.T) {
+	openaiProvider := &scriptedProvider{name: "openai", scripts: []func(chan types.StreamEvent){
+		func(ch chan types.StreamEvent) {
+			ch <- types.StreamEvent{Type: types.StreamContentDelta, Delta: "openai"}
+			ch <- types.StreamEvent{Type: types.StreamMessageDone, StopReason: types.StopEndTurn}
+		},
+	}}
+	anthropicProvider := &scriptedProvider{name: "anthropic", scripts: []func(chan types.StreamEvent){
+		func(ch chan types.StreamEvent) {
+			ch <- types.StreamEvent{Type: types.StreamContentDelta, Delta: "anthropic"}
+			ch <- types.StreamEvent{Type: types.StreamMessageDone, StopReason: types.StopEndTurn}
+		},
+	}}
+
+	a := New(Config{
+		Provider:     openaiProvider,
+		ProviderName: "openai",
+		Model:        "gpt-4o-mini",
+		MaxTurns:     2,
+		ResolveProvider: func(name string) (types.Provider, error) {
+			switch strings.ToLower(strings.TrimSpace(name)) {
+			case "openai":
+				return openaiProvider, nil
+			case "anthropic":
+				return anthropicProvider, nil
+			default:
+				return nil, fmt.Errorf("unknown provider %q", name)
+			}
+		},
+	})
+
+	if err := a.Run(context.Background(), "first"); err != nil {
+		t.Fatalf("first run returned error: %v", err)
+	}
+	if openaiProvider.chatCall != 1 {
+		t.Fatalf("openai chat calls = %d, want 1", openaiProvider.chatCall)
+	}
+
+	if err := a.SetProviderModel("anthropic", "claude-opus-4-20250514"); err != nil {
+		t.Fatalf("SetProviderModel returned error: %v", err)
+	}
+
+	if err := a.Run(context.Background(), "second"); err != nil {
+		t.Fatalf("second run returned error: %v", err)
+	}
+	if anthropicProvider.chatCall != 1 {
+		t.Fatalf("anthropic chat calls = %d, want 1", anthropicProvider.chatCall)
+	}
+	if got := anthropicProvider.requests[0].Model; got != "claude-opus-4-20250514" {
+		t.Fatalf("anthropic request model = %q, want %q", got, "claude-opus-4-20250514")
+	}
+}
+
+func TestAgentRuntimeSnapshotTracksProviderModelRefAcrossSwitches(t *testing.T) {
+	openaiProvider := &scriptedProvider{name: "openai", scripts: []func(chan types.StreamEvent){
+		func(ch chan types.StreamEvent) {
+			ch <- types.StreamEvent{Type: types.StreamContentDelta, Delta: "openai"}
+			ch <- types.StreamEvent{Type: types.StreamMessageDone, StopReason: types.StopEndTurn}
+		},
+	}}
+	anthropicProvider := &scriptedProvider{name: "anthropic", scripts: []func(chan types.StreamEvent){
+		func(ch chan types.StreamEvent) {
+			ch <- types.StreamEvent{Type: types.StreamContentDelta, Delta: "anthropic"}
+			ch <- types.StreamEvent{Type: types.StreamMessageDone, StopReason: types.StopEndTurn}
+		},
+	}}
+	a := New(Config{
+		Provider:     openaiProvider,
+		ProviderName: "openai",
+		Model:        "gpt-4o-mini",
+		ResolveProvider: func(name string) (types.Provider, error) {
+			switch strings.ToLower(strings.TrimSpace(name)) {
+			case "openai":
+				return openaiProvider, nil
+			case "anthropic":
+				return anthropicProvider, nil
+			default:
+				return nil, fmt.Errorf("unknown provider %q", name)
+			}
+		},
+	})
+
+	before := a.RuntimeSnapshot()
+	if before.ProviderName != "openai" || before.Model != "gpt-4o-mini" || before.ModelRef != "openai/gpt-4o-mini" {
+		t.Fatalf("unexpected initial runtime snapshot: %+v", before)
+	}
+	if err := a.SetProviderModel("anthropic", "claude-opus-4-20250514"); err != nil {
+		t.Fatalf("SetProviderModel failed: %v", err)
+	}
+	after := a.RuntimeSnapshot()
+	if after.ProviderName != "anthropic" || after.Model != "claude-opus-4-20250514" || after.ModelRef != "anthropic/claude-opus-4-20250514" {
+		t.Fatalf("unexpected switched runtime snapshot: %+v", after)
+	}
+	if err := a.Run(context.Background(), "check"); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	post := a.RuntimeSnapshot()
+	if post.ProviderName != "anthropic" || post.ModelRef != "anthropic/claude-opus-4-20250514" {
+		t.Fatalf("runtime snapshot drifted after submit: %+v", post)
 	}
 }
 

@@ -1,0 +1,1 @@
+{"name":"one_enter_model_stages_picker_with_statusline","width":180,"height":30,"actions":["type:/model","enter"],"want_contains":["model picker: /model","input mode: model-picker","hints: model picker","┃ /model "],"want_absent":["MODEL_REPORT"]}

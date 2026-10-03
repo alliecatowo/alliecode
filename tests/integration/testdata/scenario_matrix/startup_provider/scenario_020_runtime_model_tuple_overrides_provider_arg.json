@@ -1,0 +1,1 @@
+{"name":"runtime_model_tuple_overrides_provider_arg","kind":"runtime_model_set","provider_choice":"openai","initial_provider_name":"openai","provider_arg":"openai","model_arg":"anthropic/claude-sonnet-4-20250514","want_model":"claude-sonnet-4-20250514","want_provider_name":"anthropic","want_model_ref":"anthropic/claude-sonnet-4-20250514"}

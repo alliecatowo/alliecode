@@ -1,0 +1,1 @@
+{"name":"shifted_model_picker_shift_tab_wrap_last_keeps_open","width":180,"height":30,"actions":["type:/model ","shift_tab"],"want_contains":["model picker: /model","hints: model picker","input mode: model-picker"]}

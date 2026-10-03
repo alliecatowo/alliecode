@@ -1,0 +1,26 @@
+{
+  "name": "anthropic_alias_sonnet_then_opus",
+  "initial_provider_name": "anthropic",
+  "initial_model": "claude-sonnet-4-20250514",
+  "initial_model_ref": "anthropic/claude-sonnet-4-20250514",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider anthropic",
+    "/model sonnet",
+    "/model opus"
+  ],
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-opus-4-20250514",
+    "model_ref=anthropic/claude-opus-4-20250514",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

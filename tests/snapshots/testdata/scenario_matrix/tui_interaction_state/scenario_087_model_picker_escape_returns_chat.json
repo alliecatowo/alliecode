@@ -1,0 +1,1 @@
+{"name":"model_picker_escape_returns_chat","width":180,"height":30,"actions":["type:/model ","esc"],"want_contains":["/model ","input mode: chat"],"want_absent":["model picker: /model"]}

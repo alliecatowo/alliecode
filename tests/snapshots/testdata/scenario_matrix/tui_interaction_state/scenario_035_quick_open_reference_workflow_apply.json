@@ -1,0 +1,1 @@
+{"name":"quick_open_reference_workflow_apply","width":180,"height":28,"actions":["ctrl_o","type:reference","enter"],"want_contains":["references:","hints: reference palette","context: reference @","┃ @"],"want_absent":["mode:quick-open"]}

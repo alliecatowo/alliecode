@@ -94,7 +94,7 @@ func (t *TaskCreateTool) Execute(_ context.Context, input types.ToolInput, _ typ
 
 	summary := taskAdapterSummary(context.Background())
 	runtime := map[string]any{"operation": "create", "requested_status": status}
-	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime})
+	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

@@ -1,0 +1,1 @@
+{"name":"one_enter_tasks_panel_statusline_context","width":180,"height":30,"actions":["type:/tasks","enter"],"want_contains":["input mode: command-panel","drawer: tasks panel: /tasks","hints: command panel"],"want_absent":["TASKS_LIST","TASKS_STATUS"]}

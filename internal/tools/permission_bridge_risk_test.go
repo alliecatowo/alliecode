@@ -29,3 +29,15 @@ func TestTightenPermissionForHighRiskShell(t *testing.T) {
 		t.Fatalf("expected deny for critical shell command, got %v", got)
 	}
 }
+
+func TestTightenPermissionForHighRiskTaskAndMCP(t *testing.T) {
+	if got := tightenPermissionForHighRisk("task_update", []byte(`{"task_id":"x","status":"completed"}`), types.ToolContext{IsNonInteractive: true}, types.PermissionAllowed); got != types.PermissionAsk {
+		t.Fatalf("expected ask for non-interactive task_update, got %v", got)
+	}
+	if got := tightenPermissionForHighRisk("mcp_auth_local", []byte(`{"server_name":"s","token":"x"}`), types.ToolContext{IsNonInteractive: true}, types.PermissionAllowed); got != types.PermissionAsk {
+		t.Fatalf("expected ask for non-interactive mcp_auth_local, got %v", got)
+	}
+	if got := tightenPermissionForHighRisk("mcp_tool_invoke", []byte(`{"tool_name":"delete_record"}`), types.ToolContext{}, types.PermissionAllowed); got != types.PermissionAsk {
+		t.Fatalf("expected ask for mutating mcp tool invoke, got %v", got)
+	}
+}

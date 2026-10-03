@@ -1,0 +1,1 @@
+{"name":"timeline_right_exits_empty_query","width":180,"height":30,"actions":["ctrl_f","right"],"want_contains":["input mode: chat"],"want_absent":["mode:timeline"]}

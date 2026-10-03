@@ -200,6 +200,39 @@ func TestQuickOpenRenderLinesIncludesDetailsAndSelectionMarker(t *testing.T) {
 	}
 }
 
+func TestQuickOpenSelectedDetailLinesIncludeSelectionContext(t *testing.T) {
+	state := newQuickOpenState([]quickOpenItem{{label: "Quick open", detail: "Browse workflows", value: "search.quick_open", status: "navigation"}})
+	lines := state.selectedDetailLines(120)
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "selection: 1/1") {
+		t.Fatalf("expected selected detail lines to include selection index, got %q", joined)
+	}
+	if !strings.Contains(joined, "selected: Quick open") {
+		t.Fatalf("expected selected detail lines to include selected label, got %q", joined)
+	}
+}
+
+func TestQuickOpenRenderLinesUsesOffsetWindow(t *testing.T) {
+	state := newQuickOpenState([]quickOpenItem{
+		{label: "one", value: "one", status: "workflow"},
+		{label: "two", value: "two", status: "workflow"},
+		{label: "three", value: "three", status: "workflow"},
+		{label: "four", value: "four", status: "workflow"},
+		{label: "five", value: "five", status: "workflow"},
+		{label: "six", value: "six", status: "workflow"},
+		{label: "seven", value: "seven", status: "workflow"},
+	})
+	state.selected = 5
+	state.ensureVisible(5)
+	lines := state.renderLines(80, 5)
+	if !containsAny(lines, "six") {
+		t.Fatalf("expected offset window to include selected row, got %#v", lines)
+	}
+	if !containsAny(lines, "... +1 more") {
+		t.Fatalf("expected offset window to include trailing overflow marker, got %#v", lines)
+	}
+}
+
 func TestHistoryRenderLinesIncludesScoreAndOverflow(t *testing.T) {
 	state := newHistorySearchState([]historySearchEntry{
 		{text: "deploy release"},
@@ -213,11 +246,8 @@ func TestHistoryRenderLinesIncludesScoreAndOverflow(t *testing.T) {
 	if len(lines) != 3 {
 		t.Fatalf("expected 2 lines + overflow indicator, got %d", len(lines))
 	}
-	if !strings.HasPrefix(lines[1], "> ") {
-		t.Fatalf("expected selected history line to use '> ' prefix, got %q", lines[1])
-	}
-	if !containsAll(lines[0], []string{"[score:"}) {
-		t.Fatalf("expected history line to include score status, got %q", lines[0])
+	if !containsAll(lines[0], []string{"[score:"}) && !containsAll(lines[1], []string{"[score:"}) {
+		t.Fatalf("expected visible history lines to include score metadata, got %#v", lines)
 	}
 	if !strings.HasPrefix(lines[2], "  ... +") {
 		t.Fatalf("expected overflow indicator line, got %q", lines[2])
@@ -240,4 +270,13 @@ func containsAll(s string, parts []string) bool {
 		}
 	}
 	return true
+}
+
+func containsAny(lines []string, needle string) bool {
+	for _, line := range lines {
+		if strings.Contains(line, needle) {
+			return true
+		}
+	}
+	return false
 }

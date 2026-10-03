@@ -1,0 +1,51 @@
+{
+  "name": "logout_to_ollama_ready_without_login",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/logout",
+    "/provider set ollama",
+    "/model llama3",
+    "/statusline status"
+  ],
+  "checkpoints": [
+    {
+      "after_step_index": 2,
+      "want_provider_name": "ollama",
+      "want_model": "llama3",
+      "want_model_ref": "ollama/llama3",
+      "want_provider_ready": true,
+      "want_logged_in": false
+    },
+    {
+      "after_step_index": 3,
+      "want_provider_name": "ollama",
+      "want_model": "llama3",
+      "want_model_ref": "ollama/llama3",
+      "want_provider_ready": true,
+      "want_logged_in": false
+    }
+  ],
+  "want_provider_name": "ollama",
+  "want_model": "llama3",
+  "want_model_ref": "ollama/llama3",
+  "want_provider_ready": true,
+  "want_logged_in": false,
+  "want_status": [
+    "provider=ollama",
+    "model=llama3",
+    "provider_ready=true",
+    "logged_in=false"
+  ],
+  "want_statusline": [
+    "provider=ollama",
+    "model=llama3",
+    "model_ref=ollama/llama3",
+    "provider_ready=true",
+    "logged_in=false"
+  ]
+}
