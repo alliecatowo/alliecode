@@ -1,0 +1,1 @@
+{"name":"history_search_mode_visible","width":120,"height":26,"actions":["ctrl_r"],"want_contains":["mode:history-search","search: (type to filter)","input mode: history-search"],"want_absent":[]}

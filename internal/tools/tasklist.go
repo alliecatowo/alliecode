@@ -108,7 +108,7 @@ func (t *TaskListTool) Execute(ctx context.Context, input types.ToolInput, toolC
 		MatchedCount:      querySummary.Matched,
 		HasQueryFilter:    statusFilter != "" || ownerFilter != "" || !includeTerminal,
 	}
-	b, err := json.Marshal(taskListEnvelope{Tasks: taskItems, Total: len(taskItems), Summary: &summary, Query: &query, QueryRun: &querySummary, Lifecycle: lifecycle, Audit: audit})
+	b, err := json.Marshal(taskListEnvelope{Tasks: taskItems, Total: len(taskItems), Summary: &summary, Query: &query, QueryRun: &querySummary, Lifecycle: lifecycle, Audit: audit, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

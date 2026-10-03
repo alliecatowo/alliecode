@@ -1,0 +1,1 @@
+{"name":"comp_spacing_quick_open_status_separation","width":120,"height":26,"actions":["ctrl_o"],"want_contains":["search: (type to filter)","input:quick-open","hints: search active"],"want_absent":["runtime: state=idle"]}

@@ -1,0 +1,1 @@
+{"name":"doctor_intent_no_legacy_header","width":160,"height":28,"actions":["type:/doctor","enter"],"want_contains":["Doctor"],"want_absent":["DOCTOR_REPORT"]}

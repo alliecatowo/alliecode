@@ -102,6 +102,64 @@ func highlightMatches(s, query string) string {
 	return b.String()
 }
 
+func wrapDisplayWidth(s string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{""}
+	}
+	if s == "" {
+		return []string{""}
+	}
+	rows := make([]string, 0, 4)
+	for _, rawLine := range strings.Split(s, "\n") {
+		line := rawLine
+		if line == "" {
+			rows = append(rows, "")
+			continue
+		}
+		for runewidth.StringWidth(line) > maxWidth {
+			line = strings.TrimLeft(line, " ")
+			cut := fitDisplayWidth(line, maxWidth)
+			if cut == "" {
+				break
+			}
+			rows = append(rows, strings.TrimRight(cut, " "))
+			line = strings.TrimLeft(line[len(cut):], " ")
+		}
+		rows = append(rows, strings.TrimRight(line, " "))
+	}
+	if len(rows) == 0 {
+		return []string{""}
+	}
+	return rows
+}
+
+func wrapAndClampDisplayLines(lines []string, width, limit int, overflowLabel string) []string {
+	if width <= 0 {
+		width = 1
+	}
+	if limit <= 0 {
+		limit = len(lines)
+	}
+	wrapped := make([]string, 0, len(lines))
+	for _, line := range lines {
+		wrapped = append(wrapped, wrapDisplayWidth(line, width)...)
+	}
+	if len(wrapped) <= limit {
+		return wrapped
+	}
+	if strings.TrimSpace(overflowLabel) == "" {
+		overflowLabel = "..."
+	}
+	clamped := append([]string(nil), wrapped[:max(0, limit-1)]...)
+	clamped = append(clamped, truncateDisplayWidth(overflowLabel, width, "..."))
+	return clamped
+}
+
+func panelDivider(width int) string {
+	_ = width
+	return strings.Repeat("-", 20)
+}
+
 func overlapMatchRangesInsensitive(s, query string) [][]int {
 	q := strings.TrimSpace(query)
 	if q == "" || s == "" {
@@ -109,6 +167,15 @@ func overlapMatchRangesInsensitive(s, query string) [][]int {
 	}
 
 	lowerS := strings.ToLower(s)
+	return overlapMatchRangesInsensitiveWithLower(s, lowerS, q)
+}
+
+func overlapMatchRangesInsensitiveWithLower(s, lowerS, query string) [][]int {
+	q := strings.TrimSpace(query)
+	if q == "" || s == "" || lowerS == "" {
+		return nil
+	}
+
 	lowerQ := strings.ToLower(q)
 	if lowerQ == "" || len(lowerQ) > len(lowerS) {
 		return nil

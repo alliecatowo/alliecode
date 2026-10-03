@@ -1,5 +1,15 @@
 SKILLS_LIST
 count=2
 views=6
-skill.1=debug
-skill.2=refactor
+enabled=2
+disabled=0
+conflicts=0
+last_source=-
+skill.1.name=debug
+skill.1.state=enabled
+skill.1.source=state
+skill.1.origin=state
+skill.2.name=refactor
+skill.2.state=enabled
+skill.2.source=state
+skill.2.origin=state

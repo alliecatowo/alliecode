@@ -1,0 +1,1 @@
+{"name":"login_status_intent_no_legacy_header","width":160,"height":28,"actions":["submit:/login status"],"want_contains":["Login status","Provider: -"],"want_absent":["LOGIN_STATUS","LOGIN_REPORT"]}

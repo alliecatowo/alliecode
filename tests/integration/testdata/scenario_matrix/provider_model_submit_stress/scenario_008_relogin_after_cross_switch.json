@@ -1,0 +1,27 @@
+{
+  "name": "relogin_after_cross_switch_restores_readiness",
+  "initial_provider_name": "openai",
+  "initial_model": "gpt-4o-mini",
+  "initial_model_ref": "openai/gpt-4o-mini",
+  "initial_logged_in": false,
+  "initial_auth_provider": "",
+  "steps": [
+    "/login provider openai",
+    "/provider set anthropic",
+    "/login provider anthropic",
+    "/model haiku"
+  ],
+  "want_status": [
+    "provider=anthropic",
+    "model=claude-haiku-3-5-20241022",
+    "provider_ready=true",
+    "logged_in=true"
+  ],
+  "want_statusline": [
+    "provider=anthropic",
+    "model=claude-haiku-3-5-20241022",
+    "model_ref=anthropic/claude-haiku-3-5-20241022",
+    "provider_ready=true",
+    "logged_in=true"
+  ]
+}

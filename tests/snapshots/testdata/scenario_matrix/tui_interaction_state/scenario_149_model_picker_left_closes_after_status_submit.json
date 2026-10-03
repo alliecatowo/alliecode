@@ -1,0 +1,1 @@
+{"name":"model_picker_left_closes_after_status_submit","width":180,"height":30,"actions":["submit:/status","type:/model ","left"],"want_contains":["input mode: chat","\u2503 /model "],"want_absent":["STATUS_REPORT","model picker: /model"]}

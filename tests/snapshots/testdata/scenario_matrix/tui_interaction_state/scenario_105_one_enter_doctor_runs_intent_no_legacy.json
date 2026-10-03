@@ -1,0 +1,1 @@
+{"name":"one_enter_doctor_runs_intent_no_legacy","width":160,"height":28,"actions":["type:/doctor","enter"],"want_contains":["Doctor"],"want_absent":["DOCTOR_REPORT"]}

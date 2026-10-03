@@ -58,7 +58,7 @@ func (t *TaskGetTool) Execute(ctx context.Context, input types.ToolInput, toolCt
 	if !ok {
 		summary := tasksStatusSummaryFromList(nil)
 		runtime := map[string]any{"requested_task_id": in.TaskID, "found": false}
-		b, err := json.Marshal(taskEnvelope{Task: nil, Summary: summary, Runtime: runtime})
+		b, err := json.Marshal(taskEnvelope{Task: nil, Summary: summary, Runtime: runtime, Contract: defaultTaskContractMetadata()})
 		if err != nil {
 			return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 		}
@@ -68,7 +68,7 @@ func (t *TaskGetTool) Execute(ctx context.Context, input types.ToolInput, toolCt
 	summary := tasksStatusSummaryFromList([]tasks.Task{task})
 
 	runtime := map[string]any{"requested_task_id": in.TaskID, "found": true}
-	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime})
+	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

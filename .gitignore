@@ -9,3 +9,4 @@ src/
 .mcp.json
 *.log
 .DS_Store
+dist/

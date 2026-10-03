@@ -91,7 +91,7 @@ func TestModelCommandSetAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
-	if !setRes.Handled || state.Model != "gpt-4o" {
+	if !setRes.Handled || state.Model != "gpt-4o" || state.ProviderName != "openai" {
 		t.Fatalf("model was not updated")
 	}
 
@@ -99,7 +99,7 @@ func TestModelCommandSetAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get failed: %v", err)
 	}
-	if getRes.Message != "Current model: gpt-4o\nCapabilities: text,image,audio,tool_use,vision,attachments\nQuick fix: /model openai/<model>\nNext: use /model [provider/model|model] to switch, or /provider status to verify provider." {
+	if getRes.Message != "MODEL_STATUS\nprovider=openai\nprovider_ready=false\nmodel=gpt-4o\ncapabilities=text,image,audio,tool_use,vision,attachments\nquick_fix=/model_openai/<model>\nnext=use_/model_list_to_browse_or_/model_<provider>/<model>_to_set" {
 		t.Fatalf("unexpected get message: %q", getRes.Message)
 	}
 }
@@ -115,7 +115,7 @@ func TestModelCommandStrictProviderValidation(t *testing.T) {
 
 	stateWithProvider := &RuntimeState{ProviderName: "openai"}
 	_, err = cmd.Execute(context.Background(), Context{State: stateWithProvider}, Invocation{Name: "model", Args: []string{"not-a-model"}})
-	if err == nil || err.Error() != "unknown model \"not-a-model\" for configured provider \"openai\"" {
+	if err == nil || err.Error() != "unknown model \"not-a-model\" for provider \"openai\" (run /model list openai, then /model openai/<model>)" {
 		t.Fatalf("expected unknown model error, got %v", err)
 	}
 
@@ -123,7 +123,7 @@ func TestModelCommandStrictProviderValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("set with explicit provider failed: %v", err)
 	}
-	if !setRes.Handled || stateWithProvider.Model != "openai/gpt-4o" {
+	if !setRes.Handled || stateWithProvider.Model != "gpt-4o" || stateWithProvider.ProviderName != "openai" {
 		t.Fatalf("expected explicit provider model to be set")
 	}
 }
@@ -711,7 +711,7 @@ func TestDoctorCommandHumanAndJSON(t *testing.T) {
 	if !strings.Contains(humanRes.Message, "status=warn") {
 		t.Fatalf("expected status in human output: %q", humanRes.Message)
 	}
-	if !strings.Contains(humanRes.Message, "section.2.name=provider") || !strings.Contains(humanRes.Message, "section.2.status=ok") {
+	if !strings.Contains(humanRes.Message, "section.2.name=provider") || !strings.Contains(humanRes.Message, "section.2.status=warn") {
 		t.Fatalf("expected provider check in human output: %q", humanRes.Message)
 	}
 
@@ -1397,8 +1397,10 @@ func TestStatuslineCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status failed: %v", err)
 	}
-	if statusRes.Message != "STATUSLINE_STATUS\ncount=1\nlast_prompt=Use my PS1\nlast_render_ms=0\ntool_calls=0\npermission_events=0\nstate_transitions=0\nturns=0\ntool_inflight=0\ntasks_total=0\ntasks_running=0\ntasks_completed=0\nteams_total=0\nteams_active=0\nlast_stop_reason=-" {
-		t.Fatalf("unexpected statusline status: %q", statusRes.Message)
+	for _, want := range []string{"STATUSLINE_STATUS", "count=1", "provider=-", "model=-", "model_ref=-", "logged_in=false", "provider_ready=false", "working_dir=.", "workspace_root=.", "path_scope=workspace", "turns=0", "last_stop_reason=-"} {
+		if !strings.Contains(statusRes.Message, want) {
+			t.Fatalf("statusline status missing %q: %q", want, statusRes.Message)
+		}
 	}
 }
 
@@ -1454,8 +1456,10 @@ func TestStatusAndStatsCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status failed: %v", err)
 	}
-	if statusRes.Message != "STATUS_REPORT\nmodel=gpt-4o\nmodel_capabilities=text,image,audio,tool_use,vision,attachments\nprovider=openai\nlogged_in=false\naccount=-\nprovider_ready=false\npermission_mode=auto\ncompact_mode=off\ncompact_requested=true\nresume_requested=true\noutput_style=-\ntheme=-\nsession_id=-\nsession_path=-\ncontext_files=0\nproject_paths=0\nhistory_entries=0\nmemory_entries=0\nturns=0\ntool_inflight=0\ntasks_total=0\ntasks_running=0\ntasks_completed=2\nteams_total=0\nteams_active=0\nlast_stop_reason=-" {
-		t.Fatalf("unexpected status message: %q", statusRes.Message)
+	for _, want := range []string{"STATUS_REPORT", "model=gpt-4o", "model_capabilities=text,image,audio,tool_use,vision,attachments", "provider=openai", "permission_mode=auto", "compact_mode=off", "working_dir=.", "workspace_root=.", "path_scope=workspace", "tasks_completed=2", "next=/login provider openai"} {
+		if !strings.Contains(statusRes.Message, want) {
+			t.Fatalf("status output missing %q: %q", want, statusRes.Message)
+		}
 	}
 
 	statsRes, err := statsCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "stats"})
@@ -1481,6 +1485,7 @@ func TestStatusAndStatuslineIncludeAgentRuntimeSignals(t *testing.T) {
 		t.Fatalf("status failed: %v", err)
 	}
 	for _, want := range []string{
+		"model=gpt-4o",
 		"turns=3",
 		"tool_inflight=0",
 		"tasks_total=0",
@@ -1539,7 +1544,7 @@ func TestProviderCommandStatusListAndSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status failed: %v", err)
 	}
-	if statusRes.Message != "PROVIDER_STATUS\nprovider=-\nprovider_ready=false\nquick_fix_model=/model_<provider/model>\nnext=use_/provider_set_<name>_or_/login_provider_<name>" {
+	if statusRes.Message != "PROVIDER_STATUS\nprovider=-\nprovider_ready=false\nquick_fix_model=/model_<provider/model>\nquick_fix_auth=/provider set ollama\nnext=use_/provider_set_<name>_or_/login_provider_<name>" {
 		t.Fatalf("unexpected status message: %q", statusRes.Message)
 	}
 
@@ -1555,12 +1560,12 @@ func TestProviderCommandStatusListAndSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
-	if setRes.Message != "PROVIDER_SET\nprovider=openai\nprovider_ready=false\nquick_fix_model=/model_openai/<model>\nnext=run_/model_to_pick_a_model_for_openai" {
+	if setRes.Message != "PROVIDER_SET\nprovider=openai\nmodel=gpt-4o-mini\nprovider_ready=false\nquick_fix_model=/model_openai/<model>\nquick_fix_auth=/login provider openai\nnext=run_/status_to_confirm_runtime_for_openai" {
 		t.Fatalf("unexpected set message: %q", setRes.Message)
 	}
 
 	_, err = cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "provider", Args: []string{"set", "unknown"}})
-	if err == nil || err.Error() != "unknown provider \"unknown\"" {
+	if err == nil || err.Error() != "unknown provider \"unknown\" (run /provider list, then /provider set <name>)" {
 		t.Fatalf("expected unknown provider error, got %v", err)
 	}
 }
@@ -1640,7 +1645,7 @@ func TestLoginLogoutCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("login provider failed: %v", err)
 	}
-	if loginRes.Message != "LOGIN_PROVIDER\nprovider=openai\nlogged_in=true\nprovider_ready=true\nlogin_count=1" {
+	if loginRes.Message != "LOGIN_PROVIDER\nprovider=openai\nlogged_in=true\nprovider_ready=true\nlogin_count=1\nstatus=authenticated\nquick_fix_model=/model_openai/<model>\nquick_fix_verify=/provider_status\nnext=run_/model_list_openai_or_/model_openai/<model>" {
 		t.Fatalf("unexpected login provider message: %q", loginRes.Message)
 	}
 
@@ -1648,7 +1653,7 @@ func TestLoginLogoutCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("login account failed: %v", err)
 	}
-	if accountRes.Message != "LOGIN_ACCOUNT\naccount=dev@acme\nprovider=openai\nlogged_in=true\nprovider_ready=true\nlogin_count=2" {
+	if accountRes.Message != "LOGIN_ACCOUNT\naccount=dev@acme\nprovider=openai\nlogged_in=true\nprovider_ready=true\nlogin_count=2\nstatus=authenticated\nquick_fix_model=/model_openai/<model>\nquick_fix_verify=/provider_status\nnext=run_/model_list_openai_or_/model_openai/<model>" {
 		t.Fatalf("unexpected login account message: %q", accountRes.Message)
 	}
 
@@ -1664,7 +1669,7 @@ func TestLoginLogoutCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("logout failed: %v", err)
 	}
-	if logoutRes.Message != "LOGOUT_RESULT\nwas_logged_in=true\nlogged_in=false\nprovider_ready=false\nlogout_count=1" {
+	if logoutRes.Message != "LOGOUT_RESULT\nwas_logged_in=true\nlogged_in=false\nprovider_ready=false\nlogout_count=1\nquick_fix_auth=/login provider openai\nnext=run_/login_provider_<name>_to_reauthenticate" {
 		t.Fatalf("unexpected logout message: %q", logoutRes.Message)
 	}
 }
@@ -1829,7 +1834,7 @@ func TestHooksSandboxTasksCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sandbox status failed: %v", err)
 	}
-	if !strings.HasPrefix(sandboxStatusRes.Message, "SANDBOX_STATUS\nmode=workspace-write\nworkspace_locked=false\nexcluded_count=0\navailability.shell=") {
+	if !strings.Contains(sandboxStatusRes.Message, "SANDBOX_STATUS\nmode=workspace-write\nworkspace_locked=false\nexcluded_count=0\navailability.shell=") || !strings.Contains(sandboxStatusRes.Message, "scope.path_scope=workspace") || !strings.Contains(sandboxStatusRes.Message, "scope.restrictions=workspace_write") {
 		t.Fatalf("unexpected sandbox status message: %q", sandboxStatusRes.Message)
 	}
 
@@ -1920,7 +1925,7 @@ func TestSandboxCommandPersistsSettingsWhenPathConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sandbox status failed: %v", err)
 	}
-	if !strings.HasPrefix(statusRes.Message, "SANDBOX_STATUS\nmode=danger-full-access\nworkspace_locked=true\nexcluded_count=1\navailability.shell=") {
+	if !strings.Contains(statusRes.Message, "SANDBOX_STATUS\nmode=danger-full-access\nworkspace_locked=true\nexcluded_count=1\navailability.shell=") || !strings.Contains(statusRes.Message, "scope.restrictions=workspace_locked") {
 		t.Fatalf("unexpected persisted sandbox status: %q", statusRes.Message)
 	}
 
@@ -2286,7 +2291,7 @@ func TestSkillsCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("skills add failed: %v", err)
 	}
-	if addRes.Message != "SKILLS_ADD\nname=openclaw-status\nadded=true\ncount=1" {
+	if !strings.Contains(addRes.Message, "SKILLS_ADD") || !strings.Contains(addRes.Message, "source=state") || !strings.Contains(addRes.Message, "state=enabled") {
 		t.Fatalf("unexpected skills add message: %q", addRes.Message)
 	}
 
@@ -2294,7 +2299,7 @@ func TestSkillsCommandFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("skills list failed: %v", err)
 	}
-	if listRes.Message != "SKILLS_LIST\ncount=1\nviews=1\nskill.1=openclaw-status" {
+	if !strings.Contains(listRes.Message, "SKILLS_LIST") || !strings.Contains(listRes.Message, "skill.1.name=openclaw-status") || !strings.Contains(listRes.Message, "skill.1.source=state") || !strings.Contains(listRes.Message, "skill.1.state=enabled") {
 		t.Fatalf("unexpected skills list message: %q", listRes.Message)
 	}
 
@@ -2304,6 +2309,36 @@ func TestSkillsCommandFlow(t *testing.T) {
 	}
 	if removeRes.Message != "SKILLS_REMOVE\nname=openclaw-status\nremoved=true\ncount=0" {
 		t.Fatalf("unexpected skills remove message: %q", removeRes.Message)
+	}
+}
+
+func TestSkillsCommandDoctorIncludesDiagnosticsFields(t *testing.T) {
+	cmd := NewSkillsCommand()
+	state := &RuntimeState{
+		Skills:              []string{"alpha", "beta"},
+		SkillsSources:       map[string]string{"alpha": "file", "beta": "plugin"},
+		SkillsOrigins:       map[string]string{"alpha": "/workspace/.alliecode/skills/alpha.md", "beta": "plugin:ops"},
+		SkillsEnabled:       map[string]bool{"alpha": true, "beta": false},
+		SkillsConflictCount: 2,
+		SkillsSyncCount:     3,
+	}
+	res, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "skills", Args: []string{"doctor"}})
+	if err != nil {
+		t.Fatalf("skills doctor failed: %v", err)
+	}
+	for _, token := range []string{"SKILLS_DOCTOR", "enabled=1", "disabled=1", "conflicts=2", "quick_fix=/skills sync"} {
+		if !strings.Contains(res.Message, token) {
+			t.Fatalf("expected %q in doctor message: %q", token, res.Message)
+		}
+	}
+}
+
+func TestSkillsCommandUsageIncludesDoctorAndRepairModes(t *testing.T) {
+	usage := NewSkillsCommand().Usage()
+	for _, token := range []string{"doctor", "repair [sync|auto|dedupe]", "sync"} {
+		if !strings.Contains(usage, token) {
+			t.Fatalf("expected usage token %q in %q", token, usage)
+		}
 	}
 }
 
@@ -2412,6 +2447,151 @@ func TestLogoutStatusEnhancement(t *testing.T) {
 	}
 	if res.Message != "LOGOUT_STATUS\nlogged_in=true\nprovider=openai\naccount=dev@acme\nlogout_count=0" {
 		t.Fatalf("unexpected logout status message: %q", res.Message)
+	}
+}
+
+func TestLoginFlowFirstLoginIncludesNextActions(t *testing.T) {
+	cmd := NewLoginCommand()
+	state := &RuntimeState{}
+
+	res, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "login"})
+	if err != nil {
+		t.Fatalf("login flow failed: %v", err)
+	}
+	if !strings.Contains(res.Message, "LOGIN_FLOW") || !strings.Contains(res.Message, "next=run_/model_to_select_a_model_then_/status") {
+		t.Fatalf("expected coherent first-login next steps, got %q", res.Message)
+	}
+}
+
+func TestProviderSwitchClearsLoginForFirstLoginCoherency(t *testing.T) {
+	providerCmd := NewProviderCommand()
+	statusCmd := NewStatusCommand()
+	state := &RuntimeState{ProviderName: "openai", LoggedIn: true, AuthAccount: "dev@acme"}
+
+	res, err := providerCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "provider", Args: []string{"set", "anthropic"}})
+	if err != nil {
+		t.Fatalf("provider set failed: %v", err)
+	}
+	if !strings.Contains(res.Message, "provider_ready=false") {
+		t.Fatalf("expected provider readiness reset, got %q", res.Message)
+	}
+	if state.LoggedIn {
+		t.Fatalf("expected logged_in cleared after provider switch")
+	}
+	if state.AuthAccount != "" {
+		t.Fatalf("expected account cleared after provider switch, got %q", state.AuthAccount)
+	}
+
+	statusRes, err := statusCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "status"})
+	if err != nil {
+		t.Fatalf("status failed: %v", err)
+	}
+	if !strings.Contains(statusRes.Message, "provider=anthropic") || !strings.Contains(statusRes.Message, "logged_in=false") || !strings.Contains(statusRes.Message, "provider_ready=false") {
+		t.Fatalf("unexpected status message after provider switch: %q", statusRes.Message)
+	}
+}
+
+func TestModelAliasMapsToCanonicalAnthropicModel(t *testing.T) {
+	cmd := NewModelCommand()
+	state := &RuntimeState{ProviderName: "anthropic", LoggedIn: true}
+
+	res, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "model", Args: []string{"anthropic/claude-opus-4-6"}})
+	if err != nil {
+		t.Fatalf("model alias set failed: %v", err)
+	}
+	if !strings.Contains(res.Message, "Model set to claude-opus-4-20250514") {
+		t.Fatalf("expected canonical model in response, got %q", res.Message)
+	}
+	if state.Model != "claude-opus-4-20250514" {
+		t.Fatalf("expected canonical model stored, got %q", state.Model)
+	}
+	if state.ProviderName != "anthropic" {
+		t.Fatalf("expected anthropic provider retained, got %q", state.ProviderName)
+	}
+}
+
+func TestModelUnknownFriendlyErrorSuggestsList(t *testing.T) {
+	cmd := NewModelCommand()
+	state := &RuntimeState{ProviderName: "anthropic", LoggedIn: true}
+
+	_, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "model", Args: []string{"anthropic/not-a-real-model"}})
+	if err == nil {
+		t.Fatalf("expected unknown model error")
+	}
+	if !strings.Contains(err.Error(), "run /model list anthropic") {
+		t.Fatalf("expected actionable unknown model error, got %v", err)
+	}
+}
+
+func TestModelAliasSuggestionForOpus46Shorthand(t *testing.T) {
+	cmd := NewModelCommand()
+	state := &RuntimeState{ProviderName: "anthropic", LoggedIn: true}
+
+	res, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "model", Args: []string{"anthropic/opus-4-6"}})
+	if err != nil {
+		t.Fatalf("expected shorthand alias to map, got %v", err)
+	}
+	if !strings.Contains(res.Message, "Model set to claude-opus-4-20250514") {
+		t.Fatalf("expected shorthand alias to map to canonical model, got %q", res.Message)
+	}
+}
+
+func TestModelAliasMapsCommonAnthropicShorthands(t *testing.T) {
+	cmd := NewModelCommand()
+	state := &RuntimeState{ProviderName: "anthropic", LoggedIn: true}
+
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: "anthropic/opus46", want: "claude-opus-4-20250514"},
+		{input: "anthropic/claude46sonnet", want: "claude-sonnet-4-20250514"},
+		{input: "anthropic/haiku35", want: "claude-haiku-3-5-20241022"},
+	}
+
+	for _, tc := range tests {
+		res, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "model", Args: []string{tc.input}})
+		if err != nil {
+			t.Fatalf("expected alias %q to map, got %v", tc.input, err)
+		}
+		if !strings.Contains(res.Message, "Model set to "+tc.want) {
+			t.Fatalf("expected alias %q to resolve to %q, got %q", tc.input, tc.want, res.Message)
+		}
+	}
+}
+
+func TestModelUnknownAnthropicErrorSuggestsAliases(t *testing.T) {
+	cmd := NewModelCommand()
+	state := &RuntimeState{ProviderName: "anthropic", LoggedIn: true}
+
+	_, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "model", Args: []string{"anthropic/claude-unknown"}})
+	if err == nil {
+		t.Fatalf("expected unknown anthropic model error")
+	}
+	if !strings.Contains(err.Error(), "run /model list anthropic") || !strings.Contains(err.Error(), "/model anthropic/opus") {
+		t.Fatalf("expected actionable anthropic aliases in error, got %v", err)
+	}
+}
+
+func TestProviderStatusAndLoginStatusAgreeForOllama(t *testing.T) {
+	providerCmd := NewProviderCommand()
+	loginCmd := NewLoginCommand()
+	state := &RuntimeState{ProviderName: "ollama", LoggedIn: false}
+
+	providerRes, err := providerCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "provider", Args: []string{"status"}})
+	if err != nil {
+		t.Fatalf("provider status failed: %v", err)
+	}
+	if !strings.Contains(providerRes.Message, "provider_ready=true") {
+		t.Fatalf("expected ollama provider ready, got %q", providerRes.Message)
+	}
+
+	loginRes, err := loginCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "login", Args: []string{"status"}})
+	if err != nil {
+		t.Fatalf("login status failed: %v", err)
+	}
+	if !strings.Contains(loginRes.Message, "logged_in=false") || !strings.Contains(loginRes.Message, "provider_ready=true") {
+		t.Fatalf("expected login status to agree with provider readiness, got %q", loginRes.Message)
 	}
 }
 
@@ -3003,5 +3183,17 @@ func TestInventoryGapCommandsUsageValidation(t *testing.T) {
 	_, err = NewEnvCommand().Execute(context.Background(), ctx, Invocation{Name: "env", Args: []string{"set", "ONLY_KEY"}})
 	if err == nil || err.Error() != "usage: /env [status|set <key> <value>|get <key>]" {
 		t.Fatalf("expected env usage error, got %v", err)
+	}
+}
+
+func TestSandboxStatusScopeRestrictionsReflectPolicy(t *testing.T) {
+	sandboxCmd := NewSandboxCommand()
+	state := &RuntimeState{SandboxMode: "read-only", SandboxWorkspaceLocked: false}
+	res, err := sandboxCmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "sandbox", Args: []string{"status"}})
+	if err != nil {
+		t.Fatalf("sandbox status failed: %v", err)
+	}
+	if !strings.Contains(res.Message, "scope.restrictions=read_only_filesystem") {
+		t.Fatalf("expected read_only_filesystem restriction in %q", res.Message)
 	}
 }

@@ -1,0 +1,1 @@
+{"name":"quick_open_ctrl_n_ctrl_p_stable_mode","width":180,"height":30,"actions":["ctrl_o","ctrl_n","ctrl_p"],"want_contains":["mode:quick-open","search:"],"want_absent":["input mode: chat"]}

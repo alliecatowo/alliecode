@@ -61,7 +61,7 @@ func (t *TaskStopTool) Execute(ctx context.Context, input types.ToolInput, toolC
 	if agentTaskManager != nil {
 		if t, ok := agentTaskManager.Cancel(in.TaskID, reason); ok {
 			runtime := map[string]any{"operation": "stop", "requested_task_id": in.TaskID, "reason": reason, "manager": "agent"}
-			b, err := json.Marshal(taskEnvelope{Task: &t, Lifecycle: summarizeTaskLifecycle(&t), Runtime: runtime})
+			b, err := json.Marshal(taskEnvelope{Task: &t, Lifecycle: summarizeTaskLifecycle(&t), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 			if err != nil {
 				return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 			}
@@ -78,7 +78,7 @@ func (t *TaskStopTool) Execute(ctx context.Context, input types.ToolInput, toolC
 		UpdatedAt: rec.UpdatedAt,
 	}
 	runtime := map[string]any{"operation": "stop", "requested_task_id": in.TaskID, "reason": reason, "manager": "adapter"}
-	b, err := json.Marshal(taskEnvelope{Task: &updatedTask, Lifecycle: summarizeTaskLifecycle(&updatedTask), Runtime: runtime})
+	b, err := json.Marshal(taskEnvelope{Task: &updatedTask, Lifecycle: summarizeTaskLifecycle(&updatedTask), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

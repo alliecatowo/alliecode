@@ -1,0 +1,1 @@
+{"name":"model_picker_open_from_quick_open","width":180,"height":30,"actions":["ctrl_o","type:model","enter"],"want_contains":["model picker: /model","hints: model picker","context: model picker /model"],"want_absent":["mode:quick-open"]}

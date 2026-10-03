@@ -70,7 +70,7 @@ func TestSuggestIncludesWorkspaceAndRecentWithFuzzyMatch(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "README.md"), "# demo\n")
 
 	resolver := NewResolver(root)
-	suggestions := resolver.Suggest("rslvr", []string{"README.md"}, 8)
+	suggestions := resolver.Suggest("rslvr", []string{"README.md"}, nil, nil, 8)
 	if len(suggestions) == 0 {
 		t.Fatalf("expected fuzzy suggestions, got none")
 	}
@@ -87,7 +87,7 @@ func TestSuggestIncludesWorkspaceAndRecentWithFuzzyMatch(t *testing.T) {
 		t.Fatalf("expected ranked suggestion to include section")
 	}
 
-	recent := resolver.Suggest("read", []string{"README.md"}, 8)
+	recent := resolver.Suggest("read", []string{"README.md"}, nil, nil, 8)
 	if len(recent) == 0 || recent[0].Path != "README.md" {
 		t.Fatalf("expected recent README.md to rank first, got %#v", recent)
 	}
@@ -102,7 +102,7 @@ func TestSuggestProvidesReasonAndPreviewForDirectoryAndFile(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "internal", "tui", "app.go"), "package tui\n")
 
 	resolver := NewResolver(root)
-	suggestions := resolver.Suggest("internal/t", nil, 8)
+	suggestions := resolver.Suggest("internal/t", nil, nil, nil, 8)
 	if len(suggestions) == 0 {
 		t.Fatalf("expected suggestions for internal/t query")
 	}
@@ -130,7 +130,7 @@ func TestSuggestPreservesLineSuffixScaffold(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "internal", "tui", "app.go"), "package tui\n")
 
 	resolver := NewResolver(root)
-	suggestions := resolver.Suggest("internal/tui/app.go:42", nil, 5)
+	suggestions := resolver.Suggest("internal/tui/app.go:42", nil, nil, nil, 5)
 	if len(suggestions) == 0 {
 		t.Fatalf("expected suggestions for line scaffold query")
 	}
@@ -139,12 +139,53 @@ func TestSuggestPreservesLineSuffixScaffold(t *testing.T) {
 	}
 }
 
-func TestSuggestionSectionCapturesReasonAndKind(t *testing.T) {
-	if got := suggestionSectionFor("recent", "name-prefix", false); !strings.Contains(strings.ToLower(got), "prefix") {
-		t.Fatalf("expected prefix-oriented section label, got %q", got)
+func TestSuggestionSectionGroupsBySourceSets(t *testing.T) {
+	recent := map[string]struct{}{"docs/readme.md": {}}
+	open := map[string]struct{}{"docs/open.md": {}}
+	context := map[string]struct{}{"docs/context.md": {}}
+
+	if got := suggestionSectionFor("docs/readme.md", false, recent, open, context); got != "Recent Files" {
+		t.Fatalf("expected recent file section, got %q", got)
 	}
-	if got := suggestionSectionFor("workspace", "fuzzy", true); !strings.Contains(strings.ToLower(got), "folders") {
-		t.Fatalf("expected folder marker in section label, got %q", got)
+	if got := suggestionSectionFor("docs/open.md", false, recent, open, context); got != "Open Files" {
+		t.Fatalf("expected open file section, got %q", got)
+	}
+	if got := suggestionSectionFor("docs/context.md", false, recent, open, context); got != "Context Files" {
+		t.Fatalf("expected context file section, got %q", got)
+	}
+	if got := suggestionSectionFor("docs", true, recent, open, context); got != "Workspace Folders" {
+		t.Fatalf("expected workspace folder section, got %q", got)
+	}
+}
+
+func TestSuggestSectionPrecedenceRecentOverOpenOverContext(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "docs.md"), "x\n")
+
+	resolver := NewResolver(root)
+	suggestions := resolver.Suggest("docs", []string{"docs.md"}, []string{"docs.md"}, []string{"docs.md"}, 4)
+	if len(suggestions) == 0 {
+		t.Fatalf("expected suggestions")
+	}
+	if suggestions[0].Section != "Recent Files" {
+		t.Fatalf("expected recent section precedence, got %q", suggestions[0].Section)
+	}
+}
+
+func TestSplitSuggestionQuerySupportsHashLineMarker(t *testing.T) {
+	path, suffix := splitSuggestionQuery("internal/tui/app.go#L12-18")
+	if path != "internal/tui/app.go" || suffix != "#L12-18" {
+		t.Fatalf("unexpected split result path=%q suffix=%q", path, suffix)
+	}
+}
+
+func TestParseReferencesSupportsHashLineMarker(t *testing.T) {
+	refs := ParseReferences("inspect @internal/tui/app.go#L77")
+	if len(refs) != 1 {
+		t.Fatalf("expected one ref, got %d", len(refs))
+	}
+	if refs[0].Path != "internal/tui/app.go" || !refs[0].HasLine || refs[0].Line != 77 {
+		t.Fatalf("unexpected parsed ref: %+v", refs[0])
 	}
 }
 

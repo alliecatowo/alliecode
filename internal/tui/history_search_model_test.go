@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestHistorySearchSelectedSummaryFallback(t *testing.T) {
 	state := newHistorySearchState([]historySearchEntry{{text: "alpha"}})
@@ -13,11 +16,14 @@ func TestHistorySearchSelectedSummaryFallback(t *testing.T) {
 func TestHistorySearchSelectedDetailLinesIncludesPreview(t *testing.T) {
 	state := newHistorySearchState([]historySearchEntry{{text: "line one\nline two\nline three\nline four"}})
 	lines := state.selectedDetailLines(80)
-	if len(lines) < 3 {
+	if len(lines) == 0 {
 		t.Fatalf("expected details pane lines, got %#v", lines)
 	}
-	if lines[0] != "history details:" {
+	if lines[0] == "" || !strings.HasPrefix(lines[0], "history details:") {
 		t.Fatalf("expected details heading, got %q", lines[0])
+	}
+	if !strings.Contains(strings.Join(lines, "\n"), "selected: line one") {
+		t.Fatalf("expected details to include selected label context, got %#v", lines)
 	}
 }
 

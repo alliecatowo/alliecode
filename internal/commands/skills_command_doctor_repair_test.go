@@ -8,7 +8,7 @@ import (
 
 func TestSkillsDoctorRepairAndSync(t *testing.T) {
 	cmd := NewSkillsCommand()
-	state := &RuntimeState{Skills: []string{"lint", "lint"}}
+	state := &RuntimeState{Skills: []string{"lint", "lint"}, SkillsSources: map[string]string{"lint": "state"}, SkillsOrigins: map[string]string{"lint": "manual"}, SkillsEnabled: map[string]bool{"lint": true}}
 	syncRes, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "skills", Args: []string{"sync"}})
 	if err != nil {
 		t.Fatalf("skills sync failed: %v", err)
@@ -20,14 +20,14 @@ func TestSkillsDoctorRepairAndSync(t *testing.T) {
 	if err != nil {
 		t.Fatalf("skills doctor failed: %v", err)
 	}
-	if !strings.Contains(doctorRes.Message, "SKILLS_DOCTOR") {
+	if !strings.Contains(doctorRes.Message, "SKILLS_DOCTOR") || !strings.Contains(doctorRes.Message, "enabled=") || !strings.Contains(doctorRes.Message, "conflicts=") {
 		t.Fatalf("unexpected skills doctor: %q", doctorRes.Message)
 	}
 	repairRes, err := cmd.Execute(context.Background(), Context{State: state}, Invocation{Name: "skills", Args: []string{"repair", "dedupe"}})
 	if err != nil {
 		t.Fatalf("skills repair failed: %v", err)
 	}
-	if !strings.Contains(repairRes.Message, "SKILLS_REPAIR") {
+	if !strings.Contains(repairRes.Message, "SKILLS_REPAIR") || !strings.Contains(repairRes.Message, "conflicts=") {
 		t.Fatalf("unexpected skills repair: %q", repairRes.Message)
 	}
 }

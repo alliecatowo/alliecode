@@ -33,10 +33,12 @@ func (s permissionDialogState) transition(event permissionDialogEvent) permissio
 	next := s
 	switch event {
 	case permissionDialogShow:
-		next.stage = permissionDialogPrompt
-		next.decision = PermissionUndecided
-		next.status = permissionPending
-		next.updated++
+		if s.stage != permissionDialogPrompt || s.decision != PermissionUndecided || s.status != permissionPending {
+			next.stage = permissionDialogPrompt
+			next.decision = PermissionUndecided
+			next.status = permissionPending
+			next.updated++
+		}
 	case permissionDialogAllow:
 		if s.stage == permissionDialogPrompt {
 			next.stage = permissionDialogResolved

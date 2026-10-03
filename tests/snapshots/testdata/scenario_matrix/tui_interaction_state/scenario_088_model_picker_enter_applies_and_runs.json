@@ -1,0 +1,1 @@
+{"name":"model_picker_enter_applies_and_runs","width":180,"height":30,"actions":["type:/model ","enter"],"want_contains":["Verify runtime: /status"],"want_absent":["model picker: /model"]}

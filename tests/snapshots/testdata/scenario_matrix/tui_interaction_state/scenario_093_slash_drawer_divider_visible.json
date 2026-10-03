@@ -1,0 +1,1 @@
+{"name":"slash_drawer_divider_visible","width":120,"height":26,"actions":["type:/"],"want_contains":["commands: /","--------------------","input mode: slash"],"want_absent":[]}

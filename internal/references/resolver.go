@@ -143,6 +143,7 @@ type Suggestion struct {
 	Path        string
 	Score       int
 	IsDir       bool
+	Exists      bool
 	Source      string
 	Section     string
 	MatchReason string
@@ -151,18 +152,20 @@ type Suggestion struct {
 
 // Suggest returns ranked @reference suggestions from workspace and recent files.
 // Query can include an optional :line suffix scaffold (for example src/main.go:12).
-func (r *Resolver) Suggest(query string, recent []string, limit int) []Suggestion {
+func (r *Resolver) Suggest(query string, recent []string, open []string, context []string, limit int) []Suggestion {
 	if limit <= 0 {
 		limit = 8
 	}
 	r.ensureIndex()
-	if len(r.indexedPaths) == 0 && len(recent) == 0 {
+	if len(r.indexedPaths) == 0 && len(recent) == 0 && len(open) == 0 && len(context) == 0 {
 		return nil
 	}
 
 	pathQuery, lineSuffix := splitSuggestionQuery(query)
 	norm := normalizePathToken(pathQuery)
 	recentSet := make(map[string]struct{}, len(recent))
+	openSet := make(map[string]struct{}, len(open))
+	contextSet := make(map[string]struct{}, len(context))
 	for _, raw := range recent {
 		rel, ok := r.toRelativePath(raw)
 		if !ok {
@@ -170,11 +173,25 @@ func (r *Resolver) Suggest(query string, recent []string, limit int) []Suggestio
 		}
 		recentSet[rel] = struct{}{}
 	}
+	for _, raw := range open {
+		rel, ok := r.toRelativePath(raw)
+		if !ok {
+			continue
+		}
+		openSet[rel] = struct{}{}
+	}
+	for _, raw := range context {
+		rel, ok := r.toRelativePath(raw)
+		if !ok {
+			continue
+		}
+		contextSet[rel] = struct{}{}
+	}
 
-	scored := make([]Suggestion, 0, len(r.indexedPaths)+len(recentSet))
-	seen := make(map[string]struct{}, len(r.indexedPaths)+len(recentSet))
+	scored := make([]Suggestion, 0, len(r.indexedPaths)+len(recentSet)+len(openSet)+len(contextSet))
+	seen := make(map[string]struct{}, len(r.indexedPaths)+len(recentSet)+len(openSet)+len(contextSet))
 
-	addCandidate := func(path string, isDir bool, source string) {
+	addCandidate := func(path string, isDir bool, exists bool, source string) {
 		if path == "" {
 			return
 		}
@@ -185,31 +202,74 @@ func (r *Resolver) Suggest(query string, recent []string, limit int) []Suggestio
 		if !ok {
 			return
 		}
-		if _, isRecent := recentSet[path]; isRecent {
+		isRecent := false
+		if _, ok := recentSet[path]; ok {
+			isRecent = true
 			score += 320
 			if reason == "" {
 				reason = "recent"
 			}
 		}
-		if source == "recent" {
+		if _, ok := openSet[path]; ok {
+			score += 250
+		}
+		if _, ok := contextSet[path]; ok {
+			score += 180
+		}
+		if source == "recent" && !isRecent {
 			score += 80
+		}
+		section := suggestionSectionFor(path, isDir, recentSet, openSet, contextSet)
+		normalizedSource := source
+		if normalizedSource == "workspace" {
+			switch section {
+			case "Recent Files", "Recent Folders":
+				normalizedSource = "recent"
+			case "Open Files", "Open Folders":
+				normalizedSource = "open"
+			case "Context Files", "Context Folders":
+				normalizedSource = "context"
+			}
 		}
 		if reason == "" {
 			reason = "browse"
 		}
 		seen[path] = struct{}{}
-		scored = append(scored, Suggestion{Path: path, Score: score, IsDir: isDir, Source: source, Section: suggestionSectionFor(source, reason, isDir), MatchReason: reason, Preview: buildSuggestionPreview(path, isDir)})
+		scored = append(scored, Suggestion{Path: path, Score: score, IsDir: isDir, Exists: exists, Source: normalizedSource, Section: section, MatchReason: reason, Preview: buildSuggestionPreview(path, isDir)})
 	}
 
 	for _, item := range r.indexedPaths {
-		source := "workspace"
-		if _, ok := recentSet[item.Path]; ok {
-			source = "workspace+recent"
-		}
-		addCandidate(item.Path, item.IsDir, source)
+		addCandidate(item.Path, item.IsDir, true, "workspace")
 	}
 	for rel := range recentSet {
-		addCandidate(rel, false, "recent")
+		abs := filepath.Join(r.baseDir, filepath.FromSlash(rel))
+		info, err := os.Stat(abs)
+		isDir := false
+		exists := err == nil
+		if exists {
+			isDir = info.IsDir()
+		}
+		addCandidate(rel, isDir, exists, "recent")
+	}
+	for rel := range openSet {
+		abs := filepath.Join(r.baseDir, filepath.FromSlash(rel))
+		info, err := os.Stat(abs)
+		isDir := false
+		exists := err == nil
+		if exists {
+			isDir = info.IsDir()
+		}
+		addCandidate(rel, isDir, exists, "open")
+	}
+	for rel := range contextSet {
+		abs := filepath.Join(r.baseDir, filepath.FromSlash(rel))
+		info, err := os.Stat(abs)
+		isDir := false
+		exists := err == nil
+		if exists {
+			isDir = info.IsDir()
+		}
+		addCandidate(rel, isDir, exists, "context")
 	}
 
 	if len(scored) == 0 {
@@ -263,6 +323,12 @@ func splitSuggestionQuery(query string) (string, string) {
 	if trimmed == "" {
 		return "", ""
 	}
+	if idx := strings.LastIndex(trimmed, "#L"); idx > 0 {
+		suffix := strings.TrimSpace(trimmed[idx:])
+		if isHashLineMarker(suffix) {
+			return strings.TrimSpace(trimmed[:idx]), suffix
+		}
+	}
 	idx := strings.LastIndex(trimmed, ":")
 	if idx <= 0 || idx == len(trimmed)-1 {
 		return trimmed, ""
@@ -277,6 +343,33 @@ func splitSuggestionQuery(query string) (string, string) {
 		}
 	}
 	return strings.TrimSpace(trimmed[:idx]), ":" + line
+}
+
+func isHashLineMarker(s string) bool {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(strings.ToUpper(s), "#L") {
+		return false
+	}
+	body := strings.TrimSpace(s[2:])
+	if body == "" {
+		return false
+	}
+	parts := strings.Split(body, "-")
+	if len(parts) < 1 || len(parts) > 2 {
+		return false
+	}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			return false
+		}
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func normalizePathToken(s string) string {
@@ -325,6 +418,7 @@ func scorePathCandidate(candidate, normQuery string) (int, string, bool) {
 	}
 
 	base := strings.ToLower(filepath.Base(normCandidate))
+	dir := strings.ToLower(filepath.Dir(normCandidate))
 	score := 0
 	matched := false
 	reason := ""
@@ -354,6 +448,20 @@ func scorePathCandidate(candidate, normQuery string) (int, string, bool) {
 		matched = true
 		if reason == "" {
 			reason = "name-contains"
+		}
+	}
+	if base == normQuery {
+		score += 460
+		matched = true
+		if reason == "" {
+			reason = "name-exact"
+		}
+	}
+	if dir != "." && strings.Contains(dir, normQuery) {
+		score += 70
+		matched = true
+		if reason == "" {
+			reason = "dir-contains"
 		}
 	}
 
@@ -396,41 +504,35 @@ func buildSuggestionPreview(path string, isDir bool) string {
 	base := filepath.Base(path)
 	depth := strings.Count(path, "/") + 1
 	if isDir {
-		return "directory " + base + " depth:" + strconv.Itoa(depth)
+		return "directory " + base + " in " + filepath.ToSlash(filepath.Dir(path)) + " depth:" + strconv.Itoa(depth)
 	}
 	if ext := strings.TrimSpace(filepath.Ext(base)); ext != "" {
-		return ext + " file " + base + " depth:" + strconv.Itoa(depth)
+		parent := filepath.ToSlash(filepath.Dir(path))
+		if parent == "." {
+			parent = "workspace"
+		}
+		return ext + " file " + base + " in " + parent + " depth:" + strconv.Itoa(depth)
 	}
-	return "file " + base + " depth:" + strconv.Itoa(depth)
+	parent := filepath.ToSlash(filepath.Dir(path))
+	if parent == "." {
+		parent = "workspace"
+	}
+	return "file " + base + " in " + parent + " depth:" + strconv.Itoa(depth)
 }
 
-func suggestionSectionFor(source, reason string, isDir bool) string {
+func suggestionSectionFor(path string, isDir bool, recentSet map[string]struct{}, openSet map[string]struct{}, contextSet map[string]struct{}) string {
 	prefix := "Workspace"
-	switch strings.ToLower(strings.TrimSpace(source)) {
-	case "recent":
+	if _, ok := recentSet[path]; ok {
 		prefix = "Recent"
-	case "workspace+recent":
-		prefix = "Recent + Workspace"
+	} else if _, ok := openSet[path]; ok {
+		prefix = "Open"
+	} else if _, ok := contextSet[path]; ok {
+		prefix = "Context"
 	}
-
-	suffix := "Files"
 	if isDir {
-		suffix = "Folders"
+		return prefix + " Folders"
 	}
-
-	normReason := strings.ToLower(strings.TrimSpace(reason))
-	switch {
-	case normReason == "exact" || strings.Contains(normReason, "exact"):
-		return "Best Match"
-	case strings.Contains(normReason, "prefix"):
-		return prefix + " Prefix " + suffix
-	case strings.Contains(normReason, "contains") || strings.Contains(normReason, "token"):
-		return prefix + " Contains " + suffix
-	case strings.Contains(normReason, "fuzzy"):
-		return prefix + " Fuzzy " + suffix
-	default:
-		return prefix + " " + suffix
-	}
+	return prefix + " Files"
 }
 
 func pathDepthBoost(path string) int {
@@ -477,10 +579,29 @@ func sortSuggestions(items []Suggestion) {
 				items[i], items[j] = items[j], items[i]
 				continue
 			}
-			if items[j].Score == items[i].Score && items[j].Path < items[i].Path {
-				items[i], items[j] = items[j], items[i]
+			if items[j].Score == items[i].Score {
+				if suggestionSourceRank(items[j].Source) > suggestionSourceRank(items[i].Source) {
+					items[i], items[j] = items[j], items[i]
+					continue
+				}
+				if suggestionSourceRank(items[j].Source) == suggestionSourceRank(items[i].Source) && items[j].Path < items[i].Path {
+					items[i], items[j] = items[j], items[i]
+				}
 			}
 		}
+	}
+}
+
+func suggestionSourceRank(source string) int {
+	switch strings.ToLower(strings.TrimSpace(source)) {
+	case "recent", "workspace+recent":
+		return 4
+	case "open":
+		return 3
+	case "context":
+		return 2
+	default:
+		return 1
 	}
 }
 
@@ -498,6 +619,19 @@ func isSubsequence(text, query string) bool {
 }
 
 func splitPathAndLine(token string) (string, int, bool) {
+	if idx := strings.LastIndex(token, "#L"); idx > 0 && idx < len(token)-2 {
+		linePart := strings.TrimSpace(token[idx+2:])
+		if linePart != "" {
+			if dash := strings.Index(linePart, "-"); dash >= 0 {
+				linePart = strings.TrimSpace(linePart[:dash])
+			}
+			lineNum, err := strconv.Atoi(linePart)
+			if err == nil && lineNum > 0 {
+				return token[:idx], lineNum, true
+			}
+		}
+	}
+
 	idx := strings.LastIndex(token, ":")
 	if idx <= 0 || idx >= len(token)-1 {
 		return token, 0, false
@@ -524,7 +658,7 @@ func isRefChar(b byte) bool {
 		return true
 	}
 	switch b {
-	case '/', '\\', '.', '_', '-', '~', ':':
+	case '/', '\\', '.', '_', '-', '~', ':', '#':
 		return true
 	default:
 		return false

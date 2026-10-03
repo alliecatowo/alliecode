@@ -52,3 +52,15 @@ func TestPermissionDialogStateEachDecisionFromPrompt(t *testing.T) {
 		t.Fatalf("expected always transition to resolve always status, got stage=%d decision=%d status=%s", always.stage, always.decision, always.status)
 	}
 }
+
+func TestPermissionDialogShowIsIdempotentWhilePromptVisible(t *testing.T) {
+	state := newPermissionDialogState().transition(permissionDialogShow)
+	updated := state.updated
+	state = state.transition(permissionDialogShow)
+	if state.stage != permissionDialogPrompt || state.status != permissionPending {
+		t.Fatalf("expected prompt state to remain pending on repeated show, got stage=%d status=%s", state.stage, state.status)
+	}
+	if state.updated != updated {
+		t.Fatalf("expected repeated show to avoid synthetic transition count bump, got %d want %d", state.updated, updated)
+	}
+}

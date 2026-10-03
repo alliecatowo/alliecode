@@ -1,0 +1,1 @@
+{"name":"reference_shift_tab_wraps_last","width":140,"height":28,"actions":["type:@READ","shift_tab"],"want_contains":["references:","preview: @","hints: reference palette"]}

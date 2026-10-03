@@ -1,0 +1,1 @@
+{"name":"statusline_overlay_command_palette","width":120,"height":28,"actions":["type:/"],"want_contains":["hints: command palette","context: command /","slash:"]}

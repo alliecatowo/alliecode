@@ -1004,7 +1004,7 @@
         },
         "query": {
           "type": "string",
-          "description": "Keyword query or select:<tool-name>"
+          "description": "Keyword query or select:\u003ctool-name\u003e"
         }
       },
       "required": [

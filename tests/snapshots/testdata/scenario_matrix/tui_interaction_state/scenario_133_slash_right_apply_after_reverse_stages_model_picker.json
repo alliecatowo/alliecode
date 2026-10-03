@@ -1,0 +1,1 @@
+{"name":"slash_right_apply_after_reverse_stages_model_picker","width":180,"height":30,"actions":["type:/model","tab","shift_tab","right"],"want_contains":["model picker: /model","input mode: model-picker","┃ /model "]}

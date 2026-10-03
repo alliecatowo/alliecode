@@ -1,0 +1,1 @@
+{"name":"compact_quick_open_runtime_context_visible","width":120,"height":26,"actions":["ctrl_o"],"want_contains":["input:quick-open","hints: search active","runtime: search  runtime: state=search","context: search mode quick-open"]}

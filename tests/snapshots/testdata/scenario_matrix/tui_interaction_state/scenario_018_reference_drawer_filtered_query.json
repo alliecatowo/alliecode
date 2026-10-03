@@ -1,0 +1,1 @@
+{"name":"reference_drawer_filtered_query","width":120,"height":28,"actions":["type:@testdata/scenario_matrix/tui_interaction_state/scenario_001"],"want_contains":["references:","@testdata/scenario_matrix/tui_interaction_state/scenario_001_timeline_search_snapshot.json","preview: @testdata/scenario_matrix/tui_interaction_state/scenario_001_timeline_search_snapshot.json"]}

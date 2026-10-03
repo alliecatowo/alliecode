@@ -1,0 +1,1 @@
+{"name":"permissions_panel_tab_cycle_keeps_intent_view","width":180,"height":30,"actions":["type:/perm","enter","tab","shift_tab"],"want_contains":["input mode: command-panel","command panel /permissions","hints: command panel"],"want_absent":["PERMISSIONS_MODE","PERMISSIONS_MODES"]}

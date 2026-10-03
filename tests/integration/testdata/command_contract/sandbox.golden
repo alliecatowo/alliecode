@@ -11,3 +11,7 @@ policy.effective.mode=read-only
 policy.effective.alias=restrictive
 policy.effective.workspace_locked=false
 policy.effective.excluded_count=0
+scope.working_dir=.
+scope.workspace_root=.
+scope.path_scope=workspace
+scope.restrictions=read_only_filesystem

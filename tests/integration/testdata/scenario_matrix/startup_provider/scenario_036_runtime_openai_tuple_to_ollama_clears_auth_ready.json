@@ -1,0 +1,1 @@
+{"name":"runtime_openai_tuple_to_ollama_keeps_auth_ready","kind":"runtime_model_set","provider_choice":"openai","initial_provider_name":"openai","logged_in":true,"auth_provider":"openai","model_arg":"ollama/llama3","want_model":"llama3","want_provider_name":"ollama","want_model_ref":"ollama/llama3","want_provider_ready":true,"want_logged_in":true,"want_auth_provider":"openai"}

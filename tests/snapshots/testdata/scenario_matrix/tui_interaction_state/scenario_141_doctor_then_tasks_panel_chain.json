@@ -1,0 +1,1 @@
+{"name":"doctor_then_tasks_panel_chain","width":180,"height":30,"actions":["submit:/doctor","type:/tasks","enter"],"want_contains":["input mode: command-panel","drawer: tasks panel: /tasks"],"want_absent":["DOCTOR_REPORT","TASKS_STATUS","TASKS_LIST"]}

@@ -116,3 +116,12 @@ func TestRunShellPreflightRequireApprovalBehavior(t *testing.T) {
 		t.Fatalf("expected approval-only risk to pass when approval not required, got %q", msg)
 	}
 }
+
+func TestNormalizeToolWorkingDir(t *testing.T) {
+	if got := normalizeToolWorkingDir(""); got != "." {
+		t.Fatalf("normalizeToolWorkingDir(\"\") = %q, want .", got)
+	}
+	if got := normalizeToolWorkingDir("  /tmp/work  "); got != "/tmp/work" {
+		t.Fatalf("normalizeToolWorkingDir trims whitespace, got %q", got)
+	}
+}

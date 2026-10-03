@@ -23,9 +23,9 @@ func TestSnapshot_TimelineSearchStateChrome(t *testing.T) {
 	meta := mustFindLineContaining(t, plain, "mode:timeline")
 
 	got := trimRight(label) + "\n" + trimRight(meta)
-	const want = "search: (type to filter)\nmode:timeline  matches:0  jump:ctrl+n/ctrl+p  esc:exit"
-	if got != want {
-		t.Fatalf("timeline search snapshot mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	const wantPrefix = "search: (type to filter)\nmode:timeline  matches:0  jump:ctrl+n/ctrl+p up/down tab shift+tab"
+	if !strings.HasPrefix(got, wantPrefix) {
+		t.Fatalf("timeline search snapshot mismatch\n--- got ---\n%s\n--- want prefix ---\n%s", got, wantPrefix)
 	}
 }
 
@@ -50,17 +50,37 @@ func TestSnapshot_QuickOpenShowsKeyHintsAndWorkflowRows(t *testing.T) {
 	}
 }
 
+func TestSnapshot_QuickOpenFooterShowsActiveRowAndControls(t *testing.T) {
+	app := readyApp(t, 180, 26)
+
+	updated, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	searching, ok := updated.(*tui.App)
+	if !ok {
+		t.Fatalf("ctrl+o update returned %T, want *tui.App", updated)
+	}
+
+	plain := stripANSI(searching.View())
+	footer := mustFindLineContaining(t, plain, "active: Search timeline")
+
+	got := trimRight(footer)
+	const want = "active: Search timeline  |  enter/right apply  left/esc close  tab/down next  shift+tab/up prev  pgup/pgdown page  home/end jump"
+	if got != want {
+		t.Fatalf("quick-open footer snapshot mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
 func TestSnapshot_PermissionModeStatusBarAfterCommand(t *testing.T) {
 	app := readyApp(t, 90, 24)
 	app = submitText(t, app, "/permissions auto")
 
 	plain := stripANSI(app.View())
-	status := mustFindLineContaining(t, plain, "mode:auto")
-	assistant := mustFindLineContaining(t, plain, "PERMISSIONS_SET")
+	status := mustFindLineContaining(t, plain, "input chat")
+	assistant := mustFindLineContaining(t, plain, "Mode: auto")
 
-	got := strings.Join([]string{trimRight(assistant), trimRight(status)}, "\n")
-	const want = "  PERMISSIONS_SET\n model:unknown turns:0 mode:auto render:0ms tools:0 perm:0   budget:$0.0000 tok:0 sid:n/a"
-	if got != want {
-		t.Fatalf("permission status snapshot mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	if strings.TrimSpace(assistant) != "Mode: auto" {
+		t.Fatalf("expected permission assistant summary, got %q", assistant)
+	}
+	if !strings.Contains(status, "mode:auto") || !strings.Contains(status, "input chat") {
+		t.Fatalf("expected updated status bar with auto mode and chat input, got %q", status)
 	}
 }

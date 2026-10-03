@@ -1,0 +1,1 @@
+{"name":"slash_drawer_escape_returns_chat","width":140,"height":28,"actions":["type:/","esc"],"want_contains":["input mode: chat"],"want_absent":["commands: /","context: command /"]}

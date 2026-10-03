@@ -1,1 +1,1 @@
-{"name":"permissions_auto_contains_mode","width":120,"height":28,"action":"submit_command","command":"/permissions auto","want_contains":["mode:auto"]}
+{"name":"permissions_auto_contains_mode","width":120,"height":28,"action":"submit_command","command":"/permissions auto","want_contains":["Mode: auto","auto  |  input chat"]}

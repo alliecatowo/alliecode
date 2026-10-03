@@ -43,10 +43,13 @@ const (
 	SpecialBackspace
 	SpecialDelete
 	SpecialTab
+	SpecialShiftTab
 	SpecialLeft
 	SpecialRight
 	SpecialUp
 	SpecialDown
+	SpecialPageUp
+	SpecialPageDown
 	SpecialHome
 	SpecialEnd
 )

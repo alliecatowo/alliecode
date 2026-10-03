@@ -1,0 +1,1 @@
+{"name":"shifted_slash_cycle_then_enter_stages_model_picker","width":180,"height":30,"actions":["type:/model","tab","shift_tab","enter"],"want_contains":["model picker: /model","input mode: model-picker","\u2503 /model "],"want_absent":["MODEL_REPORT"]}

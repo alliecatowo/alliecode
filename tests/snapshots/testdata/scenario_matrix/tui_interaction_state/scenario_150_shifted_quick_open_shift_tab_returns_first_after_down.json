@@ -1,0 +1,1 @@
+{"name":"shifted_quick_open_shift_tab_returns_first_after_down","width":180,"height":30,"actions":["ctrl_o","down","shift_tab"],"want_contains":["mode:quick-open","selected: 1/10","hints: search active","input mode: quick-open"]}

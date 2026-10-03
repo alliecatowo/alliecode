@@ -1,0 +1,1 @@
+{"name":"quick_open_escape_returns_chat","width":180,"height":28,"actions":["ctrl_o","esc"],"want_contains":["input mode: chat"],"want_absent":["mode:quick-open","context: search quick-open"]}

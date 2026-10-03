@@ -326,6 +326,26 @@ func (s *TeamStore) AddMessage(teamName, from, to, summary, message string) (Tea
 	return rec, nil
 }
 
+func (s *TeamStore) MessageCount(name string) (int, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	team, ok := s.teams[name]
+	if !ok {
+		return 0, false
+	}
+	return len(team.Messages), true
+}
+
+func (s *TeamStore) LastEvent(name string) (TeamEvent, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	team, ok := s.teams[name]
+	if !ok || len(team.History) == 0 {
+		return TeamEvent{}, false
+	}
+	return team.History[len(team.History)-1], true
+}
+
 func (s *TeamStore) ResetForTests() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

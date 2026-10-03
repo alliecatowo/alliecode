@@ -45,6 +45,25 @@ func ConfigDiagnostics(cfg *Config) []Diagnostic {
 	if len(cfg.Providers) == 0 {
 		diags = append(diags, Diagnostic{Severity: DiagnosticInfo, Code: "providers_empty", Message: "no provider credentials configured", Remediation: "add provider credentials under providers.<name>"})
 	}
+	for _, providerName := range providerNamesForDiagnostics(cfg) {
+		if strings.TrimSpace(providerName) == "" || strings.EqualFold(strings.TrimSpace(providerName), "ollama") {
+			continue
+		}
+		presence := cfg.ProviderCredentialPresence(providerName)
+		if presence.HasCredentials {
+			continue
+		}
+		envHint := "provider-specific environment variables"
+		if len(presence.EnvVars) > 0 {
+			envHint = strings.Join(presence.EnvVars, "|")
+		}
+		diags = append(diags, Diagnostic{
+			Severity:    DiagnosticWarn,
+			Code:        "provider_credentials_missing_" + strings.ToLower(strings.TrimSpace(providerName)),
+			Message:     fmt.Sprintf("provider %s has no credentials", providerName),
+			Remediation: fmt.Sprintf("add credentials in config or %s, then run /login provider %s and /provider status", envHint, strings.ToLower(strings.TrimSpace(providerName))),
+		})
+	}
 	if cfg.CompanionMuted == nil {
 		diags = append(diags, Diagnostic{Severity: DiagnosticInfo, Code: "companion_muted_inherited", Message: "companion_muted is unset and inherits runtime default", Remediation: "set companion_muted in config or ALLIECODE_COMPANION_MUTED to force a value"})
 	}
@@ -220,4 +239,26 @@ func LayeringSummary(info LayerDiagnostics) string {
 		parts = append(parts, "validation=failed")
 	}
 	return strings.Join(parts, ",")
+}
+
+func providerNamesForDiagnostics(cfg *Config) []string {
+	seen := map[string]struct{}{}
+	names := make([]string, 0, len(cfg.Providers)+1)
+	if dp := strings.ToLower(strings.TrimSpace(cfg.DefaultProvider)); dp != "" {
+		seen[dp] = struct{}{}
+		names = append(names, dp)
+	}
+	for name := range cfg.Providers {
+		n := strings.ToLower(strings.TrimSpace(name))
+		if n == "" {
+			continue
+		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }

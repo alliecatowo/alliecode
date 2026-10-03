@@ -77,7 +77,7 @@ func (t *TaskUpdateTool) Execute(ctx context.Context, input types.ToolInput, too
 		taskAdapterMu.Unlock()
 		summary := taskAdapterSummary(context.Background())
 		runtime := map[string]any{"operation": "delete", "requested_task_id": in.TaskID}
-		b, err := json.Marshal(taskEnvelope{Task: nil, Summary: summary, Runtime: runtime})
+		b, err := json.Marshal(taskEnvelope{Task: nil, Summary: summary, Runtime: runtime, Contract: defaultTaskContractMetadata()})
 		if err != nil {
 			return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 		}
@@ -140,7 +140,7 @@ func (t *TaskUpdateTool) Execute(ctx context.Context, input types.ToolInput, too
 	}
 	summary := taskAdapterSummary(context.Background())
 	runtime := map[string]any{"operation": "update", "requested_task_id": in.TaskID, "status": task.Status}
-	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime})
+	b, err := json.Marshal(taskEnvelope{Task: &task, Summary: summary, Lifecycle: summarizeTaskLifecycle(&task), Runtime: runtime, Contract: defaultTaskContractMetadata()})
 	if err != nil {
 		return types.ToolResult{Content: fmt.Sprintf("serialization error: %v", err), IsError: true}, nil
 	}

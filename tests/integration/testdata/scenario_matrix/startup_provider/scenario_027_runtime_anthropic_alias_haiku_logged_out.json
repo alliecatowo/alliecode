@@ -1,0 +1,1 @@
+{"name":"runtime_anthropic_alias_haiku_logged_out","kind":"runtime_model_set","provider_choice":"anthropic","initial_provider_name":"anthropic","logged_in":false,"auth_provider":"","model_arg":"haiku","want_model":"claude-haiku-3-5-20241022","want_provider_name":"anthropic","want_model_ref":"anthropic/claude-haiku-3-5-20241022","want_provider_ready":false,"want_logged_in":false}

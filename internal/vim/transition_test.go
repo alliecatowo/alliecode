@@ -39,3 +39,16 @@ func TestHandleKeysWithTransitionsIncludesUppercaseCommands(t *testing.T) {
 		t.Fatalf("expected A to enter insert mode, got %v", steps[0].After.Mode)
 	}
 }
+
+func TestHandleKeyWithTransitionEscapesInsertMode(t *testing.T) {
+	e := NewEngine([]string{"one"})
+	e.HandleKey(Key{Rune: 'i', Special: SpecialNone})
+	step := e.HandleKeyWithTransition(Key{Special: SpecialEsc})
+
+	if step.Before.Mode != ModeInsert {
+		t.Fatalf("expected before mode insert, got %v", step.Before.Mode)
+	}
+	if step.After.Mode != ModeNormal {
+		t.Fatalf("expected after mode normal, got %v", step.After.Mode)
+	}
+}

@@ -1,0 +1,1 @@
+{"name":"issue_panel_create_then_apply_no_legacy","width":180,"height":30,"actions":["submit:/issue create lane5 strict matrix issue","type:/issue","enter","enter"],"want_contains":["Issues","input mode: chat"],"want_absent":["ISSUE_LIST","ISSUE_STATUS","ISSUE_CREATE"]}

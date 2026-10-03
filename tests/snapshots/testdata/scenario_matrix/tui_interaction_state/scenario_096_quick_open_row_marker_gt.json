@@ -1,0 +1,1 @@
+{"name":"quick_open_row_marker_gt","width":120,"height":26,"action":"ctrl_o","want_contains":["> Search timeline","[navigation, ctrl+f]"],"want_absent":[]}

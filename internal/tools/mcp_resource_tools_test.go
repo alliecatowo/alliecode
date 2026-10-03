@@ -262,9 +262,15 @@ func TestMCPResourceReadAndAuthTools(t *testing.T) {
 	if err != nil || authRes.IsError {
 		t.Fatalf("auth tool failed: err=%v content=%q", err, authRes.Content)
 	}
-	const expectedAuth = `{"server_name":"srv","authenticated":true}`
-	if authRes.Content != expectedAuth {
-		t.Fatalf("unexpected auth output:\nwant: %s\ngot:  %s", expectedAuth, authRes.Content)
+	var authOut map[string]any
+	if err := json.Unmarshal([]byte(authRes.Content), &authOut); err != nil {
+		t.Fatalf("unexpected auth output JSON: %v", err)
+	}
+	if authOut["server_name"] != "srv" || authOut["authenticated"] != true {
+		t.Fatalf("unexpected auth output payload: %+v", authOut)
+	}
+	if authOut["contract"] == nil {
+		t.Fatalf("expected auth output contract metadata")
 	}
 }
 
@@ -426,5 +432,44 @@ func TestMCPAuthStatusTool(t *testing.T) {
 	missing, err := (&MCPAuthStatusTool{manager: fake}).Execute(context.Background(), []byte(`{"server_name":"missing"}`), types.ToolContext{})
 	if err != nil || !missing.IsError {
 		t.Fatalf("expected missing server error: err=%v content=%q", err, missing.Content)
+	}
+}
+
+func TestMCPToolsIncludeContractMetadata(t *testing.T) {
+	fake := &fakeRegistryMCPManager{
+		resources:     []mcp.Resource{{ServerName: "srv", URI: "mem://x", Name: "x"}},
+		content:       mcp.ResourceContent{URI: "mem://x", MIMEType: "text/plain", Text: "hello"},
+		authenticated: map[string]bool{"srv": true},
+		authStatus:    map[string]mcp.AuthStatus{"srv": mcp.AuthStatusAuthenticated},
+		connection:    map[string]mcp.ServerConnectionState{"srv": mcp.ServerConnectionConnected},
+		transport:     map[string]mcp.TransportType{"srv": mcp.TransportStdio},
+		toolResult:    "ok",
+	}
+	ctx := types.ToolContext{}
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		tool  interface {
+			Execute(context.Context, types.ToolInput, types.ToolContext) (types.ToolResult, error)
+		}
+	}{
+		{name: "mcp_resource_list", tool: &MCPResourceListTool{manager: fake}, input: `{}`},
+		{name: "mcp_resource_read", tool: &MCPResourceReadTool{manager: fake}, input: `{"server_name":"srv","uri":"mem://x"}`},
+		{name: "mcp_auth_local", tool: &MCPAuthLocalTool{manager: fake}, input: `{"server_name":"srv","token":"tok"}`},
+		{name: "mcp_auth_status", tool: &MCPAuthStatusTool{manager: fake}, input: `{"server_name":"srv"}`},
+		{name: "mcp_tool_invoke", tool: &MCPToolInvokeTool{manager: fake}, input: `{"server_name":"srv","tool_name":"sum"}`},
+	} {
+		res, err := tc.tool.Execute(context.Background(), []byte(tc.input), ctx)
+		if err != nil || res.IsError {
+			t.Fatalf("%s failed: err=%v content=%q", tc.name, err, res.Content)
+		}
+		var out map[string]any
+		if err := json.Unmarshal([]byte(res.Content), &out); err != nil {
+			t.Fatalf("%s invalid JSON: %v", tc.name, err)
+		}
+		if out["contract"] == nil {
+			t.Fatalf("%s missing contract metadata", tc.name)
+		}
 	}
 }

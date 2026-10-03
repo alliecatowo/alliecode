@@ -1,0 +1,1 @@
+{"name":"model_picker_right_applies_after_status_submit","width":180,"height":30,"actions":["submit:/status","type:/model ","right"],"want_contains":["Model set to","input mode: chat"],"want_absent":["STATUS_REPORT","model picker: /model"]}

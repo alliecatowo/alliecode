@@ -1,0 +1,1 @@
+{"name":"quick_open_hints_visible","width":120,"height":26,"action":"ctrl_o","want_contains":["hints: search active","input mode: quick-open"],"want_absent":[]}

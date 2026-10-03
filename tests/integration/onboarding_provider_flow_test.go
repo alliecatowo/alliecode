@@ -20,14 +20,14 @@ func TestOnboardingProviderChoiceOutcomesWithCLIInvocationFixture(t *testing.T) 
 			name:            "openai choice uses explicit provider model",
 			provider:        "openai",
 			modelSetArg:     "openai/gpt-4o-mini",
-			wantModel:       "openai/gpt-4o-mini",
+			wantModel:       "gpt-4o-mini",
 			wantProviderSet: true,
 		},
 		{
 			name:            "anthropic choice uses explicit provider model",
 			provider:        "anthropic",
 			modelSetArg:     "anthropic/claude-sonnet-4-20250514",
-			wantModel:       "anthropic/claude-sonnet-4-20250514",
+			wantModel:       "claude-sonnet-4-20250514",
 			wantProviderSet: true,
 		},
 		{

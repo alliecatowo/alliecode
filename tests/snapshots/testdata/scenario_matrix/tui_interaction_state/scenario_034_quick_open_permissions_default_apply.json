@@ -1,0 +1,1 @@
+{"name":"quick_open_permissions_default_apply","width":180,"height":28,"actions":["ctrl_o","type:default","enter"],"want_contains":["input mode: chat","searches: timeline=\"\" quick-open=\"default\" history=\"\""],"want_absent":["mode:quick-open"]}

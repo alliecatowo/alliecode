@@ -1,0 +1,1 @@
+{"name":"bash_preflight_outside_workspace_write_requires_approval","kind":"bash","input":"echo hello > /tmp/lanee-outside.txt","want_is_error":true,"want_contains":["Command requires approval by bash preflight policy","[bash_preflight]","rule_id: outside_workspace_write"]}

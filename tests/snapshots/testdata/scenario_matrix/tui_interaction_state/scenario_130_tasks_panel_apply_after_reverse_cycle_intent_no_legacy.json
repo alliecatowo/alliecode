@@ -1,0 +1,1 @@
+{"name":"tasks_panel_apply_after_reverse_cycle_intent_no_legacy","width":180,"height":30,"actions":["submit:/tasks add lane5 matrix item","type:/tasks","enter","tab","shift_tab","enter"],"want_contains":["Task added","Task: lane5 matrix item [state] - Affected task."],"want_absent":["TASKS_LIST","TASKS_ADD"]}

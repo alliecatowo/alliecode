@@ -1,0 +1,1 @@
+{"name":"one_enter_issue_panel_statusline_context","width":180,"height":30,"actions":["type:/issue","enter"],"want_contains":["input mode: command-panel","drawer: issue panel: /issue","hints: command panel"],"want_absent":["ISSUE_LIST","ISSUE_STATUS"]}

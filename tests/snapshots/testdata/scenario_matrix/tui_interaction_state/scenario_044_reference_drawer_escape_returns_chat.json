@@ -1,0 +1,1 @@
+{"name":"reference_drawer_escape_returns_chat","width":140,"height":28,"actions":["type:@READ","esc"],"want_contains":["input mode: chat"],"want_absent":["references:","context: reference @"]}

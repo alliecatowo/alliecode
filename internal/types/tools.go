@@ -26,11 +26,11 @@ const (
 
 // ToolContext carries runtime state available to tools during execution.
 type ToolContext struct {
-	WorkingDir     string
-	AbortChan      <-chan struct{}
-	Messages       []Message
+	WorkingDir       string
+	AbortChan        <-chan struct{}
+	Messages         []Message
 	IsNonInteractive bool
-	Debug          bool
+	Debug            bool
 }
 
 // ToolSchema describes the JSON Schema for a tool's input.
@@ -42,13 +42,13 @@ type ToolSchema struct {
 
 // PropertySchema describes a single property in a tool's input schema.
 type PropertySchema struct {
-	Type        string         `json:"type"`
-	Description string         `json:"description,omitempty"`
-	Enum        []string       `json:"enum,omitempty"`
-	Default     any            `json:"default,omitempty"`
+	Type        string          `json:"type"`
+	Description string          `json:"description,omitempty"`
+	Enum        []string        `json:"enum,omitempty"`
+	Default     any             `json:"default,omitempty"`
 	Items       *PropertySchema `json:"items,omitempty"`
-	Minimum     *float64       `json:"minimum,omitempty"`
-	Maximum     *float64       `json:"maximum,omitempty"`
+	Minimum     *float64        `json:"minimum,omitempty"`
+	Maximum     *float64        `json:"maximum,omitempty"`
 }
 
 // Tool defines the interface that all AllieCode tools must implement.

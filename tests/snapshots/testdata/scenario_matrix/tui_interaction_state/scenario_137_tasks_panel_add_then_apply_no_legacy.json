@@ -1,0 +1,1 @@
+{"name":"tasks_panel_add_then_apply_no_legacy","width":180,"height":30,"actions":["submit:/tasks add lane5 strict matrix item","type:/tasks","enter","enter"],"want_contains":["Tasks","input mode: chat"],"want_absent":["TASKS_LIST","TASKS_STATUS","TASKS_ADD"]}

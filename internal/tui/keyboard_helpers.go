@@ -12,6 +12,9 @@ func keyMatches(msg tea.KeyMsg, combo string) bool {
 		if want == got {
 			return true
 		}
+		if want == "shift+tab" && msg.Type == tea.KeyShiftTab {
+			return true
+		}
 		if want == "alt+enter" && msg.Type == tea.KeyEnter && msg.Alt {
 			return true
 		}
@@ -59,6 +62,7 @@ func normalizeCombo(s string) string {
 	if s == "" {
 		return ""
 	}
+	s = normalizeTerminalSequenceAlias(s)
 	parts := strings.Split(s, "+")
 
 	ctrl := false
@@ -71,12 +75,18 @@ func normalizeCombo(s string) string {
 		if p == "" {
 			continue
 		}
+		p = normalizeTerminalSequenceAlias(p)
 		switch p {
 		case "ctrl", "control", "cmd", "command":
 			ctrl = true
 		case "alt", "meta", "option":
 			alt = true
 		case "shift":
+			shift = true
+		case "s-enter", "shift+return", "shift+iso-enter":
+			if key == "" {
+				key = "enter"
+			}
 			shift = true
 		case "esc":
 			if key == "" {
@@ -102,6 +112,11 @@ func normalizeCombo(s string) string {
 			if key == "" {
 				key = "space"
 			}
+		case "s-tab", "backtab", "iso-left-tab":
+			if key == "" {
+				key = "tab"
+			}
+			shift = true
 		default:
 			if key == "" {
 				key = p
@@ -123,4 +138,21 @@ func normalizeCombo(s string) string {
 		out = append(out, key)
 	}
 	return strings.Join(out, "+")
+}
+
+func normalizeTerminalSequenceAlias(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "\\x1b", "\x1b")
+	if s == "" {
+		return ""
+	}
+
+	switch s {
+	case "\x1b[z", "\x1b[1;2z", "\x1b[9;2u", "\x1b[27;2;9~", "[z", "1;2z", "9;2u", "27;2;9~", "back-tab", "kcbt", "btab":
+		return "shift+tab"
+	case "\x1b[13;2u", "\x1b[27;2;13~", "13;2u", "27;2;13~":
+		return "shift+enter"
+	}
+
+	return s
 }

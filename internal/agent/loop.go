@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,13 +46,16 @@ type PermissionResolver func(ctx context.Context, req PermissionRequest) permiss
 // Config holds all configuration for the agent loop.
 type Config struct {
 	Provider     types.Provider
-	Tools        []types.Tool
-	Model        string
-	SystemPrompt string
-	MaxTurns     int
-	MaxBudgetUSD float64
-	WorkingDir   string
-	Debug        bool
+	ProviderName string
+	// ResolveProvider resolves provider instances for runtime provider switches.
+	ResolveProvider func(name string) (types.Provider, error)
+	Tools           []types.Tool
+	Model           string
+	SystemPrompt    string
+	MaxTurns        int
+	MaxBudgetUSD    float64
+	WorkingDir      string
+	Debug           bool
 
 	// ContextWindow is the model's context window size in tokens.
 	// Used for auto-compaction decisions. Defaults to 200000 if zero.
@@ -95,14 +100,17 @@ type Agent struct {
 	costPerMOutput float64
 	totalCostUSD   float64
 
-	runtimeMu       sync.RWMutex
-	runtimeTurns    int
-	runtimeTurnIdx  int
-	runtimePhase    types.AgentTurnPhase
-	runtimeInflight int
-	runtimeLastStop types.AgentStopReason
-	runtimeTasks    map[string]string
-	runtimeTeams    map[string]string
+	runtimeMu           sync.RWMutex
+	runtimeTurns        int
+	runtimeTurnIdx      int
+	runtimePhase        types.AgentTurnPhase
+	runtimeInflight     int
+	runtimeLastStop     types.AgentStopReason
+	runtimeTasks        map[string]string
+	runtimeTeams        map[string]string
+	runtimeProvider     types.Provider
+	runtimeProviderName string
+	runtimeModel        string
 
 	eventMu         sync.RWMutex
 	eventSeq        uint64
@@ -124,24 +132,124 @@ func New(config Config) *Agent {
 	if config.MaxTokens == 0 {
 		config.MaxTokens = 16384
 	}
+	config.WorkingDir = resolveAgentWorkingDir(config.WorkingDir)
 
 	toolMap := make(map[string]types.Tool, len(config.Tools))
 	for _, t := range config.Tools {
 		toolMap[t.Name()] = t
 	}
 
+	providerName := strings.ToLower(strings.TrimSpace(config.ProviderName))
+	if providerName == "" && config.Provider != nil {
+		providerName = strings.ToLower(strings.TrimSpace(config.Provider.Name()))
+	}
+	runtimeModel := strings.TrimSpace(config.Model)
+
 	return &Agent{
 		config:  config,
 		toolMap: toolMap,
 		session: config.SessionStore,
 		// Default cost estimates (Sonnet-class pricing). Overridden if model info is available.
-		costPerMInput:   3.0,
-		costPerMOutput:  15.0,
-		runtimeTasks:    make(map[string]string),
-		runtimeTeams:    make(map[string]string),
-		eventHistoryCap: 256,
-		lifecycleState:  types.AgentLifecycleIdle,
+		costPerMInput:       3.0,
+		costPerMOutput:      15.0,
+		runtimeTasks:        make(map[string]string),
+		runtimeTeams:        make(map[string]string),
+		runtimeProvider:     config.Provider,
+		runtimeProviderName: providerName,
+		runtimeModel:        runtimeModel,
+		eventHistoryCap:     256,
+		lifecycleState:      types.AgentLifecycleIdle,
 	}
+}
+
+// SetProviderModel updates the runtime provider/model selection used for the next turn.
+func (a *Agent) SetProviderModel(providerName, model string) error {
+	providerName = strings.ToLower(strings.TrimSpace(providerName))
+	model = strings.TrimSpace(model)
+	if providerName == "" {
+		return fmt.Errorf("provider cannot be empty (next: run /provider set <name>)")
+	}
+	if model == "" {
+		return fmt.Errorf("model cannot be empty (next: run /model %s/<model>)", providerName)
+	}
+
+	a.runtimeMu.Lock()
+	defer a.runtimeMu.Unlock()
+
+	provider := a.runtimeProvider
+	if provider == nil {
+		provider = a.config.Provider
+	}
+	currentProviderName := strings.ToLower(strings.TrimSpace(a.runtimeProviderName))
+	if currentProviderName == "" && provider != nil {
+		currentProviderName = strings.ToLower(strings.TrimSpace(provider.Name()))
+	}
+
+	if provider == nil || currentProviderName != providerName {
+		if a.config.ResolveProvider == nil {
+			if provider == nil {
+				return fmt.Errorf("provider %q is unavailable (next: run /provider list then /provider set %s)", providerName, providerName)
+			}
+			return fmt.Errorf("provider switch to %q is not configured (next: configure provider resolver or keep current provider)", providerName)
+		}
+		resolved, err := a.config.ResolveProvider(providerName)
+		if err != nil {
+			return err
+		}
+		provider = resolved
+		currentProviderName = providerName
+	}
+
+	a.runtimeProvider = provider
+	a.runtimeProviderName = currentProviderName
+	a.runtimeModel = model
+	a.config.Provider = provider
+	a.config.ProviderName = currentProviderName
+	a.config.Model = model
+
+	return nil
+}
+
+func resolveAgentWorkingDir(raw string) string {
+	workingDir := strings.TrimSpace(raw)
+	if workingDir == "" {
+		cwd, err := os.Getwd()
+		if err == nil {
+			workingDir = cwd
+		}
+	}
+	if workingDir == "" {
+		workingDir = "."
+	}
+	if abs, err := filepath.Abs(workingDir); err == nil {
+		workingDir = abs
+	}
+	return filepath.Clean(workingDir)
+}
+
+// WorkingDir returns the normalized execution directory used by tools.
+func (a *Agent) WorkingDir() string {
+	return resolveAgentWorkingDir(a.config.WorkingDir)
+}
+
+func (a *Agent) currentProviderModel() (types.Provider, string, string) {
+	a.runtimeMu.RLock()
+	provider := a.runtimeProvider
+	providerName := strings.ToLower(strings.TrimSpace(a.runtimeProviderName))
+	model := strings.TrimSpace(a.runtimeModel)
+	a.runtimeMu.RUnlock()
+
+	if provider == nil {
+		provider = a.config.Provider
+	}
+	if providerName == "" && provider != nil {
+		providerName = strings.ToLower(strings.TrimSpace(provider.Name()))
+	}
+	if model == "" {
+		model = strings.TrimSpace(a.config.Model)
+	}
+
+	return provider, providerName, model
 }
 
 // SetStreamCallback registers a callback that receives every stream event.
@@ -253,29 +361,7 @@ func (a *Agent) TotalCost() float64 {
 func (a *Agent) RuntimeSnapshot() types.AgentRuntimeSnapshot {
 	a.runtimeMu.RLock()
 	defer a.runtimeMu.RUnlock()
-	out := types.AgentRuntimeSnapshot{
-		Turns:          a.runtimeTurns,
-		TurnIndex:      a.runtimeTurnIdx,
-		Phase:          a.runtimePhase,
-		ToolInflight:   a.runtimeInflight,
-		LastStopReason: a.runtimeLastStop,
-	}
-	for _, status := range a.runtimeTasks {
-		out.TasksTotal++
-		switch status {
-		case "running":
-			out.TasksRunning++
-		case "completed":
-			out.TasksCompleted++
-		}
-	}
-	for _, status := range a.runtimeTeams {
-		out.TeamsTotal++
-		if status == "active" {
-			out.TeamsActive++
-		}
-	}
-	return out
+	return a.runtimeSnapshotLocked()
 }
 
 // Run executes a single user turn: sends the user message, loops through any
@@ -354,8 +440,14 @@ func (a *Agent) agentLoop(ctx context.Context) error {
 	const maxContinuationRecoveries = defaultMaxContinuationRecoveries
 	continuationRecoveries := 0
 	planner := newTurnPlanner(a)
+	turnBudget := a.config.MaxTurns
+	toolContinuationExtensions := 0
+	maxToolContinuationExtensions := a.config.MaxTurns * 4
+	if maxToolContinuationExtensions < 8 {
+		maxToolContinuationExtensions = 8
+	}
 
-	for turn := 0; turn < a.config.MaxTurns; turn++ {
+	for turn := 0; turn < turnBudget; turn++ {
 		turnNumber := turn + 1
 		a.emitTurnPhase(turnNumber, types.AgentTurnPhaseInit, "", "turn_start", false, "")
 		if err := planner.BeginTurn(ctx, turnNumber); err != nil {
@@ -372,11 +464,16 @@ func (a *Agent) agentLoop(ctx context.Context) error {
 		copy(msgs, a.messages)
 		a.mu.RUnlock()
 
+		provider, _, model := a.currentProviderModel()
+		if provider == nil {
+			return fmt.Errorf("provider is unavailable (next: run /provider status and /login provider <name>)")
+		}
+
 		req := types.ChatRequest{
 			Messages:  msgs,
 			Tools:     types.ToToolDefs(a.config.Tools),
 			System:    a.config.SystemPrompt,
-			Model:     a.config.Model,
+			Model:     model,
 			MaxTokens: a.config.MaxTokens,
 		}
 
@@ -391,7 +488,7 @@ func (a *Agent) agentLoop(ctx context.Context) error {
 		}
 
 		// Send request to provider via streaming.
-		assistantMsg, stopReason, err := a.doChat(ctx, req, turnNumber)
+		assistantMsg, stopReason, err := a.doChat(ctx, provider, req, turnNumber)
 		if err != nil {
 			if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				a.emitTurnPhase(turnNumber, types.AgentTurnPhaseRetry, types.AgentTurnPhaseProviderStream, "retry_canceled", true, "context_canceled")
@@ -486,6 +583,10 @@ func (a *Agent) agentLoop(ctx context.Context) error {
 
 		// stop_reason == tool_use: execute tool calls and loop.
 		if stopReason == types.StopToolUse {
+			if toolContinuationExtensions < maxToolContinuationExtensions {
+				turnBudget++
+				toolContinuationExtensions++
+			}
 			a.emitTurnPhase(turnNumber, types.AgentTurnPhaseToolExecution, types.AgentTurnPhaseProviderStream, "tool_execution", false, "")
 			a.emitTransition(turnNumber, types.AgentLifecycleToolExecution, types.AgentTransitionToolUseDetected)
 			toolUses := assistantMsg.GetToolUses()
@@ -530,8 +631,9 @@ func (a *Agent) agentLoop(ctx context.Context) error {
 		return nil
 	}
 
-	a.emitStop(types.AgentStopMaxTurns, "", fmt.Sprintf("reached %d turns", a.config.MaxTurns), a.config.MaxTurns)
-	return fmt.Errorf("agent loop reached max turns (%d)", a.config.MaxTurns)
+	details := fmt.Sprintf("reached %d turns (configured=%d tool_continuations=%d)", turnBudget, a.config.MaxTurns, toolContinuationExtensions)
+	a.emitStop(types.AgentStopMaxTurns, "", details, turnBudget)
+	return fmt.Errorf("agent loop reached max turns (%d configured, %d total)", a.config.MaxTurns, turnBudget)
 }
 
 func (a *Agent) shouldContinueAfterMaxTokens(msg types.Message) bool {
@@ -604,7 +706,12 @@ func (a *Agent) attemptCompactionLegacy(ctx context.Context, force bool) (bool, 
 		return false, nil
 	}
 
-	compacted, boundary, err := CompactMessages(ctx, a.messages, a.config.Provider, a.config.Model)
+	provider, _, model := a.currentProviderModel()
+	if provider == nil {
+		a.mu.Unlock()
+		return false, fmt.Errorf("provider is unavailable (next: run /provider status and /login provider <name>)")
+	}
+	compacted, boundary, err := CompactMessages(ctx, a.messages, provider, model)
 	if err != nil {
 		a.mu.Unlock()
 		if a.config.Debug {
@@ -667,10 +774,10 @@ func (a *Agent) checkBudgets(turn int) error {
 
 // doChat sends a streaming request and accumulates the assistant response.
 // Returns the assembled assistant message, stop reason, and any error.
-func (a *Agent) doChat(ctx context.Context, req types.ChatRequest, turn int) (types.Message, types.StopReason, error) {
+func (a *Agent) doChat(ctx context.Context, provider types.Provider, req types.ChatRequest, turn int) (types.Message, types.StopReason, error) {
 	a.emitTurnPhase(turn, types.AgentTurnPhaseProviderStream, types.AgentTurnPhaseProviderRequest, "provider_stream", false, "")
 	a.emitTransition(turn, types.AgentLifecycleProviderStream, types.AgentTransitionProviderCall)
-	stream, err := a.config.Provider.Chat(ctx, req)
+	stream, err := provider.Chat(ctx, req)
 	if err != nil {
 		return types.Message{}, "", err
 	}
@@ -737,7 +844,7 @@ func (a *Agent) doChat(ctx context.Context, req types.ChatRequest, turn int) (ty
 		curToolBuf []byte
 		stopReason types.StopReason
 	)
-	normalizer := streamnorm.New(a.config.Provider.Name(), req.Model)
+	normalizer := streamnorm.New(provider.Name(), req.Model)
 
 	flushText := func() {
 		if curText != "" {
@@ -1535,7 +1642,22 @@ func (a *Agent) runtimeToolEnd() types.AgentRuntimeSnapshot {
 }
 
 func (a *Agent) runtimeSnapshotLocked() types.AgentRuntimeSnapshot {
+	providerName := strings.ToLower(strings.TrimSpace(a.runtimeProviderName))
+	if providerName == "" && a.runtimeProvider != nil {
+		providerName = strings.ToLower(strings.TrimSpace(a.runtimeProvider.Name()))
+	}
+	modelName := strings.TrimSpace(a.runtimeModel)
+	if modelName == "" {
+		modelName = strings.TrimSpace(a.config.Model)
+	}
+	modelRef := ""
+	if providerName != "" && modelName != "" {
+		modelRef = providerName + "/" + modelName
+	}
 	out := types.AgentRuntimeSnapshot{
+		ProviderName:   providerName,
+		Model:          modelName,
+		ModelRef:       modelRef,
 		Turns:          a.runtimeTurns,
 		TurnIndex:      a.runtimeTurnIdx,
 		Phase:          a.runtimePhase,

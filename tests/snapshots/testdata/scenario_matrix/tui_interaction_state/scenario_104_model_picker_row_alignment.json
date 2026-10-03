@@ -1,0 +1,1 @@
+{"name":"model_picker_row_alignment","width":120,"height":26,"actions":["type:/model "],"want_contains":["> anthropic/","ctx:","caps:"],"want_absent":[]}

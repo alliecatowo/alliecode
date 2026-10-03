@@ -1,6 +1,9 @@
 package providers
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 var defaultRegistry = NewDefaultModelMetadataRegistry()
 
@@ -76,6 +79,24 @@ func ListModelsByMinimumContextClass(provider string, class ContextWindowClass) 
 // ListModelsByProvider returns known models for a provider.
 func ListModelsByProvider(provider string) []ModelMetadata {
 	return defaultRegistry.ListByProvider(provider)
+}
+
+// CanonicalModelName resolves provider/model to registry-canonical casing.
+func CanonicalModelName(provider, model string) (string, bool) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	model = strings.TrimSpace(model)
+	if provider == "" || model == "" {
+		return "", false
+	}
+	if meta, ok := defaultRegistry.Get(provider, model); ok {
+		return meta.Model, true
+	}
+	for _, meta := range defaultRegistry.ListByProvider(provider) {
+		if strings.EqualFold(strings.TrimSpace(meta.Model), model) {
+			return meta.Model, true
+		}
+	}
+	return "", false
 }
 
 // SupportedProviderNames returns stable provider identifiers.

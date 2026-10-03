@@ -12,7 +12,7 @@ func TestWave5RecentSuggestionBoostsRanking(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "src", "beta.go"), "package src\n")
 
 	r := NewResolver(root)
-	suggestions := r.Suggest("src", []string{"src/beta.go"}, 8)
+	suggestions := r.Suggest("src", []string{"src/beta.go"}, nil, nil, 8)
 	if len(suggestions) == 0 {
 		t.Fatalf("expected ranked suggestions")
 	}

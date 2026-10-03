@@ -120,6 +120,13 @@ func DefaultSkillDirs(workspaceDir string) []string {
 	return dirs
 }
 
+// SkillDirs returns configured and discovered skill directories.
+func (m *Manager) SkillDirs() []string {
+	out := make([]string, len(m.dirs))
+	copy(out, m.dirs)
+	return out
+}
+
 // Load scans all configured directories for skill definition files (.md).
 func (m *Manager) Load() error {
 	m.skills = make(map[string]*Skill)
