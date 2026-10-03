@@ -44,13 +44,21 @@ changelog:
       - "^test:"
       - "^ci:"
 
+# Pushes Formula/alliecode.rb to alliecatowo/homebrew-tap over SSH with a
+# write deploy key (secret HOMEBREW_TAP_DEPLOY_KEY); no PAT needed.
 brews:
   - repository:
       owner: alliecatowo
       name: homebrew-tap
+      branch: main
+      git:
+        url: "git@github.com:alliecatowo/homebrew-tap.git"
+        private_key: "{{ .Env.HOMEBREW_TAP_DEPLOY_KEY }}"
+    directory: Formula
     name: alliecode
     homepage: "https://github.com/alliecatowo/alliecode"
     description: "Open-source, model-agnostic AI coding agent"
+    license: "Apache-2.0"
     install: |
       bin.install "ac"
 
